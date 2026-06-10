@@ -28,7 +28,9 @@ let ingotState = {
   maxTapEnergy: 500,
   lastEnergyRegen: Date.now(),
   levelLocked: false,
-  uiUpdateInterval: null
+  uiUpdateInterval: null,
+  lastSaveShavings: 0,
+  saveDebounceTimer: null
 };
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
@@ -39,6 +41,7 @@ export function initIngotState(savedData) {
     ingotState.maxTapEnergy = savedData.maxTapEnergy || 500;
     ingotState.lastEnergyRegen = savedData.lastEnergyRegen || Date.now();
     ingotState.levelLocked = savedData.levelLocked || false;
+    ingotState.lastSaveShavings = ingotState.shavings;
   }
 }
 
@@ -49,6 +52,11 @@ export function resetIngotState() {
   ingotState.maxTapEnergy = 500;
   ingotState.lastEnergyRegen = Date.now();
   ingotState.levelLocked = false;
+  ingotState.lastSaveShavings = 0;
+  if (ingotState.saveDebounceTimer) {
+    clearTimeout(ingotState.saveDebounceTimer);
+    ingotState.saveDebounceTimer = null;
+  }
 }
 
 export function getIngotSaveData() {
@@ -86,17 +94,53 @@ export function regenEnergy() {
   }
 }
 
+// ========== ДЕБАУНС СОХРАНЕНИЕ ==========
+function debouncedSave() {
+  if (ingotState.saveDebounceTimer) {
+    clearTimeout(ingotState.saveDebounceTimer);
+  }
+  ingotState.saveDebounceTimer = setTimeout(() => {
+    ingotState.lastSaveShavings = ingotState.shavings;
+    saveGame();
+    ingotState.saveDebounceTimer = null;
+  }, 150);
+}
+
 // ========== ТАП ==========
 export function tapIngot() {
   if (ingotState.tapEnergy <= 0) {
     return { success: false, message: 'Нет энергии!' };
   }
+  
   const ingotData = getCurrentIngotData();
   const tapPower = ingotData.tapPower || 1;
+  
+  // Обновляем состояние
   ingotState.tapEnergy--;
   ingotState.shavings += tapPower;
-  saveGame();
-  return { success: true, shavings: ingotState.shavings, energy: ingotState.tapEnergy, tapPower };
+  
+  // МГНОВЕННОЕ обновление UI
+  const shavingsDisplay = document.getElementById('ingotShavingsDisplay');
+  if (shavingsDisplay) {
+    shavingsDisplay.textContent = ingotState.shavings;
+  }
+  
+  // Энергия тоже мгновенно
+  const energyBar = document.getElementById('ingotEnergyBar');
+  if (energyBar) {
+    const pct = (ingotState.tapEnergy / ingotState.maxTapEnergy) * 100;
+    energyBar.style.width = pct + '%';
+  }
+  
+  // Дебаунс-сохранение (не чаще чем раз в 150мс)
+  debouncedSave();
+  
+  return { 
+    success: true, 
+    shavings: ingotState.shavings, 
+    energy: ingotState.tapEnergy, 
+    tapPower 
+  };
 }
 
 // ========== ЗАСЛОНКА ==========
@@ -135,7 +179,15 @@ export function performUpgrade() {
   state.player.level++;
   state.player.xp = 0;
   ingotState.levelLocked = false;
+  
+  // НЕМЕДЛЕННОЕ сохранение после переплавки
+  if (ingotState.saveDebounceTimer) {
+    clearTimeout(ingotState.saveDebounceTimer);
+    ingotState.saveDebounceTimer = null;
+  }
+  ingotState.lastSaveShavings = ingotState.shavings;
   saveGame();
+  
   const newData = INGOT_LEVELS[state.player.level];
   return { success: true, oldIngot, newIngot: { name: newData.name, icon: newData.icon, era: newData.era, level: state.player.level, image: newData.image } };
 }
@@ -147,7 +199,8 @@ function startUIUpdates() {
     regenEnergy();
     const bar = document.getElementById('ingotEnergyBar');
     if (bar) {
-      bar.style.width = (ingotState.tapEnergy / ingotState.maxTapEnergy * 100) + '%';
+      const pct = (ingotState.tapEnergy / ingotState.maxTapEnergy) * 100;
+      bar.style.width = pct + '%';
     }
   }, 300);
 }
@@ -590,14 +643,13 @@ export function renderIngotScreen(container) {
   const wrapper = document.getElementById('ingotFloatWrapper');
   const coreArea = document.getElementById('ingotCoreArea');
   const imageContainer = document.getElementById('ingotImageContainer');
-  const shavingsDisplay = document.getElementById('ingotShavingsDisplay');
   
   if (imageContainer && coreArea) {
     imageContainer.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       
-      // Прямой тап
+      // Прямой тап — счётчик обновляется ВНУТРИ tapIngot()
       const result = tapIngot();
       if (!result.success) {
         import('./ui.js').then(ui => ui.showToast(result.message, '⚡'));
@@ -609,11 +661,6 @@ export function renderIngotScreen(container) {
         wrapper.classList.remove('tap-active');
         void wrapper.offsetWidth;
         wrapper.classList.add('tap-active');
-      }
-      
-      // МГНОВЕННОЕ обновление счётчика стружки — ПРЯМОЕ
-      if (shavingsDisplay) {
-        shavingsDisplay.textContent = ingotState.shavings;
       }
       
       // Частица "+X"
