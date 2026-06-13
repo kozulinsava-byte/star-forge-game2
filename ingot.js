@@ -103,7 +103,17 @@ function debouncedSave() {
     ingotState.lastSaveShavings = ingotState.shavings;
     saveGame();
     ingotState.saveDebounceTimer = null;
-  }, 150);
+  }, 50);
+}
+
+// ========== ПРИНУДИТЕЛЬНОЕ СОХРАНЕНИЕ ==========
+export function forceSaveNow() {
+  if (ingotState.saveDebounceTimer) {
+    clearTimeout(ingotState.saveDebounceTimer);
+    ingotState.saveDebounceTimer = null;
+  }
+  ingotState.lastSaveShavings = ingotState.shavings;
+  saveGame();
 }
 
 // ========== ТАП ==========
@@ -132,7 +142,7 @@ export function tapIngot() {
     energyBar.style.width = pct + '%';
   }
   
-  // Дебаунс-сохранение (не чаще чем раз в 150мс)
+  // Дебаунс-сохранение (50мс)
   debouncedSave();
   
   return { 
@@ -181,12 +191,7 @@ export function performUpgrade() {
   ingotState.levelLocked = false;
   
   // НЕМЕДЛЕННОЕ сохранение после переплавки
-  if (ingotState.saveDebounceTimer) {
-    clearTimeout(ingotState.saveDebounceTimer);
-    ingotState.saveDebounceTimer = null;
-  }
-  ingotState.lastSaveShavings = ingotState.shavings;
-  saveGame();
+  forceSaveNow();
   
   const newData = INGOT_LEVELS[state.player.level];
   return { success: true, oldIngot, newIngot: { name: newData.name, icon: newData.icon, era: newData.era, level: state.player.level, image: newData.image } };
@@ -210,6 +215,8 @@ function stopUIUpdates() {
     clearInterval(ingotState.uiUpdateInterval);
     ingotState.uiUpdateInterval = null;
   }
+  // ПРИНУДИТЕЛЬНОЕ СОХРАНЕНИЕ ПРИ УХОДЕ С ВКЛАДКИ
+  forceSaveNow();
 }
 
 // ========== БЫСТРАЯ ОТРИСОВКА (БЕЗ ТЯЖЁЛЫХ ЦИКЛОВ, БЕЗ setTimeout) ==========
