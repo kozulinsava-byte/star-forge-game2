@@ -33,6 +33,14 @@ let ingotState = {
   saveDebounceTimer: null
 };
 
+// ========== СОСТОЯНИЕ РЕЖИМА «КУЗНЕЧНЫЙ РАЖ» ==========
+let forgeRushState = {
+  active: false,
+  timeLeft: 0,
+  countdownInterval: null,
+  countdownDisplay: null
+};
+
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 export function initIngotState(savedData) {
   if (savedData) {
@@ -47,6 +55,7 @@ export function initIngotState(savedData) {
 
 export function resetIngotState() {
   stopUIUpdates();
+  stopForgeRush();
   ingotState.shavings = 0;
   ingotState.tapEnergy = 500;
   ingotState.maxTapEnergy = 500;
@@ -73,6 +82,7 @@ export function getShavings() { return ingotState.shavings; }
 export function getTapEnergy() { return ingotState.tapEnergy; }
 export function getMaxTapEnergy() { return ingotState.maxTapEnergy; }
 export function isLevelLocked() { return ingotState.levelLocked; }
+export function isForgeRushActive() { return forgeRushState.active; }
 
 export function getCurrentIngotData() {
   const state = getPlayerState();
@@ -116,6 +126,100 @@ export function forceSaveNow() {
   saveGame();
 }
 
+// ========== ГЕНЕРАТОР ИСКР ==========
+function spawnSparks(container, x, y, count) {
+  for (let i = 0; i < count; i++) {
+    const spark = document.createElement('div');
+    spark.className = 'forge-spark';
+    spark.style.left = x + 'px';
+    spark.style.top = y + 'px';
+    
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 20 + Math.random() * 40;
+    const tx = Math.cos(angle) * distance;
+    const ty = Math.sin(angle) * distance;
+    
+    spark.style.setProperty('--sx', tx + 'px');
+    spark.style.setProperty('--sy', ty + 'px');
+    
+    container.appendChild(spark);
+    
+    setTimeout(() => {
+      spark.remove();
+    }, 300);
+  }
+}
+
+// ========== РЕЖИМ «КУЗНЕЧНЫЙ РАЖ» ==========
+function activateForgeRush() {
+  if (forgeRushState.active) return;
+  
+  forgeRushState.active = true;
+  forgeRushState.timeLeft = 10;
+  
+  const ingotScreen = document.querySelector('.ingot-screen');
+  if (ingotScreen) {
+    ingotScreen.classList.add('forge-rush-active');
+  }
+  
+  // Создаём таймер поверх слитка
+  const coreArea = document.getElementById('ingotCoreArea');
+  if (coreArea) {
+    forgeRushState.countdownDisplay = document.createElement('div');
+    forgeRushState.countdownDisplay.className = 'forge-rush-timer';
+    forgeRushState.countdownDisplay.textContent = '10';
+    coreArea.appendChild(forgeRushState.countdownDisplay);
+  }
+  
+  // Запускаем обратный отсчёт
+  forgeRushState.countdownInterval = setInterval(() => {
+    forgeRushState.timeLeft--;
+    
+    if (forgeRushState.countdownDisplay) {
+      forgeRushState.countdownDisplay.textContent = forgeRushState.timeLeft;
+      
+      // Анимация затухания цифры
+      forgeRushState.countdownDisplay.classList.remove('timer-pulse');
+      void forgeRushState.countdownDisplay.offsetWidth;
+      forgeRushState.countdownDisplay.classList.add('timer-pulse');
+    }
+    
+    if (forgeRushState.timeLeft <= 0) {
+      deactivateForgeRush();
+    }
+  }, 1000);
+  
+  // Форсируем сохранение при активации
+  forceSaveNow();
+}
+
+function deactivateForgeRush() {
+  forgeRushState.active = false;
+  forgeRushState.timeLeft = 0;
+  
+  if (forgeRushState.countdownInterval) {
+    clearInterval(forgeRushState.countdownInterval);
+    forgeRushState.countdownInterval = null;
+  }
+  
+  if (forgeRushState.countdownDisplay) {
+    forgeRushState.countdownDisplay.remove();
+    forgeRushState.countdownDisplay = null;
+  }
+  
+  const ingotScreen = document.querySelector('.ingot-screen');
+  if (ingotScreen) {
+    ingotScreen.classList.remove('forge-rush-active');
+  }
+  
+  // Форсируем сохранение при деактивации
+  forceSaveNow();
+}
+
+function stopForgeRush() {
+  deactivateForgeRush();
+}
+
 // ========== ЖИВОЕ ОБНОВЛЕНИЕ ПРОГРЕСС-БАРОВ ==========
 function updateBottomProgressBars() {
   const state = getPlayerState();
@@ -123,7 +227,6 @@ function updateBottomProgressBars() {
   const LEVELS = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3300, 4000, 4800, 5700, 6700, 7800, 9000, 10300, 11700, 13200, 15000];
   const nextXP = LEVELS[state.player.level] || LEVELS[LEVELS.length - 1];
   
-  // Обновляем прогресс-бар стружки
   const shavingsBar = document.getElementById('liveShavingsBar');
   const shavingsLabel = document.getElementById('liveShavingsLabel');
   if (shavingsBar && shavingsLabel) {
@@ -133,7 +236,6 @@ function updateBottomProgressBars() {
     shavingsLabel.textContent = `${ingotState.shavings} / ${needed}`;
   }
   
-  // Обновляем прогресс-бар XP
   const xpBar = document.getElementById('liveXPBar');
   const xpLabel = document.getElementById('liveXPLabel');
   if (xpBar && xpLabel) {
@@ -142,7 +244,6 @@ function updateBottomProgressBars() {
     xpLabel.textContent = `${state.player.xp} / ${nextXP}`;
   }
   
-  // Обновляем прогресс-бары слитков
   document.querySelectorAll('.ingot-progress-bar-inner.ingot[id^="liveIngotBar_"]').forEach(bar => {
     const ingotId = bar.dataset.ingotId;
     const needed = parseInt(bar.dataset.needed) || 1;
@@ -166,7 +267,12 @@ export function tapIngot() {
   }
   
   const ingotData = getCurrentIngotData();
-  const tapPower = ingotData.tapPower || 1;
+  let tapPower = ingotData.tapPower || 1;
+  
+  // Проверка на «Кузнечный раж» — множитель ×4
+  if (forgeRushState.active) {
+    tapPower = Math.floor(tapPower * 4);
+  }
   
   // Обновляем состояние
   ingotState.tapEnergy--;
@@ -188,6 +294,12 @@ export function tapIngot() {
   // МГНОВЕННОЕ обновление прогресс-баров внизу
   updateBottomProgressBars();
   
+  // Проверка на активацию «Кузнечного ража» (1% шанс)
+  if (!forgeRushState.active && Math.random() < 0.01) {
+    activateForgeRush();
+    import('./ui.js').then(ui => ui.showToast('⚡ КУЗНЕЧНЫЙ РАЖ! ×4 стружки на 10 секунд!', '🔥'));
+  }
+  
   // Дебаунс-сохранение (50мс)
   debouncedSave();
   
@@ -195,7 +307,8 @@ export function tapIngot() {
     success: true, 
     shavings: ingotState.shavings, 
     energy: ingotState.tapEnergy, 
-    tapPower 
+    tapPower,
+    forgeRush: forgeRushState.active
   };
 }
 
@@ -236,7 +349,6 @@ export function performUpgrade() {
   state.player.xp = 0;
   ingotState.levelLocked = false;
   
-  // НЕМЕДЛЕННОЕ сохранение после переплавки
   forceSaveNow();
   
   const newData = INGOT_LEVELS[state.player.level];
@@ -261,11 +373,10 @@ function stopUIUpdates() {
     clearInterval(ingotState.uiUpdateInterval);
     ingotState.uiUpdateInterval = null;
   }
-  // ПРИНУДИТЕЛЬНОЕ СОХРАНЕНИЕ ПРИ УХОДЕ С ВКЛАДКИ
   forceSaveNow();
 }
 
-// ========== БЫСТРАЯ ОТРИСОВКА (БЕЗ ТЯЖЁЛЫХ ЦИКЛОВ, БЕЗ setTimeout) ==========
+// ========== БЫСТРАЯ ОТРИСОВКА ==========
 export function renderIngotScreen(container) {
   stopUIUpdates();
   
@@ -281,7 +392,7 @@ export function renderIngotScreen(container) {
   
   let html = '';
   
-  // ===== CSS (облегчённый, без тяжёлых box-shadow на анимированных элементах) =====
+  // ===== CSS =====
   html += `
     <style>
       @keyframes ingotFloat {
@@ -289,11 +400,6 @@ export function renderIngotScreen(container) {
         25% { transform: translate3d(3px, -8px, 0) rotate(0.8deg); }
         50% { transform: translate3d(-2px, -14px, 0) rotate(1.5deg); }
         75% { transform: translate3d(4px, -6px, 0) rotate(-0.6deg); }
-      }
-      @keyframes tapBounce {
-        0% { transform: translate3d(0, 0, 0) scale(1); }
-        40% { transform: translate3d(0, 0, 0) scale(0.92); }
-        100% { transform: translate3d(0, 0, 0) scale(1); }
       }
       @keyframes textFloatUp {
         0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
@@ -311,6 +417,14 @@ export function renderIngotScreen(container) {
         0% { transform: translate(-50%, -50%) rotate(0deg); }
         100% { transform: translate(-50%, -50%) rotate(360deg); }
       }
+      @keyframes rushGlowPulse {
+        0%, 100% { box-shadow: inset 0 0 60px rgba(255, 100, 0, 0.3), 0 0 40px rgba(255, 50, 0, 0.4); }
+        50% { box-shadow: inset 0 0 100px rgba(255, 140, 0, 0.6), 0 0 80px rgba(255, 80, 0, 0.8); }
+      }
+      @keyframes rushTimerPulse {
+        0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+        50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      }
       
       .ingot-screen {
         min-height: 100%;
@@ -321,6 +435,12 @@ export function renderIngotScreen(container) {
         position: relative;
         overflow-y: auto;
         overflow-x: hidden;
+        transition: box-shadow 0.5s ease;
+      }
+      
+      .ingot-screen.forge-rush-active {
+        animation: rushGlowPulse 0.8s ease-in-out infinite;
+        background: radial-gradient(circle at 50% 40%, rgba(255, 60, 0, 0.15) 0%, rgba(20, 5, 0, 1) 75%);
       }
       
       .ingot-header {
@@ -344,6 +464,12 @@ export function renderIngotScreen(container) {
         -webkit-text-fill-color: transparent;
         line-height: 1;
         margin-bottom: 6px;
+        transition: transform 0.1s ease;
+      }
+      .forge-rush-active .ingot-shavings-value {
+        background: linear-gradient(180deg, #FF4500 0%, #FFD700 30%, #FFA500 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
       }
       .ingot-info-line {
         font-size: 12px;
@@ -366,8 +492,8 @@ export function renderIngotScreen(container) {
         position: relative;
         z-index: 2;
       }
-      .ingot-float-wrapper.tap-active {
-        animation: tapBounce 0.18s ease-out;
+      .forge-rush-active .ingot-float-wrapper {
+        animation: ingotFloat 2s ease-in-out infinite;
       }
       
       .ingot-image-container {
@@ -378,6 +504,10 @@ export function renderIngotScreen(container) {
         -webkit-tap-highlight-color: transparent;
         position: relative;
         filter: drop-shadow(0 0 25px rgba(255,140,0,0.4));
+        transition: filter 0.3s ease;
+      }
+      .forge-rush-active .ingot-image-container {
+        filter: drop-shadow(0 0 40px rgba(255, 60, 0, 0.9));
       }
       
       .ingot-image {
@@ -387,6 +517,10 @@ export function renderIngotScreen(container) {
         transform: translate3d(0, 0, 0);
         -webkit-backface-visibility: hidden;
         backface-visibility: hidden;
+        transition: transform 0.08s ease-out;
+      }
+      .ingot-image.squish-active {
+        transform: translate3d(0, 0, 0) scale(0.92, 1.08);
       }
       
       .ingot-fallback {
@@ -401,6 +535,10 @@ export function renderIngotScreen(container) {
         transform: translate3d(0, 0, 0);
         -webkit-backface-visibility: hidden;
         backface-visibility: hidden;
+        transition: transform 0.08s ease-out;
+      }
+      .ingot-fallback.squish-active {
+        transform: translate3d(0, 0, 0) scale(0.92, 1.08);
       }
       
       .tap-particle {
@@ -414,15 +552,46 @@ export function renderIngotScreen(container) {
         text-shadow: 0 0 10px rgba(255,180,0,0.9);
         animation: textFloatUp 0.7s ease-out forwards;
       }
-      .tap-spark {
+      .forge-rush-active .tap-particle {
+        color: #FF4500;
+        font-size: 22px;
+        text-shadow: 0 0 15px rgba(255, 60, 0, 1);
+      }
+      
+      .forge-spark {
         position: absolute;
-        width: 6px;
-        height: 6px;
+        width: 5px;
+        height: 5px;
         border-radius: 50%;
-        background: #FF8C00;
+        background: #FFD700;
         pointer-events: none;
         z-index: 9;
-        animation: sparkFly 0.5s ease-out forwards;
+        animation: sparkFly 0.3s ease-out forwards;
+        box-shadow: 0 0 6px #FFD700;
+      }
+      .forge-rush-active .forge-spark {
+        background: #FF4500;
+        box-shadow: 0 0 10px #FF4500, 0 0 20px #FF8C00;
+        width: 7px;
+        height: 7px;
+      }
+      
+      .forge-rush-timer {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Unbounded', sans-serif;
+        font-size: 72px;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.75);
+        pointer-events: none;
+        z-index: 20;
+        text-shadow: 0 0 30px rgba(255, 100, 0, 0.9), 0 0 60px rgba(255, 50, 0, 0.5);
+        animation: rushTimerPulse 1s ease-in-out infinite;
+      }
+      .forge-rush-timer.timer-pulse {
+        animation: rushTimerPulse 0.3s ease-out;
       }
       
       .ingot-energy-divider {
@@ -611,10 +780,9 @@ export function renderIngotScreen(container) {
     </style>
   `;
   
-  // ===== HTML (МГНОВЕННАЯ ГЕНЕРАЦИЯ) =====
-  html += `<div class="ingot-screen">`;
+  // ===== HTML =====
+  html += `<div class="ingot-screen${forgeRushState.active ? ' forge-rush-active' : ''}">`;
   
-  // Верх
   html += `
     <div class="ingot-header">
       <div class="ingot-shavings-label">Кузнечная стружка</div>
@@ -625,7 +793,6 @@ export function renderIngotScreen(container) {
     </div>
   `;
   
-  // Центр — Слиток появляется МГНОВЕННО
   html += `
     <div class="ingot-core" id="ingotCoreArea">
       <div class="ingot-float-wrapper" id="ingotFloatWrapper">
@@ -637,7 +804,6 @@ export function renderIngotScreen(container) {
     </div>
   `;
   
-  // Энергия
   html += `
     <div class="ingot-energy-divider">
       <div class="ingot-energy-bar-outer">
@@ -646,7 +812,6 @@ export function renderIngotScreen(container) {
     </div>
   `;
   
-  // Низ
   html += `<div class="ingot-bottom">`;
   
   if (!nextIngot) {
@@ -686,34 +851,35 @@ export function renderIngotScreen(container) {
   
   html += `</div></div>`;
   
-  // МГНОВЕННАЯ вставка в DOM
   container.innerHTML = html;
   
-  // Запуск ТОЛЬКО обновления энергии
+  // Восстанавливаем таймер ража если он был активен
+  if (forgeRushState.active && forgeRushState.countdownDisplay === null) {
+    const coreArea = document.getElementById('ingotCoreArea');
+    if (coreArea) {
+      forgeRushState.countdownDisplay = document.createElement('div');
+      forgeRushState.countdownDisplay.className = 'forge-rush-timer';
+      forgeRushState.countdownDisplay.textContent = forgeRushState.timeLeft;
+      coreArea.appendChild(forgeRushState.countdownDisplay);
+    }
+  }
+  
   startUIUpdates();
   
-  // ===== МГНОВЕННЫЕ ОБРАБОТЧИКИ (БЕЗ setTimeout!) =====
+  // ===== ОБРАБОТЧИКИ С SQUISH-ЭФФЕКТОМ И ИСКРАМИ =====
   const wrapper = document.getElementById('ingotFloatWrapper');
   const coreArea = document.getElementById('ingotCoreArea');
   const imageContainer = document.getElementById('ingotImageContainer');
+  const ingotImage = document.getElementById('ingotImage');
+  const ingotFallback = document.getElementById('ingotFallback');
   
   if (imageContainer && coreArea) {
-    imageContainer.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Прямой тап — счётчик обновляется ВНУТРИ tapIngot()
+    // Функция выполнения тапа
+    const executeTap = (clientX, clientY) => {
       const result = tapIngot();
       if (!result.success) {
         import('./ui.js').then(ui => ui.showToast(result.message, '⚡'));
         return;
-      }
-      
-      // Анимация сжатия
-      if (wrapper) {
-        wrapper.classList.remove('tap-active');
-        void wrapper.offsetWidth;
-        wrapper.classList.add('tap-active');
       }
       
       // Частица "+X"
@@ -727,19 +893,58 @@ export function renderIngotScreen(container) {
       coreArea.appendChild(particle);
       setTimeout(() => particle.remove(), 700);
       
-      // Искры
-      for (let i = 0; i < 4; i++) {
-        const spark = document.createElement('div');
-        spark.className = 'tap-spark';
-        spark.style.left = (rect.left + rect.width / 2 - coreRect.left) + 'px';
-        spark.style.top = (rect.top + rect.height / 2 - coreRect.top) + 'px';
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 25 + Math.random() * 35;
-        spark.style.setProperty('--sx', Math.cos(angle) * dist + 'px');
-        spark.style.setProperty('--sy', Math.sin(angle) * dist + 'px');
-        coreArea.appendChild(spark);
-        setTimeout(() => spark.remove(), 500);
+      // Искры в точке касания
+      const sparkX = clientX - coreRect.left;
+      const sparkY = clientY - coreRect.top;
+      spawnSparks(coreArea, sparkX, sparkY, forgeRushState.active ? 8 : 4);
+    };
+    
+    // Squish: сжатие при нажатии
+    const applySquish = () => {
+      if (ingotImage) ingotImage.classList.add('squish-active');
+      if (ingotFallback) ingotFallback.classList.add('squish-active');
+    };
+    
+    const removeSquish = (e) => {
+      if (ingotImage) ingotImage.classList.remove('squish-active');
+      if (ingotFallback) ingotFallback.classList.remove('squish-active');
+      
+      if (e) {
+        executeTap(e.clientX || (e.touches && e.touches[0]?.clientX) || 0,
+                   e.clientY || (e.touches && e.touches[0]?.clientY) || 0);
       }
+    };
+    
+    // Mouse events
+    imageContainer.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      applySquish();
+    });
+    
+    imageContainer.addEventListener('mouseup', (e) => {
+      e.preventDefault();
+      removeSquish(e);
+    });
+    
+    imageContainer.addEventListener('mouseleave', () => {
+      if (ingotImage) ingotImage.classList.remove('squish-active');
+      if (ingotFallback) ingotFallback.classList.remove('squish-active');
+    });
+    
+    // Touch events
+    imageContainer.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      applySquish();
+    }, { passive: false });
+    
+    imageContainer.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      removeSquish(e);
+    }, { passive: false });
+    
+    imageContainer.addEventListener('touchcancel', () => {
+      if (ingotImage) ingotImage.classList.remove('squish-active');
+      if (ingotFallback) ingotFallback.classList.remove('squish-active');
     });
   }
   
