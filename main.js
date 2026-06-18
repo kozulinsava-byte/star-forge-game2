@@ -162,12 +162,28 @@ async function boot() {
     console.warn('[Boot] Mini-game overlay binding error:', e);
   }
   
+  // Глобальный обработчик для кнопок справки «?»
+  document.addEventListener('click', (e) => {
+    const helpBtn = e.target.closest('.help-btn, .help-btn-absolute');
+    if (helpBtn) {
+      const tabId = helpBtn.dataset.help || 'ingot';
+      import('./tutorial.js').then(t => t.showHelp(tabId));
+    }
+  });
+  
   updatePreloader(100, 'Готово!');
   
   setTimeout(() => {
     hidePreloader();
     setActiveTab('expeditions');
     console.log('[Boot] ========== ИГРА ЗАПУЩЕНА ==========');
+    
+    // Проверка туториала
+    import('./tutorial.js').then(tutorial => {
+      if (!tutorial.isTutorialCompleted()) {
+        setTimeout(() => tutorial.startTutorial(), 300);
+      }
+    });
   }, 200);
 }
 
