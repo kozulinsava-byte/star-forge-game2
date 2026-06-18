@@ -487,6 +487,11 @@ function showAdminPanel() {
         ingot.resetIngotState();
       });
       
+      // Сброс флага туториала
+      import('./tutorial.js').then(t => {
+        t.resetTutorialFlag();
+      });
+      
       // Очистка localStorage и сохранение чистого состояния
       localStorage.removeItem('starforge_v1');
       saveGame();
@@ -887,7 +892,7 @@ export function renderProfileTab() {
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   const themeBtnText = currentTheme === 'dark' ? '🌙 Сменить тему (Светлая)' : '☀️ Сменить тему (Тёмная)';
   
-  let html = `<div class="section-title">👤 Профиль</div>`;
+  let html = `<div class="section-title">👤 Профиль <button class="help-btn" data-help="profile">?</button></div>`;
   
   html += `
     <div class="card">
@@ -969,7 +974,7 @@ export function renderProfileTab() {
 
 export function renderExpeditionsTab() {
   const state = getPlayerState();
-  let html = '<div class="section-title">⛏️ Экспедиции</div>';
+  let html = '<div class="section-title">⛏️ Экспедиции <button class="help-btn" data-help="expeditions">?</button></div>';
   
   for (let k in CONFIG_EXPEDITIONS) {
     const exp = CONFIG_EXPEDITIONS[k];
@@ -1032,7 +1037,7 @@ export function renderExpeditionsTab() {
 export function renderInventoryTab() {
   const state = getPlayerState();
   let html = `
-    <div class="section-title">🎒 Инвентарь</div>
+    <div class="section-title">🎒 Инвентарь <button class="help-btn" data-help="inventory">?</button></div>
     <div class="inventory-subtabs">
       <button class="subtab-btn ${inventorySubTab === 'geodes' ? 'active' : ''}" data-subtab="geodes">🪨 Жеоды</button>
       <button class="subtab-btn ${inventorySubTab === 'ingots' ? 'active' : ''}" data-subtab="ingots">✨ Слитки</button>
@@ -1115,7 +1120,7 @@ export function renderCollectionTab() {
   const percent = (discovered / totalRegular) * 100;
 
   let html = `
-    <div class="section-title">📦 Коллекция</div>
+    <div class="section-title">📦 Коллекция <button class="help-btn" data-help="collection">?</button></div>
     <div class="collection-progress">
       <div class="progress-bar-container">
         <div class="progress-bar-fill" id="collectionProgressFill" style="width:${percent}%"></div>
@@ -1242,7 +1247,7 @@ export function renderGamesTab() {
   const activeEventId = eventsManager.getActiveEventId();
   const timeLeft = activeEvent ? eventsManager.getTimeLeft() : '';
   
-  let html = '<div class="section-title">🎮 Игры</div>';
+  let html = '<div class="section-title">🎮 Игры <button class="help-btn" data-help="events">?</button></div>';
   
   // ===== ЗОНА 1: ГЛОБАЛЬНОЕ СОБЫТИЕ =====
   html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:10px 0 8px; color:var(--accent-gold);">🌐 Глобальное событие</div>';
