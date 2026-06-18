@@ -149,6 +149,46 @@
     .dev-menu-btn { background:rgba(255,100,255,0.15); border:1px solid rgba(255,100,255,0.3); color:#FF64FF; padding:8px 16px; border-radius:30px; font-weight:600; font-size:12px; cursor:pointer; transition:all 0.2s; margin-left:12px; }
     .dev-menu-btn:active { transform:scale(0.9); background:rgba(255,100,255,0.25); }
 
+    .help-btn {
+      background: rgba(255, 215, 0, 0.12);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      color: var(--accent-gold);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .help-btn:active { transform: scale(0.9); background: rgba(255, 215, 0, 0.25); }
+
+    .help-btn-absolute {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 10;
+      background: rgba(255, 215, 0, 0.12);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      color: var(--accent-gold);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .help-btn-absolute:active { transform: scale(0.9); background: rgba(255, 215, 0, 0.25); }
+
     .card { background:var(--card-bg); backdrop-filter:blur(20px); border-radius:28px; padding:20px 18px; margin-bottom:16px; border:1px solid var(--card-border); box-shadow:0 8px 32px var(--shadow-color); transition:transform 0.2s, background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease; }
     .card:active { transform:scale(0.98); }
     .section-title { font-family:'Unbounded',sans-serif; font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; text-shadow:0 2px 10px var(--shadow-color); color:var(--text-primary); transition:color 0.3s ease; }
