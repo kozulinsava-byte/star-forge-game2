@@ -116,6 +116,49 @@ export function forceSaveNow() {
   saveGame();
 }
 
+// ========== ЖИВОЕ ОБНОВЛЕНИЕ ПРОГРЕСС-БАРОВ ==========
+function updateBottomProgressBars() {
+  const state = getPlayerState();
+  
+  const LEVELS = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3300, 4000, 4800, 5700, 6700, 7800, 9000, 10300, 11700, 13200, 15000];
+  const nextXP = LEVELS[state.player.level] || LEVELS[LEVELS.length - 1];
+  
+  // Обновляем прогресс-бар стружки
+  const shavingsBar = document.getElementById('liveShavingsBar');
+  const shavingsLabel = document.getElementById('liveShavingsLabel');
+  if (shavingsBar && shavingsLabel) {
+    const needed = parseInt(shavingsBar.dataset.needed) || 1;
+    const pct = Math.min(100, (ingotState.shavings / needed) * 100);
+    shavingsBar.style.width = pct + '%';
+    shavingsLabel.textContent = `${ingotState.shavings} / ${needed}`;
+  }
+  
+  // Обновляем прогресс-бар XP
+  const xpBar = document.getElementById('liveXPBar');
+  const xpLabel = document.getElementById('liveXPLabel');
+  if (xpBar && xpLabel) {
+    const pct = Math.min(100, (state.player.xp / nextXP) * 100);
+    xpBar.style.width = pct + '%';
+    xpLabel.textContent = `${state.player.xp} / ${nextXP}`;
+  }
+  
+  // Обновляем прогресс-бары слитков
+  document.querySelectorAll('.ingot-progress-bar-inner.ingot[id^="liveIngotBar_"]').forEach(bar => {
+    const ingotId = bar.dataset.ingotId;
+    const needed = parseInt(bar.dataset.needed) || 1;
+    if (ingotId) {
+      const owned = state.ingots[ingotId] || 0;
+      const pct = Math.min(100, (owned / needed) * 100);
+      bar.style.width = pct + '%';
+      
+      const label = document.getElementById('liveIngotLabel_' + ingotId);
+      if (label) {
+        label.textContent = `${owned} / ${needed}`;
+      }
+    }
+  });
+}
+
 // ========== ТАП ==========
 export function tapIngot() {
   if (ingotState.tapEnergy <= 0) {
@@ -129,18 +172,21 @@ export function tapIngot() {
   ingotState.tapEnergy--;
   ingotState.shavings += tapPower;
   
-  // МГНОВЕННОЕ обновление UI
+  // МГНОВЕННОЕ обновление большой цифры стружки
   const shavingsDisplay = document.getElementById('ingotShavingsDisplay');
   if (shavingsDisplay) {
     shavingsDisplay.textContent = ingotState.shavings;
   }
   
-  // Энергия тоже мгновенно
+  // МГНОВЕННОЕ обновление полоски энергии
   const energyBar = document.getElementById('ingotEnergyBar');
   if (energyBar) {
     const pct = (ingotState.tapEnergy / ingotState.maxTapEnergy) * 100;
     energyBar.style.width = pct + '%';
   }
+  
+  // МГНОВЕННОЕ обновление прогресс-баров внизу
+  updateBottomProgressBars();
   
   // Дебаунс-сохранение (50мс)
   debouncedSave();
@@ -614,27 +660,27 @@ export function renderIngotScreen(container) {
     } else {
       html += `<div class="ingot-goal-title">ЦЕЛЬ: ЭВОЛЮЦИЯ ДО <strong>${nextIngot.name}</strong> (Ур. ${state.player.level + 1})</div>`;
       html += `<div class="ingot-progress-list">`;
-      html += buildProgressRow('✨', 'Стружка', shavings, nextIngot.shavingsCost, 'shavings');
+      html += buildProgressRowLive('✨', 'Стружка', shavings, nextIngot.shavingsCost, 'shavings', 'liveShavingsBar', 'liveShavingsLabel', null);
       if (nextIngot.ingotCost) {
         for (let id in nextIngot.ingotCost) {
           const ing = CONFIG_ITEMS[id];
-          html += buildProgressRow(ing?.icon || '📦', ing?.name || id, state.ingots[id] || 0, nextIngot.ingotCost[id], 'ingot');
+          html += buildProgressRowLive(ing?.icon || '📦', ing?.name || id, state.ingots[id] || 0, nextIngot.ingotCost[id], 'ingot', 'liveIngotBar_' + id, 'liveIngotLabel_' + id, id);
         }
       }
-      html += buildProgressRow('🔥', 'Опыт профиля', state.player.xp, nextXP, 'xp');
+      html += buildProgressRowLive('🔥', 'Опыт профиля', state.player.xp, nextXP, 'xp', 'liveXPBar', 'liveXPLabel', null);
       html += `</div>`;
     }
   } else {
     html += `<div class="ingot-goal-title">ЦЕЛЬ: ЭВОЛЮЦИЯ ДО <strong>${nextIngot.name}</strong> (Ур. ${state.player.level + 1})</div>`;
     html += `<div class="ingot-progress-list">`;
-    html += buildProgressRow('✨', 'Стружка', shavings, nextIngot.shavingsCost, 'shavings');
+    html += buildProgressRowLive('✨', 'Стружка', shavings, nextIngot.shavingsCost, 'shavings', 'liveShavingsBar', 'liveShavingsLabel', null);
     if (nextIngot.ingotCost) {
       for (let id in nextIngot.ingotCost) {
         const ing = CONFIG_ITEMS[id];
-        html += buildProgressRow(ing?.icon || '📦', ing?.name || id, state.ingots[id] || 0, nextIngot.ingotCost[id], 'ingot');
+        html += buildProgressRowLive(ing?.icon || '📦', ing?.name || id, state.ingots[id] || 0, nextIngot.ingotCost[id], 'ingot', 'liveIngotBar_' + id, 'liveIngotLabel_' + id, id);
       }
     }
-    html += buildProgressRow('🔥', 'Опыт профиля', state.player.xp, nextXP, 'xp');
+    html += buildProgressRowLive('🔥', 'Опыт профиля', state.player.xp, nextXP, 'xp', 'liveXPBar', 'liveXPLabel', null);
     html += `</div>`;
   }
   
@@ -719,15 +765,16 @@ export function renderIngotScreen(container) {
 }
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-function buildProgressRow(icon, label, current, needed, cssClass) {
+function buildProgressRowLive(icon, label, current, needed, cssClass, barId, labelId, ingotId) {
   const pct = Math.min(100, (current / needed) * 100);
+  const dataAttr = ingotId ? ` data-ingot-id="${ingotId}"` : '';
   return `
     <div class="ingot-progress-row">
       <span class="ingot-progress-icon">${icon}</span>
       <div class="ingot-progress-info">
-        <div class="ingot-progress-header"><span>${label}</span><span>${current} / ${needed}</span></div>
+        <div class="ingot-progress-header"><span>${label}</span><span id="${labelId}">${current} / ${needed}</span></div>
         <div class="ingot-progress-bar-outer">
-          <div class="ingot-progress-bar-inner ${cssClass}" style="width:${pct}%;"></div>
+          <div class="ingot-progress-bar-inner ${cssClass}" id="${barId}" data-needed="${needed}"${dataAttr} style="width:${pct}%;"></div>
         </div>
       </div>
     </div>
