@@ -169,7 +169,6 @@ function createTutorialOverlay() {
   hintEl.id = 'tutorialHint';
   document.body.appendChild(hintEl);
   
-  // CSS для туториала
   const style = document.createElement('style');
   style.id = 'tutorialStyles';
   style.textContent = `
@@ -307,7 +306,6 @@ function positionHint(targetEl, step, position) {
       hintEl.style.transform = 'translateY(-50%)';
     }
     
-    // Не вылезаем за экран
     left = Math.max(10, Math.min(left, window.innerWidth - hintWidth - 10));
     top = Math.max(10, Math.min(top, window.innerHeight - 250));
     
@@ -339,7 +337,6 @@ function nextTutorialStep() {
     positionSpotlight(targetEl);
     positionHint(targetEl, step, step.position);
   } else {
-    // Финальный шаг — по центру
     spotlightEl.style.width = '0px';
     spotlightEl.style.height = '0px';
     positionHint(null, step, 'center');
@@ -376,11 +373,9 @@ export function startTutorial() {
   
   currentStep = 0;
   
-  // Небольшая задержка, чтобы UI успел отрендериться
   setTimeout(() => {
     createTutorialOverlay();
     
-    // Кнопка «Пропустить»
     const skipBtn = document.createElement('button');
     skipBtn.className = 'tutorial-skip';
     skipBtn.id = 'tutorialSkipBtn';
@@ -388,7 +383,6 @@ export function startTutorial() {
     skipBtn.addEventListener('click', skipTutorial);
     document.body.appendChild(skipBtn);
     
-    // Первый шаг
     const step = TUTORIAL_STEPS[0];
     const targetEl = document.querySelector(step.targetSelector);
     positionSpotlight(targetEl);
