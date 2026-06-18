@@ -782,6 +782,7 @@ export function renderIngotScreen(container) {
   
   // ===== HTML =====
   html += `<div class="ingot-screen${forgeRushState.active ? ' forge-rush-active' : ''}">`;
+  html += `<button class="help-btn help-btn-absolute" data-help="ingot">?</button>`;
   
   html += `
     <div class="ingot-header">
