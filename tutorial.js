@@ -1,11 +1,11 @@
-// ========== TUTORIAL МОДУЛЬ: ОБУЧЕНИЕ И СПРАВКА ==========
+// ========== TUTORIAL МОДУЛЬ: ПОЛНЫЙ ИНТЕРАКТИВНЫЙ ПУТЕВОДИТЕЛЬ ==========
+// Охват: все 6 вкладок, микро-шаги на каждой, динамические плашки, лёгкое затемнение
 
-// ========== ФЛАГ ТУТОРИАЛА ==========
 export function isTutorialCompleted() {
   return localStorage.getItem('tutorial_completed') === 'true';
 }
 
-export function markTutorialCompleted() {
+function markTutorialCompleted() {
   localStorage.setItem('tutorial_completed', 'true');
 }
 
@@ -26,7 +26,6 @@ const HELP_CONTENT = {
       <p>💡 <strong>Совет:</strong> начинайте с Шахт. Как только откроете Джунгли (уровень 5) — переключайтесь на них ради редких слитков.</p>
     `
   },
-  
   ingot: {
     title: '⚒️ Слиток',
     text: `
@@ -39,7 +38,6 @@ const HELP_CONTENT = {
       <p>💡 <strong>Совет:</strong> не тратьте энергию впустую! Тапайте регулярно и следите за заполнением шкалы опыта.</p>
     `
   },
-  
   inventory: {
     title: '🎒 Инвентарь',
     text: `
@@ -50,7 +48,6 @@ const HELP_CONTENT = {
       <p>💡 <strong>Совет:</strong> не продавайте редкие слитки сразу — они могут пригодиться для эволюции Слитка или крафта в Плавильне.</p>
     `
   },
-  
   collection: {
     title: '📦 Коллекция',
     text: `
@@ -61,7 +58,6 @@ const HELP_CONTENT = {
       <p>💡 <strong>Совет:</strong> следите за особыми жеодами — они выпадают с низким шансом, но содержат артефакты для Зала Славы.</p>
     `
   },
-  
   events: {
     title: '🎮 Игры',
     text: `
@@ -74,7 +70,6 @@ const HELP_CONTENT = {
       <p>💡 <strong>Совет:</strong> заходите во вкладку Игр почаще — Заказы Гильдии обновляются, а ивенты дают огромные бонусы!</p>
     `
   },
-  
   profile: {
     title: '👤 Профиль',
     text: `
@@ -89,11 +84,9 @@ const HELP_CONTENT = {
   }
 };
 
-// ========== ПОКАЗ СПРАВКИ ==========
 export function showHelp(tabId) {
   const help = HELP_CONTENT[tabId];
   if (!help) return;
-  
   import('./ui.js').then(ui => {
     const html = `
       <div class="modal-header">
@@ -108,89 +101,302 @@ export function showHelp(tabId) {
   });
 }
 
-// ========== ТУТОРИАЛ: ШАГИ ==========
-const TUTORIAL_STEPS = [
+// ========================================================================
+// ПОЛНАЯ СИСТЕМА СЦЕН И ПОДШАГОВ (ОХВАТ ВСЕХ ВКЛАДОК)
+// ========================================================================
+
+const TUTORIAL_SCENES = [
+  // ===== СЦЕНА 0: ПРИВЕТСТВИЕ =====
   {
-    tabId: 'ingot',
-    targetSelector: '#ingotImageContainer',
-    title: '⚒️ Ваш Слиток',
-    text: 'Это — сердце игры! Тапайте по Слитку, чтобы добывать кузнечную стружку. С шансом 1% активируется КУЗНЕЧНЫЙ РАЖ — ×4 стружки на 10 секунд! Попробуйте тапнуть прямо сейчас!',
-    position: 'bottom'
-  },
-  {
-    tabId: 'expeditions',
-    targetSelector: '#mainContent .card:first-child',
-    title: '⛏️ Экспедиции',
-    text: 'Отправляйте шахтёров в экспедиции за жеодами. Разбивайте жеоды тапами — и получайте ценные слитки! Начните с Шахт.',
-    position: 'bottom'
-  },
-  {
-    tabId: 'inventory',
-    targetSelector: '#mainContent .inventory-subtabs',
-    title: '🎒 Инвентарь',
-    text: 'Все ваши жеоды и добытые слитки хранятся здесь. Переключайтесь между вкладками «Жеоды» и «Слитки».',
-    position: 'bottom'
-  },
-  {
-    tabId: 'events',
-    targetSelector: '#mainContent .card:first-of-type',
-    title: '🎮 Игры и Ивенты',
-    text: 'Глобальные события запускаются каждые 30 минут. Заказы Гильдии и мини-игры — здесь. Заглядывайте почаще!',
-    position: 'bottom'
-  },
-  {
-    tabId: 'profile',
-    targetSelector: '#mainContent .profile-header',
-    title: '👤 Профиль',
-    text: 'Ваш прогресс, статистика и сбыт сырья. Кнопка <b>?</b> в правом верхнем углу любой вкладки всегда подскажет, если что-то забудете!',
-    position: 'bottom'
-  },
-  {
+    sceneId: 'welcome',
     tabId: null,
-    targetSelector: null,
-    title: '🎉 Вы готовы!',
-    text: 'Теперь вы — настоящий Старатель! Тапайте Слиток, собирайте коллекцию и становитесь Легендой космоса. Удачи!',
-    position: 'center'
+    overlayOpacity: 0.3,
+    subSteps: [
+      {
+        targetSelector: null,
+        title: '🌟 Добро пожаловать в Star Forge!',
+        text: 'Стань легендарным кузнецом космоса. Добывай ресурсы, куй слитки и собирай редчайшие артефакты. Давай освоим основы за пару минут!',
+        position: 'center',
+        arrowSide: null
+      }
+    ]
+  },
+
+  // ===== СЦЕНА 1: СЛИТОК (2 подшага) =====
+  {
+    sceneId: 'ingot',
+    tabId: 'ingot',
+    overlayOpacity: 0.65,
+    subSteps: [
+      {
+        targetSelector: '#ingotImageContainer',
+        title: '⚒️ Сердце игры — Слиток',
+        text: 'Тапай по нему, чтобы выбивать кузнечную стружку. Каждый тап тратит энергию (синяя полоска). С шансом 1% включается КУЗНЕЧНЫЙ РАЖ — ×4 стружки на 10 секунд!',
+        position: 'top',
+        arrowSide: 'bottom'
+      },
+      {
+        targetSelector: '.ingot-bottom',
+        title: '📋 Цель — эволюция',
+        text: 'Здесь — твоя цель. Собери нужное количество стружки и слитков. Когда шкала опыта заполнится — жми «ПЕРЕПЛАВИТЬ СЛИТОК» для повышения уровня!',
+        position: 'top',
+        arrowSide: 'bottom'
+      }
+    ]
+  },
+
+  // ===== СЦЕНА 2: ЭКСПЕДИЦИИ (2 подшага) =====
+  {
+    sceneId: 'expeditions',
+    tabId: 'expeditions',
+    overlayOpacity: 0.65,
+    subSteps: [
+      {
+        targetSelector: '#mainContent .card:first-child .expedition-item',
+        title: '⛏️ Шахты — твой первый рубеж',
+        text: 'Отправляй шахтёров в Шахты. Они добудут жеоды с медью, железом и углём — основой для первых слитков и эволюции.',
+        position: 'bottom',
+        arrowSide: 'top'
+      },
+      {
+        targetSelector: '#mainContent .card:nth-child(2), #mainContent .card:nth-child(3)',
+        title: '🔒 Новые горизонты',
+        text: 'Джунгли (ур. 5) и Пояс Астероидов (ур. 10) откроются позже. Там ждут редкие, эпические и легендарные слитки!',
+        position: 'bottom',
+        arrowSide: 'top'
+      }
+    ]
+  },
+
+  // ===== СЦЕНА 3: ИНВЕНТАРЬ (2 подшага) =====
+  {
+    sceneId: 'inventory',
+    tabId: 'inventory',
+    overlayOpacity: 0.65,
+    subSteps: [
+      {
+        targetSelector: '#mainContent .inventory-subtabs',
+        title: '🎒 Твой инвентарь',
+        text: 'Здесь хранятся все жеоды и слитки. Переключайся между вкладками «Жеоды» и «Слитки», чтобы видеть свои богатства.',
+        position: 'bottom',
+        arrowSide: 'top'
+      },
+      {
+        targetSelector: '#mainContent .inventory-subtabs .subtab-btn:last-child',
+        title: '✨ Слитки — твоя валюта',
+        text: 'Во вкладке «Слитки» ты увидишь все добытые ресурсы. Обычные можно продать в Профиле за опыт. Редкие — береги для эволюции и крафта!',
+        position: 'bottom',
+        arrowSide: 'top'
+      }
+    ]
+  },
+
+  // ===== СЦЕНА 4: КОЛЛЕКЦИЯ (2 подшага) =====
+  {
+    sceneId: 'collection',
+    tabId: 'collection',
+    overlayOpacity: 0.65,
+    subSteps: [
+      {
+        targetSelector: '#mainContent .collection-progress',
+        title: '📦 Твоя коллекция',
+        text: 'Прогресс-бар показывает, сколько слитков из всей энциклопедии ты уже открыл. Цель — собрать их все!',
+        position: 'bottom',
+        arrowSide: 'top'
+      },
+      {
+        targetSelector: '#mainContent .inventory-subtabs .subtab-btn:last-child',
+        title: '🏆 Зал Славы',
+        text: 'Здесь — легендарные Коллекционные Артефакты. Они выпадают из особых жеод и их нельзя продать. Это чистый престиж!',
+        position: 'bottom',
+        arrowSide: 'top'
+      }
+    ]
+  },
+
+  // ===== СЦЕНА 5: ИГРЫ И ИВЕНТЫ (3 подшага) =====
+  {
+    sceneId: 'events',
+    tabId: 'events',
+    overlayOpacity: 0.65,
+    subSteps: [
+      {
+        targetSelector: '#mainContent .card:first-of-type',
+        title: '🌐 Глобальные события',
+        text: 'Каждые 30 минут запускается случайное событие: Великая Переплавка (крафт слитков) или Метеоритный Шторм (ловля метеоров). Не пропускай!',
+        position: 'bottom',
+        arrowSide: 'top'
+      },
+      {
+        targetSelector: '#mainContent .mini-game-card:first-of-type',
+        title: '🎰 Мини-игры',
+        text: 'Закалка (ур. 1), Идеальная Стопка (ур. 5) и Кузнечный Апгрейд (ур. 10). Каждая даёт опыт и награды. Закалка — отличный старт для новичка!',
+        position: 'top',
+        arrowSide: 'bottom'
+      },
+      {
+        targetSelector: '#mainContent .complete-quest-btn, #mainContent .card:nth-child(4)',
+        title: '📜 Заказы Гильдии',
+        text: '3 случайных задания на доставку слитков. Выполняй их — получай опыт и бонусные жеоды. Обновляются каждые 10 минут!',
+        position: 'top',
+        arrowSide: 'bottom'
+      }
+    ]
+  },
+
+  // ===== СЦЕНА 6: ПРОФИЛЬ (2 подшага) =====
+  {
+    sceneId: 'profile',
+    tabId: 'profile',
+    overlayOpacity: 0.65,
+    subSteps: [
+      {
+        targetSelector: '#mainContent .profile-header',
+        title: '👤 Твой профиль',
+        text: 'Здесь — твой уровень, статус и прогресс. От «Новичка» до «Легенды» — 20 уровней. Повышай Слиток — открывай новые эпохи!',
+        position: 'bottom',
+        arrowSide: 'top'
+      },
+      {
+        targetSelector: '#mainContent .sell-section',
+        title: '💰 Сбыт сырья',
+        text: 'Продавай обычные слитки за опыт. Но не спеши — они нужны для эволюции Слитка и крафта в Плавильне!',
+        position: 'top',
+        arrowSide: 'bottom'
+      }
+    ]
+  },
+
+  // ===== СЦЕНА 7: ФИНАЛ =====
+  {
+    sceneId: 'final',
+    tabId: null,
+    overlayOpacity: 0.3,
+    subSteps: [
+      {
+        targetSelector: null,
+        title: '🎉 Ты готов к приключениям!',
+        text: 'Тапай Слиток, отправляй экспедиции, собирай коллекцию и участвуй в ивентах. Кнопка <b>?</b> всегда рядом, если что-то забудешь. Удачи, Старатель!',
+        position: 'center',
+        arrowSide: null
+      }
+    ]
   }
 ];
 
-let currentStep = 0;
-let tutorialActive = false;
-let tutorialElements = {};
+// ========================================================================
+// ДВИЖОК ТУТОРИАЛА
+// ========================================================================
 
-// ========== ИНЖЕКТ СТИЛЕЙ ==========
-function injectTutorialStyles() {
-  if (document.getElementById('tutorialStyles')) return;
-  
+let currentSceneIndex = 0;
+let currentSubStepIndex = 0;
+let tutorialActive = false;
+let elements = {};
+let spotlightCleanup = null;
+
+// ---------- ИНЖЕКТ СТИЛЕЙ ----------
+function injectStyles() {
+  if (document.getElementById('tutorialCoreStyles')) return;
   const style = document.createElement('style');
-  style.id = 'tutorialStyles';
+  style.id = 'tutorialCoreStyles';
   style.textContent = `
-    .tutorial-overlay {
+    #tutorialOverlay {
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.82);
-      z-index: 90;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 80;
       pointer-events: none;
+      transition: background 0.5s ease;
+      border-radius: 0;
     }
-    
-    .tutorial-spotlight-element {
+    .tutorial-spotlighted {
       position: relative !important;
-      z-index: 95 !important;
+      z-index: 85 !important;
       pointer-events: auto !important;
-      filter: brightness(1.3) drop-shadow(0 0 20px rgba(255, 215, 0, 0.7)) !important;
-      transition: filter 0.3s ease !important;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 140, 0, 0.4) !important;
+      border-radius: 16px !important;
+      animation: tutGlow 2s ease-in-out infinite !important;
     }
-    
-    .tutorial-skip-btn {
+    @keyframes tutGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 140, 0, 0.25); }
+      50% { box-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 80px rgba(255, 100, 0, 0.6); }
+    }
+    #tutorialHintBox {
       position: absolute;
-      top: 12px;
-      right: 12px;
-      z-index: 96;
-      background: rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: rgba(255, 255, 255, 0.6);
-      padding: 8px 14px;
+      z-index: 90;
+      background: rgba(18, 18, 22, 0.97);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      border-radius: 24px;
+      padding: 20px 18px 16px;
+      max-width: 280px;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+      pointer-events: auto;
+      animation: hintPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: top 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2), left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+    }
+    @keyframes hintPopIn {
+      0% { opacity: 0; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    [data-theme="light"] #tutorialHintBox {
+      background: rgba(255, 255, 255, 0.97);
+      border-color: rgba(184, 134, 11, 0.35);
+    }
+    #tutorialHintArrow {
+      position: absolute;
+      width: 14px; height: 14px;
+      background: rgba(18, 18, 22, 0.97);
+      border-left: 1px solid rgba(255, 215, 0, 0.35);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.35);
+      left: 50%; margin-left: -7px;
+    }
+    #tutorialHintArrow.top { top: -7px; transform: rotate(135deg); }
+    #tutorialHintArrow.bottom { bottom: -7px; transform: rotate(-45deg); }
+    #tutorialHintArrow.left { left: -7px; top: 50%; margin-top: -7px; margin-left: 0; transform: rotate(135deg); }
+    #tutorialHintArrow.right { right: -7px; top: 50%; margin-top: -7px; margin-left: 0; transform: rotate(-45deg); }
+    [data-theme="light"] #tutorialHintArrow {
+      background: rgba(255, 255, 255, 0.97);
+      border-color: rgba(184, 134, 11, 0.35);
+    }
+    #tutorialHintTitle {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 17px; font-weight: 700;
+      color: #FFD700;
+      margin-bottom: 10px;
+      line-height: 1.3;
+    }
+    #tutorialHintText {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.65;
+      margin-bottom: 16px;
+    }
+    [data-theme="light"] #tutorialHintText { color: rgba(0, 0, 0, 0.7); }
+    #tutorialHintBtn {
+      background: linear-gradient(135deg, #FFD700, #FF8C00);
+      color: #000;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(255, 140, 0, 0.35);
+      font-family: 'Montserrat', sans-serif;
+      transition: all 0.2s;
+    }
+    #tutorialHintBtn:active { transform: scale(0.94); }
+    #tutorialSkipBtn {
+      position: absolute;
+      top: 14px; right: 14px;
+      z-index: 91;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: rgba(255, 255, 255, 0.55);
+      padding: 8px 16px;
       border-radius: 20px;
       font-size: 11px;
       font-weight: 500;
@@ -199,300 +405,306 @@ function injectTutorialStyles() {
       font-family: 'Montserrat', sans-serif;
       pointer-events: auto;
     }
-    .tutorial-skip-btn:active {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-    }
-    
-    .tutorial-hint {
+    #tutorialSkipBtn:active { background: rgba(255, 255, 255, 0.12); color: #fff; }
+    #tutorialStepCounter {
       position: absolute;
-      z-index: 96;
-      background: rgba(22, 22, 26, 0.97);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 215, 0, 0.35);
-      border-radius: 22px;
-      padding: 18px 16px 14px;
-      max-width: 260px;
-      text-align: center;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
-      animation: hintSlideIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      pointer-events: auto;
-    }
-    
-    @keyframes hintSlideIn {
-      0% { opacity: 0; transform: translateY(12px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-    
-    [data-theme="light"] .tutorial-hint {
-      background: rgba(255, 255, 255, 0.97);
-      border-color: rgba(184, 134, 11, 0.35);
-    }
-    
-    .tutorial-hint-arrow {
-      position: absolute;
-      width: 12px;
-      height: 12px;
-      background: rgba(22, 22, 26, 0.97);
-      border-left: 1px solid rgba(255, 215, 0, 0.35);
-      border-bottom: 1px solid rgba(255, 215, 0, 0.35);
-      left: 50%;
-      margin-left: -6px;
-    }
-    .tutorial-hint-arrow.top { top: -6px; transform: rotate(135deg); }
-    .tutorial-hint-arrow.bottom { bottom: -6px; transform: rotate(-45deg); }
-    
-    [data-theme="light"] .tutorial-hint-arrow {
-      background: rgba(255, 255, 255, 0.97);
-      border-color: rgba(184, 134, 11, 0.35);
-    }
-    
-    .tutorial-hint-pulse {
-      position: absolute;
-      top: 10px; right: 10px;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #FFD700;
-      animation: hintDotPulse 1.5s ease-in-out infinite;
-    }
-    @keyframes hintDotPulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.3; transform: scale(2); }
-    }
-    
-    .tutorial-hint-title {
-      font-family: 'Unbounded', sans-serif;
-      font-size: 16px;
-      font-weight: 700;
-      color: #FFD700;
-      margin-bottom: 8px;
-      line-height: 1.3;
-    }
-    
-    .tutorial-hint-text {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.82);
-      line-height: 1.6;
-      margin-bottom: 14px;
-    }
-    
-    [data-theme="light"] .tutorial-hint-text {
-      color: rgba(0, 0, 0, 0.7);
-    }
-    
-    .tutorial-hint-btn {
-      background: linear-gradient(135deg, #FFD700, #FF8C00);
-      color: #000;
-      border: none;
-      padding: 10px 26px;
-      border-radius: 50px;
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-      box-shadow: 0 4px 16px rgba(255, 140, 0, 0.35);
+      bottom: 16px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 91;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.3);
       font-family: 'Montserrat', sans-serif;
-      transition: all 0.2s;
+      pointer-events: none;
     }
-    .tutorial-hint-btn:active { transform: scale(0.94); }
   `;
   document.head.appendChild(style);
 }
 
-// ========== СОЗДАНИЕ ЭЛЕМЕНТОВ ==========
-function createTutorialElements() {
+// ---------- ПОДСЧЁТ ШАГОВ ----------
+function getTotalSteps() {
+  let count = 0;
+  for (const scene of TUTORIAL_SCENES) {
+    count += scene.subSteps.length;
+  }
+  return count;
+}
+
+function getCurrentGlobalStep() {
+  let count = 0;
+  for (let s = 0; s < currentSceneIndex; s++) {
+    count += TUTORIAL_SCENES[s].subSteps.length;
+  }
+  count += currentSubStepIndex + 1;
+  return count;
+}
+
+// ---------- СОЗДАНИЕ UI ----------
+function buildUI() {
   const app = document.getElementById('app');
   if (!app) return false;
-  
-  // Убеждаемся что app имеет position: relative
+
   const appStyle = window.getComputedStyle(app);
   if (appStyle.position === 'static') {
     app.style.position = 'relative';
   }
-  
-  // Overlay
+
   const overlay = document.createElement('div');
-  overlay.className = 'tutorial-overlay';
   overlay.id = 'tutorialOverlay';
   app.appendChild(overlay);
-  tutorialElements.overlay = overlay;
-  
-  // Hint
+  elements.overlay = overlay;
+
   const hint = document.createElement('div');
-  hint.className = 'tutorial-hint';
-  hint.id = 'tutorialHint';
+  hint.id = 'tutorialHintBox';
   hint.style.opacity = '0';
   app.appendChild(hint);
-  tutorialElements.hint = hint;
-  
-  // Skip button
-  const skipBtn = document.createElement('button');
-  skipBtn.className = 'tutorial-skip-btn';
-  skipBtn.textContent = 'Пропустить ›';
-  skipBtn.addEventListener('click', skipTutorial);
-  app.appendChild(skipBtn);
-  tutorialElements.skipBtn = skipBtn;
-  
+  elements.hint = hint;
+
+  const skip = document.createElement('button');
+  skip.id = 'tutorialSkipBtn';
+  skip.textContent = 'Пропустить ›';
+  skip.addEventListener('click', abortTutorial);
+  app.appendChild(skip);
+  elements.skip = skip;
+
+  const counter = document.createElement('div');
+  counter.id = 'tutorialStepCounter';
+  app.appendChild(counter);
+  elements.counter = counter;
+
   return true;
 }
 
-// ========== ПОДСВЕТКА ЭЛЕМЕНТА ==========
-function spotlightElement(selector) {
-  // Снимаем подсветку с предыдущего
-  const prev = document.querySelector('.tutorial-spotlight-element');
-  if (prev) {
-    prev.classList.remove('tutorial-spotlight-element');
+// ---------- SPOTLIGHT ----------
+function clearSpotlight() {
+  if (spotlightCleanup) {
+    spotlightCleanup();
+    spotlightCleanup = null;
   }
-  
+  const prev = document.querySelector('.tutorial-spotlighted');
+  if (prev) prev.classList.remove('tutorial-spotlighted');
+}
+
+function spotlightTarget(selector) {
+  clearSpotlight();
   if (!selector) return;
-  
-  const target = document.querySelector(selector);
-  if (target) {
-    target.classList.add('tutorial-spotlight-element');
-    tutorialElements._currentSpotlight = target;
+
+  // Поддержка множественных селекторов через запятую
+  const selectors = selector.split(',').map(s => s.trim());
+  for (const sel of selectors) {
+    const el = document.querySelector(sel);
+    if (el) {
+      el.classList.add('tutorial-spotlighted');
+      if (!spotlightCleanup) {
+        const targetEl = el;
+        spotlightCleanup = () => {
+          const all = document.querySelectorAll('.tutorial-spotlighted');
+          all.forEach(e => e.classList.remove('tutorial-spotlighted'));
+        };
+      }
+      return;
+    }
   }
 }
 
-// ========== ПОЗИЦИОНИРОВАНИЕ ХИНТА ==========
-function positionHint(step) {
-  const hint = tutorialElements.hint;
+// ---------- ПОЗИЦИОНИРОВАНИЕ ПЛАШКИ ----------
+function positionHintBox(subStep) {
+  const hint = elements.hint;
   const app = document.getElementById('app');
   if (!hint || !app) return;
-  
+
   const appRect = app.getBoundingClientRect();
-  const hintWidth = 260;
-  
+  const totalSteps = getTotalSteps();
+  const currentGlobal = getCurrentGlobalStep();
+
   hint.innerHTML = `
-    <div class="tutorial-hint-pulse"></div>
-    <div class="tutorial-hint-arrow ${step.position === 'top' ? 'bottom' : 'top'}"></div>
-    <div class="tutorial-hint-title">${step.title}</div>
-    <div class="tutorial-hint-text">${step.text}</div>
-    <button class="tutorial-hint-btn" id="tutorialNextBtn">${currentStep < TUTORIAL_STEPS.length - 1 ? 'Далее →' : 'В бой! 🚀'}</button>
+    <div id="tutorialHintArrow" class="${subStep.arrowSide || ''}"></div>
+    <div id="tutorialHintTitle">${subStep.title}</div>
+    <div id="tutorialHintText">${subStep.text}</div>
+    <button id="tutorialHintBtn">${currentGlobal >= totalSteps ? 'В бой! 🚀' : 'Далее →'}</button>
   `;
-  
+
+  const hintWidth = 280;
+  const hintHeight = 200;
   let top, left;
-  
-  if (step.position === 'center' || !step.targetSelector) {
-    // Центр экрана
-    top = (app.clientHeight / 2) - 100;
-    left = (app.clientWidth / 2) - (hintWidth / 2);
-    
-    const arrow = hint.querySelector('.tutorial-hint-arrow');
-    if (arrow) arrow.style.display = 'none';
-  } else {
-    const target = document.querySelector(step.targetSelector);
-    if (!target) {
-      top = (app.clientHeight / 2) - 100;
-      left = (app.clientWidth / 2) - (hintWidth / 2);
-    } else {
-      const targetRect = target.getBoundingClientRect();
-      const targetTop = targetRect.top - appRect.top;
-      const targetLeft = targetRect.left - appRect.left;
-      const targetWidth = targetRect.width;
-      const targetHeight = targetRect.height;
-      const targetCenterX = targetLeft + targetWidth / 2;
-      
-      const hintHeight = 180;
-      
-      if (step.position === 'top') {
-        top = targetTop - hintHeight - 16;
-      } else {
-        top = targetTop + targetHeight + 16;
-      }
-      
-      left = targetCenterX - hintWidth / 2;
-      
-      // Не вылезаем за границы
-      left = Math.max(8, Math.min(left, app.clientWidth - hintWidth - 8));
-      top = Math.max(50, Math.min(top, app.clientHeight - hintHeight - 70));
+
+  // Ищем цель (поддержка множественных селекторов)
+  let target = null;
+  if (subStep.targetSelector) {
+    const selectors = subStep.targetSelector.split(',').map(s => s.trim());
+    for (const sel of selectors) {
+      target = document.querySelector(sel);
+      if (target) break;
     }
   }
-  
+
+  if (!target || subStep.position === 'center') {
+    top = (app.clientHeight / 2) - (hintHeight / 2);
+    left = (app.clientWidth / 2) - (hintWidth / 2);
+    const arrow = hint.querySelector('#tutorialHintArrow');
+    if (arrow) arrow.style.display = 'none';
+  } else {
+    const targetRect = target.getBoundingClientRect();
+    const targetTop = targetRect.top - appRect.top;
+    const targetLeft = targetRect.left - appRect.left;
+    const targetWidth = targetRect.width;
+    const targetHeight = targetRect.height;
+    const targetCenterX = targetLeft + targetWidth / 2;
+    const gap = 16;
+
+    if (subStep.position === 'top') {
+      top = targetTop - hintHeight - gap;
+      left = targetCenterX - hintWidth / 2;
+    } else if (subStep.position === 'bottom') {
+      top = targetTop + targetHeight + gap;
+      left = targetCenterX - hintWidth / 2;
+    } else if (subStep.position === 'left') {
+      left = targetLeft - hintWidth - gap;
+      top = targetTop + targetHeight / 2 - hintHeight / 2;
+    } else if (subStep.position === 'right') {
+      left = targetLeft + targetWidth + gap;
+      top = targetTop + targetHeight / 2 - hintHeight / 2;
+    } else {
+      top = targetTop + targetHeight + gap;
+      left = targetCenterX - hintWidth / 2;
+    }
+
+    left = Math.max(8, Math.min(left, app.clientWidth - hintWidth - 8));
+    top = Math.max(40, Math.min(top, app.clientHeight - hintHeight - 80));
+
+    const arrow = hint.querySelector('#tutorialHintArrow');
+    if (arrow) {
+      arrow.style.display = 'block';
+      if (subStep.position === 'top' || subStep.position === 'bottom') {
+        const offsetX = targetCenterX - (left + hintWidth / 2);
+        arrow.style.left = (hintWidth / 2 + offsetX - 7) + 'px';
+      }
+    }
+  }
+
   hint.style.top = top + 'px';
   hint.style.left = left + 'px';
   hint.style.opacity = '1';
-  
-  // Вешаем обработчик
+
+  if (elements.counter) {
+    elements.counter.textContent = `Шаг ${currentGlobal} из ${totalSteps}`;
+  }
+
   setTimeout(() => {
-    const btn = document.getElementById('tutorialNextBtn');
+    const btn = document.getElementById('tutorialHintBtn');
     if (btn) {
-      btn.addEventListener('click', () => nextTutorialStep());
+      const handler = () => advanceTutorial();
+      btn.addEventListener('click', handler);
+      elements._btnHandler = { btn, handler };
     }
-  }, 50);
+  }, 30);
 }
 
-// ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДКИ ==========
-function switchToTab(tabId) {
-  import('./ui.js').then(ui => {
-    ui.setActiveTab(tabId);
-    
-    // Даём время на рендер, потом показываем подсказку
-    setTimeout(() => {
-      const step = TUTORIAL_STEPS[currentStep];
-      spotlightElement(step.targetSelector);
-      positionHint(step);
-    }, 300);
+// ---------- ОЧИСТКА ОБРАБОТЧИКА ----------
+function clearBtnHandler() {
+  if (elements._btnHandler) {
+    elements._btnHandler.btn.removeEventListener('click', elements._btnHandler.handler);
+    elements._btnHandler = null;
+  }
+}
+
+// ---------- ПЕРЕКЛЮЧЕНИЕ ВКЛАДКИ ----------
+function switchGameTab(tabId) {
+  return new Promise((resolve) => {
+    import('./ui.js').then(ui => {
+      ui.setActiveTab(tabId);
+      setTimeout(resolve, 400);
+    });
   });
 }
 
-// ========== НАВИГАЦИЯ ==========
-function nextTutorialStep() {
-  currentStep++;
-  
-  if (currentStep >= TUTORIAL_STEPS.length) {
-    finishTutorial();
-    return;
+// ---------- РЕНДЕР ПОДШАГА ----------
+async function renderCurrentSubStep() {
+  const scene = TUTORIAL_SCENES[currentSceneIndex];
+  if (!scene) return;
+  const subStep = scene.subSteps[currentSubStepIndex];
+  if (!subStep) return;
+
+  if (elements.overlay) {
+    elements.overlay.style.background = `rgba(0, 0, 0, ${scene.overlayOpacity})`;
   }
-  
-  const step = TUTORIAL_STEPS[currentStep];
-  
-  if (step.tabId) {
-    // Переключаем вкладку игры
-    switchToTab(step.tabId);
-  } else {
-    // Финальный шаг — без переключения
-    spotlightElement(null);
-    positionHint(step);
-  }
+
+  spotlightTarget(subStep.targetSelector);
+  positionHintBox(subStep);
 }
 
-function skipTutorial() {
-  currentStep = TUTORIAL_STEPS.length;
+// ---------- ПРОДВИЖЕНИЕ ----------
+async function advanceTutorial() {
+  clearBtnHandler();
+
+  const scene = TUTORIAL_SCENES[currentSceneIndex];
+  if (!scene) { finishTutorial(); return; }
+
+  currentSubStepIndex++;
+
+  if (currentSubStepIndex >= scene.subSteps.length) {
+    currentSubStepIndex = 0;
+    currentSceneIndex++;
+
+    if (currentSceneIndex >= TUTORIAL_SCENES.length) {
+      finishTutorial();
+      return;
+    }
+
+    const nextScene = TUTORIAL_SCENES[currentSceneIndex];
+    if (nextScene.tabId) {
+      clearSpotlight();
+      if (elements.hint) elements.hint.style.opacity = '0';
+      await switchGameTab(nextScene.tabId);
+    }
+  }
+
+  renderCurrentSubStep();
+}
+
+// ---------- АВАРИЙНЫЙ ВЫХОД ----------
+function abortTutorial() {
+  clearBtnHandler();
   finishTutorial();
 }
 
-// ========== ФИНАЛИЗАЦИЯ ==========
+// ---------- ЗАВЕРШЕНИЕ ----------
 function finishTutorial() {
   tutorialActive = false;
-  
-  // Убираем spotlight с элемента
-  const prev = document.querySelector('.tutorial-spotlight-element');
-  if (prev) {
-    prev.classList.remove('tutorial-spotlight-element');
-  }
-  
-  // Удаляем элементы
-  Object.values(tutorialElements).forEach(el => {
+  clearSpotlight();
+  clearBtnHandler();
+
+  Object.values(elements).forEach(el => {
     if (el && el.parentNode) el.remove();
   });
-  tutorialElements = {};
-  
-  currentStep = 0;
+  elements = {};
+  spotlightCleanup = null;
+
+  const style = document.getElementById('tutorialCoreStyles');
+  if (style) style.remove();
+
+  currentSceneIndex = 0;
+  currentSubStepIndex = 0;
   markTutorialCompleted();
 }
 
-// ========== ЗАПУСК ==========
-export function startTutorial() {
+// ========================================================================
+// ПУБЛИЧНЫЙ API
+// ========================================================================
+
+export async function startTutorial() {
   if (isTutorialCompleted()) return;
   if (tutorialActive) return;
-  
-  currentStep = 0;
+
   tutorialActive = true;
-  
-  injectTutorialStyles();
-  
-  if (!createTutorialElements()) return;
-  
-  // Запускаем первый шаг
-  const step = TUTORIAL_STEPS[0];
-  switchToTab(step.tabId);
+  currentSceneIndex = 0;
+  currentSubStepIndex = 0;
+
+  injectStyles();
+  if (!buildUI()) return;
+
+  const firstScene = TUTORIAL_SCENES[0];
+  if (elements.overlay) {
+    elements.overlay.style.background = `rgba(0, 0, 0, ${firstScene.overlayOpacity})`;
+  }
+  renderCurrentSubStep();
 }
