@@ -111,217 +111,374 @@ export function showHelp(tabId) {
 // ========== ТУТОРИАЛ: ШАГИ ==========
 const TUTORIAL_STEPS = [
   {
+    id: 'ingot',
     targetSelector: '.tab-item[data-tab="ingot"]',
     title: '⚒️ Ваш Слиток',
-    text: 'Это — сердце игры! Тапайте по Слитку, чтобы добывать кузнечную стружку. Каждый тап приносит очки и приближает вас к эволюции.',
-    position: 'bottom'
+    text: 'Это — сердце игры! Нажмите на Слиток, чтобы добывать кузнечную стружку. С шансом 1% активируется КУЗНЕЧНЫЙ РАЖ — ×4 стружки на 10 секунд!',
+    position: 'top',
+    action: 'click_target'
   },
   {
+    id: 'expeditions',
     targetSelector: '.tab-item[data-tab="expeditions"]',
     title: '⛏️ Экспедиции',
-    text: 'Отправляйте шахтёров в экспедиции, чтобы добывать жеоды. Разбивайте жеоды — и получайте ценные слитки! Начните с Шахт.',
-    position: 'bottom'
+    text: 'Отправляйте шахтёров в экспедиции за жеодами. Разбивайте жеоды тапами — и получайте ценные слитки! Начните с Шахт.',
+    position: 'top',
+    action: 'click_target'
   },
   {
+    id: 'inventory',
     targetSelector: '.tab-item[data-tab="inventory"]',
     title: '🎒 Инвентарь',
-    text: 'Здесь хранятся все ваши жеоды и добытые слитки. Нажмите на жеоду, чтобы расколоть её и получить случайный слиток.',
-    position: 'bottom'
+    text: 'Все ваши жеоды и слитки хранятся здесь. Нажмите на жеоду, чтобы расколоть её!',
+    position: 'top',
+    action: 'click_target'
   },
   {
+    id: 'events',
     targetSelector: '.tab-item[data-tab="events"]',
     title: '🎮 Игры и Ивенты',
-    text: 'Глобальные события запускаются каждые 30 минут, а Заказы Гильдии дают дополнительные награды. Заглядывайте сюда почаще!',
-    position: 'bottom'
+    text: 'Глобальные события каждые 30 минут, Заказы Гильдии и мини-игры. Заглядывайте почаще!',
+    position: 'top',
+    action: 'click_target'
   },
   {
+    id: 'profile',
     targetSelector: '.tab-item[data-tab="profile"]',
     title: '👤 Профиль',
-    text: 'Ваш прогресс, уровень, статистика и сбыт сырья. Когда шкала опыта заполнится — возвращайтесь к Слитку для эволюции!',
-    position: 'bottom'
+    text: 'Ваш прогресс, статистика и сбыт сырья. Кнопка <b>?</b> всегда подскажет, если забыли что-то важное!',
+    position: 'top',
+    action: 'click_target'
   },
   {
+    id: 'final',
     targetSelector: null,
     title: '🎉 Вы готовы!',
-    text: 'Теперь вы знаете основы. Тапайте Слиток, отправляйте экспедиции, собирайте коллекцию и становитесь Легендой! Кнопка <b>?</b> в правом верхнем углу всегда подскажет, если что-то забудете. Удачи, Старатель!',
-    position: 'center'
+    text: 'Теперь вы — настоящий Старатель! Тапайте Слиток, собирайте коллекцию и становитесь Легендой космоса. Удачи!',
+    position: 'center',
+    action: 'click_button'
   }
 ];
 
 let currentStep = 0;
-let overlayEl = null;
-let spotlightEl = null;
-let hintEl = null;
+let tutorialElements = {};
+let isTutorialActive = false;
 
+// ========== СОЗДАНИЕ ЭЛЕМЕНТОВ ТУТОРИАЛА ==========
 function createTutorialOverlay() {
-  overlayEl = document.createElement('div');
-  overlayEl.className = 'tutorial-overlay';
-  overlayEl.id = 'tutorialOverlay';
-  document.body.appendChild(overlayEl);
+  const app = document.getElementById('app');
+  if (!app) return;
   
-  spotlightEl = document.createElement('div');
-  spotlightEl.className = 'tutorial-spotlight';
-  spotlightEl.id = 'tutorialSpotlight';
-  document.body.appendChild(spotlightEl);
-  
-  hintEl = document.createElement('div');
-  hintEl.className = 'tutorial-hint';
-  hintEl.id = 'tutorialHint';
-  document.body.appendChild(hintEl);
-  
-  const style = document.createElement('style');
-  style.id = 'tutorialStyles';
-  style.textContent = `
-    .tutorial-overlay {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.85);
-      z-index: 10050;
-      pointer-events: all;
-      transition: opacity 0.4s ease;
-    }
-    
-    .tutorial-spotlight {
-      position: fixed;
-      z-index: 10051;
-      pointer-events: none;
-      border-radius: 20px;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.85), 0 0 30px rgba(255, 215, 0, 0.6);
-      transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    
-    .tutorial-hint {
-      position: fixed;
-      z-index: 10052;
-      background: rgba(20, 20, 22, 0.97);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 215, 0, 0.3);
-      border-radius: 24px;
-      padding: 20px 22px;
-      max-width: 300px;
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-      transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    
-    [data-theme="light"] .tutorial-hint {
-      background: rgba(255, 255, 255, 0.97);
-      border-color: rgba(184, 134, 11, 0.3);
-    }
-    
-    .tutorial-hint-title {
-      font-family: 'Unbounded', sans-serif;
-      font-size: 18px;
-      font-weight: 700;
-      color: #FFD700;
-      margin-bottom: 10px;
-    }
-    
-    .tutorial-hint-text {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.85);
-      line-height: 1.6;
-      margin-bottom: 18px;
-    }
-    
-    [data-theme="light"] .tutorial-hint-text {
-      color: rgba(0, 0, 0, 0.75);
-    }
-    
-    .tutorial-hint-btn {
-      background: linear-gradient(135deg, #FFD700, #FF8C00);
-      color: #000;
-      border: none;
-      padding: 12px 28px;
-      border-radius: 50px;
-      font-weight: 700;
-      font-size: 15px;
-      cursor: pointer;
-      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
-    }
-    .tutorial-hint-btn:active { transform: scale(0.95); }
-    
-    .tutorial-skip {
-      position: fixed;
-      bottom: 30px;
-      right: 20px;
-      z-index: 10052;
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: rgba(255, 255, 255, 0.5);
-      padding: 10px 20px;
-      border-radius: 50px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .tutorial-skip:active { background: rgba(255, 255, 255, 0.1); }
-    .tutorial-skip:hover { color: rgba(255, 255, 255, 0.8); }
-  `;
-  document.head.appendChild(style);
-}
-
-function positionSpotlight(targetEl) {
-  if (!targetEl || !spotlightEl) return;
-  
-  const rect = targetEl.getBoundingClientRect();
-  const padding = 6;
-  
-  spotlightEl.style.top = (rect.top - padding) + 'px';
-  spotlightEl.style.left = (rect.left - padding) + 'px';
-  spotlightEl.style.width = (rect.width + padding * 2) + 'px';
-  spotlightEl.style.height = (rect.height + padding * 2) + 'px';
-}
-
-function positionHint(targetEl, step, position) {
-  if (!hintEl) return;
-  
-  hintEl.innerHTML = `
-    <div class="tutorial-hint-title">${step.title}</div>
-    <div class="tutorial-hint-text">${step.text}</div>
-    <button class="tutorial-hint-btn" id="tutorialNextBtn">${currentStep < TUTORIAL_STEPS.length - 1 ? 'Далее →' : 'Начать игру! 🚀'}</button>
-  `;
-  
-  if (position === 'center') {
-    hintEl.style.top = '50%';
-    hintEl.style.left = '50%';
-    hintEl.style.transform = 'translate(-50%, -50%)';
-  } else if (targetEl) {
-    const rect = targetEl.getBoundingClientRect();
-    const hintWidth = 300;
-    
-    let top, left;
-    
-    if (position === 'bottom') {
-      top = rect.bottom + 16;
-      left = rect.left + rect.width / 2 - hintWidth / 2;
-    } else if (position === 'top') {
-      top = rect.top - 16;
-      left = rect.left + rect.width / 2 - hintWidth / 2;
-      hintEl.style.transform = 'translateY(-100%)';
-    } else {
-      top = rect.top + rect.height / 2;
-      left = rect.right + 16;
-      hintEl.style.transform = 'translateY(-50%)';
-    }
-    
-    left = Math.max(10, Math.min(left, window.innerWidth - hintWidth - 10));
-    top = Math.max(10, Math.min(top, window.innerHeight - 250));
-    
-    hintEl.style.top = top + 'px';
-    hintEl.style.left = left + 'px';
-    hintEl.style.transform = position === 'top' ? 'translateY(-100%)' : 'none';
+  // Добавляем CSS один раз
+  if (!document.getElementById('tutorialStyles')) {
+    const style = document.createElement('style');
+    style.id = 'tutorialStyles';
+    style.textContent = `
+      .tutorial-overlay {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 100;
+        pointer-events: all;
+        transition: opacity 0.4s ease;
+        border-radius: 0;
+      }
+      
+      .tutorial-skip-btn {
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        z-index: 102;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: rgba(255, 255, 255, 0.6);
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: 'Montserrat', sans-serif;
+      }
+      .tutorial-skip-btn:active {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      
+      .tutorial-spotlight {
+        position: absolute;
+        z-index: 101;
+        pointer-events: none;
+        border-radius: 16px;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.7), 0 0 80px rgba(255, 140, 0, 0.3);
+        animation: tutorialGlow 2s ease-in-out infinite;
+        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      
+      @keyframes tutorialGlow {
+        0%, 100% { box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.5), 0 0 60px rgba(255, 140, 0, 0.2); }
+        50% { box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.8), 0 0 50px rgba(255, 215, 0, 0.9), 0 0 100px rgba(255, 100, 0, 0.5); }
+      }
+      
+      .tutorial-spotlight.clickable {
+        pointer-events: all;
+        cursor: pointer;
+      }
+      
+      .tutorial-hint {
+        position: absolute;
+        z-index: 103;
+        background: rgba(20, 20, 24, 0.97);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 215, 0, 0.35);
+        border-radius: 20px;
+        padding: 18px 16px;
+        max-width: 260px;
+        text-align: center;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        animation: hintAppear 0.4s ease-out;
+      }
+      
+      @keyframes hintAppear {
+        0% { opacity: 0; transform: translateY(10px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      
+      [data-theme="light"] .tutorial-hint {
+        background: rgba(255, 255, 255, 0.97);
+        border-color: rgba(184, 134, 11, 0.35);
+      }
+      
+      .tutorial-hint-arrow {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        background: rgba(20, 20, 24, 0.97);
+        border-left: 1px solid rgba(255, 215, 0, 0.35);
+        border-bottom: 1px solid rgba(255, 215, 0, 0.35);
+        transform: rotate(45deg);
+      }
+      [data-theme="light"] .tutorial-hint-arrow {
+        background: rgba(255, 255, 255, 0.97);
+        border-color: rgba(184, 134, 11, 0.35);
+      }
+      
+      .tutorial-hint-arrow.bottom { top: -7px; left: 50%; margin-left: -7px; }
+      .tutorial-hint-arrow.top { bottom: -7px; left: 50%; margin-left: -7px; transform: rotate(225deg); }
+      .tutorial-hint-arrow.right { left: -7px; top: 50%; margin-top: -7px; transform: rotate(135deg); }
+      .tutorial-hint-arrow.left { right: -7px; top: 50%; margin-top: -7px; transform: rotate(315deg); }
+      
+      .tutorial-hint-title {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 16px;
+        font-weight: 700;
+        color: #FFD700;
+        margin-bottom: 10px;
+        line-height: 1.3;
+      }
+      
+      .tutorial-hint-text {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.8);
+        line-height: 1.6;
+        margin-bottom: 14px;
+      }
+      
+      [data-theme="light"] .tutorial-hint-text {
+        color: rgba(0, 0, 0, 0.7);
+      }
+      
+      .tutorial-hint-btn {
+        background: linear-gradient(135deg, #FFD700, #FF8C00);
+        color: #000;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(255, 140, 0, 0.3);
+        font-family: 'Montserrat', sans-serif;
+        transition: all 0.2s;
+      }
+      .tutorial-hint-btn:active { transform: scale(0.95); box-shadow: 0 2px 8px rgba(255, 140, 0, 0.2); }
+      
+      .tutorial-hint-pulse {
+        position: absolute;
+        top: 8px; right: 8px;
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: #FFD700;
+        animation: hintDotPulse 1.5s ease-in-out infinite;
+      }
+      @keyframes hintDotPulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(1.8); }
+      }
+    `;
+    document.head.appendChild(style);
   }
   
+  // Overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'tutorial-overlay';
+  overlay.id = 'tutorialOverlay';
+  app.appendChild(overlay);
+  tutorialElements.overlay = overlay;
+  
+  // Spotlight
+  const spotlight = document.createElement('div');
+  spotlight.className = 'tutorial-spotlight';
+  spotlight.id = 'tutorialSpotlight';
+  app.appendChild(spotlight);
+  tutorialElements.spotlight = spotlight;
+  
+  // Hint
+  const hint = document.createElement('div');
+  hint.className = 'tutorial-hint';
+  hint.id = 'tutorialHint';
+  app.appendChild(hint);
+  tutorialElements.hint = hint;
+  
+  // Кнопка «Пропустить»
+  const skipBtn = document.createElement('button');
+  skipBtn.className = 'tutorial-skip-btn';
+  skipBtn.textContent = 'Пропустить ›';
+  skipBtn.addEventListener('click', skipTutorial);
+  app.appendChild(skipBtn);
+  tutorialElements.skipBtn = skipBtn;
+  
+  isTutorialActive = true;
+}
+
+// ========== ПОЗИЦИОНИРОВАНИЕ ==========
+function positionSpotlight(targetEl) {
+  const app = document.getElementById('app');
+  if (!targetEl || !tutorialElements.spotlight || !app) return;
+  
+  const appRect = app.getBoundingClientRect();
+  const targetRect = targetEl.getBoundingClientRect();
+  const padding = 8;
+  
+  const top = targetRect.top - appRect.top - padding;
+  const left = targetRect.left - appRect.left - padding;
+  const width = targetRect.width + padding * 2;
+  const height = targetRect.height + padding * 2;
+  
+  tutorialElements.spotlight.style.top = top + 'px';
+  tutorialElements.spotlight.style.left = left + 'px';
+  tutorialElements.spotlight.style.width = width + 'px';
+  tutorialElements.spotlight.style.height = height + 'px';
+  
+  // Сохраняем позицию цели для позиционирования хинта
+  tutorialElements._targetInfo = {
+    top, left, width, height,
+    targetTop: targetRect.top - appRect.top,
+    targetLeft: targetRect.left - appRect.left,
+    targetWidth: targetRect.width,
+    targetHeight: targetRect.height,
+    position: null
+  };
+}
+
+function positionHint(step, position) {
+  const hint = tutorialElements.hint;
+  if (!hint) return;
+  
+  const info = tutorialElements._targetInfo;
+  if (!info) return;
+  
+  // Собираем контент
+  hint.innerHTML = `
+    <div class="tutorial-hint-pulse"></div>
+    <div class="tutorial-hint-arrow ${position === 'top' ? 'bottom' : position === 'bottom' ? 'top' : 'right'}"></div>
+    <div class="tutorial-hint-title">${step.title}</div>
+    <div class="tutorial-hint-text">${step.text}</div>
+    <button class="tutorial-hint-btn" id="tutorialNextBtn">${currentStep < TUTORIAL_STEPS.length - 1 ? 'Далее →' : 'В бой! 🚀'}</button>
+  `;
+  
+  const hintWidth = 260;
+  const hintHeight = 180;
+  
+  let top, left;
+  
+  if (position === 'center') {
+    top = '50%';
+    left = '50%';
+    hint.style.top = top;
+    hint.style.left = left;
+    hint.style.transform = 'translate(-50%, -50%)';
+    
+    const arrow = hint.querySelector('.tutorial-hint-arrow');
+    if (arrow) arrow.style.display = 'none';
+  } else if (position === 'top') {
+    // Хинт над целью
+    top = info.top - hintHeight - 16;
+    left = info.left + info.width / 2 - hintWidth / 2;
+  } else if (position === 'bottom') {
+    // Хинт под целью
+    top = info.top + info.height + 16;
+    left = info.left + info.width / 2 - hintWidth / 2;
+  }
+  
+  // Не вылезаем за границы контейнера
+  const app = document.getElementById('app');
+  const appW = app ? app.clientWidth : 400;
+  const appH = app ? app.clientHeight : 700;
+  
+  left = Math.max(8, Math.min(left, appW - hintWidth - 8));
+  top = Math.max(8, Math.min(top, appH - hintHeight - 60));
+  
+  hint.style.top = top + 'px';
+  hint.style.left = left + 'px';
+  hint.style.transform = 'none';
+  
+  // Позиционируем стрелку
+  const arrow = hint.querySelector('.tutorial-hint-arrow');
+  if (arrow && position !== 'center') {
+    const targetCenterX = info.left + info.width / 2;
+    const targetCenterY = position === 'top' ? info.top : info.top + info.height;
+    const hintCenterX = left + hintWidth / 2;
+    const offsetX = targetCenterX - hintCenterX;
+    arrow.style.left = (hintWidth / 2 + offsetX - 7) + 'px';
+    arrow.style.display = 'block';
+  }
+  
+  // Вешаем обработчик на кнопку
   setTimeout(() => {
     const btn = document.getElementById('tutorialNextBtn');
     if (btn) {
-      btn.addEventListener('click', nextTutorialStep);
+      btn.addEventListener('click', () => nextTutorialStep());
     }
   }, 50);
 }
 
+// ========== ОБРАБОТЧИК КЛИКА ПО ЦЕЛИ ==========
+function setupTargetClickListener(step) {
+  const targetEl = document.querySelector(step.targetSelector);
+  if (!targetEl) return;
+  
+  // Делаем spotlight кликабельным (он лежит поверх цели)
+  const spotlight = tutorialElements.spotlight;
+  if (step.action === 'click_target') {
+    spotlight.classList.add('clickable');
+    
+    const handleClick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      spotlight.classList.remove('clickable');
+      spotlight.removeEventListener('click', handleClick);
+      nextTutorialStep();
+    };
+    
+    spotlight.addEventListener('click', handleClick);
+    tutorialElements._clickHandler = handleClick;
+  }
+}
+
+// ========== НАВИГАЦИЯ ==========
 function nextTutorialStep() {
   currentStep++;
   
@@ -330,36 +487,7 @@ function nextTutorialStep() {
     return;
   }
   
-  const step = TUTORIAL_STEPS[currentStep];
-  
-  if (step.targetSelector) {
-    const targetEl = document.querySelector(step.targetSelector);
-    positionSpotlight(targetEl);
-    positionHint(targetEl, step, step.position);
-  } else {
-    spotlightEl.style.width = '0px';
-    spotlightEl.style.height = '0px';
-    positionHint(null, step, 'center');
-  }
-}
-
-function finishTutorial() {
-  if (overlayEl) overlayEl.remove();
-  if (spotlightEl) spotlightEl.remove();
-  if (hintEl) hintEl.remove();
-  
-  const skipBtn = document.getElementById('tutorialSkipBtn');
-  if (skipBtn) skipBtn.remove();
-  
-  const style = document.getElementById('tutorialStyles');
-  if (style) style.remove();
-  
-  overlayEl = null;
-  spotlightEl = null;
-  hintEl = null;
-  currentStep = 0;
-  
-  markTutorialCompleted();
+  renderTutorialStep(currentStep);
 }
 
 function skipTutorial() {
@@ -367,25 +495,78 @@ function skipTutorial() {
   finishTutorial();
 }
 
+// ========== РЕНДЕР ШАГА ==========
+function renderTutorialStep(stepIndex) {
+  const step = TUTORIAL_STEPS[stepIndex];
+  if (!step) return;
+  
+  const spotlight = tutorialElements.spotlight;
+  const hint = tutorialElements.hint;
+  
+  // Сбрасываем обработчик предыдущего шага
+  if (tutorialElements._clickHandler && spotlight) {
+    spotlight.classList.remove('clickable');
+    spotlight.removeEventListener('click', tutorialElements._clickHandler);
+    tutorialElements._clickHandler = null;
+  }
+  
+  if (step.targetSelector) {
+    const targetEl = document.querySelector(step.targetSelector);
+    if (targetEl) {
+      positionSpotlight(targetEl);
+      positionHint(step, step.position);
+      
+      if (step.action === 'click_target') {
+        setupTargetClickListener(step);
+      }
+    } else {
+      // Цель не найдена — показываем хинт по центру
+      if (spotlight) {
+        spotlight.style.width = '0px';
+        spotlight.style.height = '0px';
+      }
+      positionHint(step, 'center');
+    }
+  } else {
+    // Финальный шаг — всё по центру
+    if (spotlight) {
+      spotlight.style.width = '0px';
+      spotlight.style.height = '0px';
+    }
+    positionHint(step, 'center');
+  }
+}
+
+// ========== ФИНАЛИЗАЦИЯ ==========
+function finishTutorial() {
+  isTutorialActive = false;
+  
+  const app = document.getElementById('app');
+  
+  // Удаляем все элементы туториала
+  Object.values(tutorialElements).forEach(el => {
+    if (el && el.parentNode) el.remove();
+  });
+  tutorialElements = {};
+  
+  // Удаляем стили
+  const style = document.getElementById('tutorialStyles');
+  if (style) style.remove();
+  
+  currentStep = 0;
+  markTutorialCompleted();
+}
+
 // ========== ЗАПУСК ТУТОРИАЛА ==========
 export function startTutorial() {
   if (isTutorialCompleted()) return;
+  if (isTutorialActive) return;
   
   currentStep = 0;
   
+  // Небольшая задержка, чтобы вкладка успела отрендериться
   setTimeout(() => {
     createTutorialOverlay();
-    
-    const skipBtn = document.createElement('button');
-    skipBtn.className = 'tutorial-skip';
-    skipBtn.id = 'tutorialSkipBtn';
-    skipBtn.textContent = 'Пропустить обучение';
-    skipBtn.addEventListener('click', skipTutorial);
-    document.body.appendChild(skipBtn);
-    
-    const step = TUTORIAL_STEPS[0];
-    const targetEl = document.querySelector(step.targetSelector);
-    positionSpotlight(targetEl);
-    positionHint(targetEl, step, step.position);
-  }, 600);
+    renderTutorialStep(0);
+  }, 500);
 }
