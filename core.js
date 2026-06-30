@@ -1,6 +1,6 @@
 // ========== CORE МОДУЛЬ: ЛОГИКА ИГРЫ ==========
 import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, CRAFT_RECIPES, LEVELS, DEFAULT_STATE, GUILD_QUESTS } from './config.js';
-import { regenEnergy, checkLevelLock, getIngotSaveData, initIngotState } from './ingot.js';
+import { regenEnergy, checkLevelLock, getIngotSaveData, initIngotState, getBonusExpeditionSpeed, getBonusXP, getBonusDoubleDrop } from './ingot.js';
 
 // ========== ЗАГЛУШКИ UI ФУНКЦИЙ ==========
 let _showToast = null;
@@ -633,7 +633,10 @@ export function getExpeditionTimeLeft(expId) {
 }
 
 export function addXP(amount) {
-  playerState.player.xp += amount;
+  const bonusPct = getBonusXP();
+  const totalAmount = Math.floor(amount * (1 + bonusPct / 100));
+  
+  playerState.player.xp += totalAmount;
   
   const nextLevelXP = LEVELS[playerState.player.level] || LEVELS[LEVELS.length - 1];
   
@@ -1241,7 +1244,8 @@ export function saveGame() {
       tapEnergy: ingotSave.tapEnergy,
       maxTapEnergy: ingotSave.maxTapEnergy,
       lastEnergyRegen: ingotSave.lastEnergyRegen,
-      levelLocked: ingotSave.levelLocked
+      levelLocked: ingotSave.levelLocked,
+      equippedArtifacts: playerState.equippedArtifacts || [null, null, null]
     },
     collectibleSerials,
     nextSerial,
@@ -1347,6 +1351,12 @@ function applySaveData(data) {
     playerState.questCooldownEnd = saved.questCooldownEnd;
   }
   
+  if (Array.isArray(saved.equippedArtifacts)) {
+    playerState.equippedArtifacts = [...saved.equippedArtifacts];
+  } else {
+    playerState.equippedArtifacts = [null, null, null];
+  }
+  
   initIngotState({
     ingotShavings: saved.ingotShavings || 0,
     tapEnergy: saved.tapEnergy || 500,
@@ -1400,6 +1410,7 @@ export const saveToLocalStorage = saveGame;
   playerState.questRefreshTime = null;
   playerState.completedQuests = [];
   playerState.questCooldownEnd = null;
+  playerState.equippedArtifacts = [null, null, null];
   
   console.log('[Core] DEFAULT_STATE применён синхронно при загрузке модуля');
 })();
@@ -1474,16 +1485,30 @@ function checkCompletedExpeditions() {
       delete playerState.expeditionBonuses[k];
       
       const drop = getRandomDropFromExpedition(k);
+      
+      // Проверка на двойной дроп
+      const doubleDropChance = getBonusDoubleDrop();
+      let extraDrop = false;
+      if (doubleDropChance > 0 && Math.random() * 100 < doubleDropChance) {
+        extraDrop = true;
+      }
+      
       if (drop.isSpecial) {
         if (!playerState.discoveredSpecialGeodes[k]) {
           playerState.discoveredSpecialGeodes[k] = true;
         }
         playerState.geodes[drop.geodeId] = (playerState.geodes[drop.geodeId] || 0) + 1;
-        if (_showToast) _showToast(`Найдена особая жеода: ${CONFIG_GEODES[drop.geodeId].name}!`, CONFIG_GEODES[drop.geodeId].icon);
+        if (extraDrop) {
+          playerState.geodes[drop.geodeId] = (playerState.geodes[drop.geodeId] || 0) + 1;
+        }
+        if (_showToast) _showToast(`Найдена особая жеода: ${CONFIG_GEODES[drop.geodeId].name}!${extraDrop ? ' (x2!)' : ''}`, CONFIG_GEODES[drop.geodeId].icon);
         sendBotNotification(`💎 Игрок нашёл особую жеоду: ${CONFIG_GEODES[drop.geodeId].name}!`);
       } else {
         playerState.geodes[drop.geodeId] = (playerState.geodes[drop.geodeId] || 0) + 1;
-        if (_showToast) _showToast(`Экспедиция завершена! +1 ${CONFIG_GEODES[drop.geodeId].name}`, CONFIG_GEODES[drop.geodeId].icon);
+        if (extraDrop) {
+          playerState.geodes[drop.geodeId] = (playerState.geodes[drop.geodeId] || 0) + 1;
+        }
+        if (_showToast) _showToast(`Экспедиция завершена! +${extraDrop ? 2 : 1} ${CONFIG_GEODES[drop.geodeId].name}`, CONFIG_GEODES[drop.geodeId].icon);
       }
       changed = true;
     }
@@ -1535,8 +1560,12 @@ export function startExpedition(expId) {
   const exp = playerState.expeditions[expId];
   if (!exp || exp.active) return;
   
+  const bonusSpeed = getBonusExpeditionSpeed();
+  const baseTimer = CONFIG_EXPEDITIONS[expId].timer * 1000;
+  const adjustedTimer = Math.floor(baseTimer * (1 - bonusSpeed / 100));
+  
   exp.active = true;
-  exp.endTime = Date.now() + CONFIG_EXPEDITIONS[expId].timer * 1000;
+  exp.endTime = Date.now() + adjustedTimer;
   exp.scanUsed = false;
   exp.specialChanceBoost = null;
   delete playerState.expeditionBonuses[expId];
