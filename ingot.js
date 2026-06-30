@@ -125,6 +125,10 @@ let forgeRushState = {
   countdownDisplay: null
 };
 
+// ========== СОСТОЯНИЕ ОРБИТЫ ==========
+let orbitAnimationId = null;
+let orbitElements = [];
+
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 export function initIngotState(savedData) {
   if (savedData) {
@@ -141,6 +145,7 @@ export function initIngotState(savedData) {
 export function resetIngotState() {
   stopUIUpdates();
   stopForgeRush();
+  stopOrbitAnimation();
   ingotState.shavings = 0;
   ingotState.tapEnergy = 500;
   ingotState.maxTapEnergy = 500;
@@ -224,6 +229,9 @@ function recalcAllBonuses() {
     const handler = EFFECT_HANDLERS[b.effectId];
     if (handler) handler.apply(b.power);
   });
+
+  // Перезапуск орбиты
+  updateOrbitDisplay();
 }
 
 export function getBonusExpeditionSpeed() { return ingotState._bonusExpeditionSpeed || 0; }
@@ -316,6 +324,82 @@ function deactivateForgeRush() {
 }
 
 function stopForgeRush() { deactivateForgeRush(); }
+
+// ========== ОРБИТА АРТЕФАКТОВ ==========
+function startOrbitAnimation() {
+  stopOrbitAnimation();
+  const coreArea = document.getElementById('ingotCoreArea');
+  if (!coreArea) return;
+
+  const equipped = getEquippedArtifacts();
+  const activeArtifacts = equipped.filter(id => id !== null);
+
+  // Удаляем старые элементы орбиты
+  orbitElements.forEach(el => el.remove());
+  orbitElements = [];
+
+  if (activeArtifacts.length === 0) return;
+
+  const centerX = 0;
+  const centerY = 0;
+  const orbitRadius = 105;
+  const angles = activeArtifacts.map((_, i) => (i / activeArtifacts.length) * Math.PI * 2);
+
+  activeArtifacts.forEach((artifactId, index) => {
+    const artifact = CONFIG_ITEMS[artifactId];
+    if (!artifact) return;
+
+    const orbiter = document.createElement('div');
+    orbiter.className = 'orbit-artifact';
+    orbiter.textContent = artifact.icon;
+    orbiter.style.fontSize = '22px';
+    orbiter.style.position = 'absolute';
+    orbiter.style.pointerEvents = 'none';
+    orbiter.style.zIndex = '3';
+    orbiter.style.filter = 'drop-shadow(0 0 8px rgba(255,215,0,0.6))';
+    orbiter.style.transition = 'none';
+    orbiter.dataset.angle = angles[index];
+    orbiter.dataset.orbitRadius = orbitRadius;
+    orbiter.dataset.speed = 0.6 + index * 0.15;
+    coreArea.appendChild(orbiter);
+    orbitElements.push(orbiter);
+  });
+
+  let startTime = performance.now();
+
+  function animateOrbit(now) {
+    if (!document.getElementById('ingotCoreArea')) {
+      stopOrbitAnimation();
+      return;
+    }
+    const elapsed = (now - startTime) / 1000;
+    orbitElements.forEach(el => {
+      const baseAngle = parseFloat(el.dataset.angle);
+      const speed = parseFloat(el.dataset.speed);
+      const radius = parseFloat(el.dataset.orbitRadius);
+      const angle = baseAngle + elapsed * speed;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      el.style.transform = `translate(${x}px, ${y}px)`;
+    });
+    orbitAnimationId = requestAnimationFrame(animateOrbit);
+  }
+
+  orbitAnimationId = requestAnimationFrame(animateOrbit);
+}
+
+function stopOrbitAnimation() {
+  if (orbitAnimationId) {
+    cancelAnimationFrame(orbitAnimationId);
+    orbitAnimationId = null;
+  }
+  orbitElements.forEach(el => el.remove());
+  orbitElements = [];
+}
+
+function updateOrbitDisplay() {
+  startOrbitAnimation();
+}
 
 // ========== ЖИВОЕ ОБНОВЛЕНИЕ ПРОГРЕСС-БАРОВ ==========
 function updateBottomProgressBars() {
@@ -452,12 +536,13 @@ function showArtifactPicker(slotIndex) {
   let itemsHtml = '';
   ownedArtifacts.forEach(({ id, count, ingot }) => {
     const isEquipped = equipped.includes(id);
+    const isEquippedInOtherSlot = isEquipped && equipped[slotIndex] !== id;
     const effectDesc = ingot.effect_id ? getEffectDescription(ingot.effect_id, ingot.effect_power) : 'Нет эффекта';
     itemsHtml += `
-      <div class="artifact-pick-item ${isEquipped ? 'equipped' : ''}" data-artifact="${id}">
+      <div class="artifact-pick-item ${isEquipped && !isEquippedInOtherSlot ? 'equipped' : ''} ${isEquippedInOtherSlot ? 'disabled' : ''}" data-artifact="${id}">
         <div class="artifact-pick-icon">${ingot.icon}</div>
         <div class="artifact-pick-info">
-          <div class="artifact-pick-name">${ingot.name} ${isEquipped ? '✅' : ''}</div>
+          <div class="artifact-pick-name">${ingot.name} ${isEquipped && !isEquippedInOtherSlot ? '✅' : ''} ${isEquippedInOtherSlot ? '🔒' : ''}</div>
           <div class="artifact-pick-effect">${effectDesc}</div>
           <div class="artifact-pick-count">В наличии: ${count} шт.</div>
         </div>
@@ -480,7 +565,7 @@ function showArtifactPicker(slotIndex) {
   import('./ui.js').then(ui => {
     ui.openModal(html);
     setTimeout(() => {
-      document.querySelectorAll('.artifact-pick-item').forEach(el => {
+      document.querySelectorAll('.artifact-pick-item:not(.disabled)').forEach(el => {
         el.addEventListener('click', () => {
           const artifactId = el.dataset.artifact;
           equipArtifact(slotIndex, artifactId);
@@ -502,13 +587,20 @@ function showArtifactPicker(slotIndex) {
 function equipArtifact(slotIndex, artifactId) {
   const state = getPlayerState();
   if (!state.equippedArtifacts) state.equippedArtifacts = [null, null, null];
+  
+  // Проверка уникальности: нельзя надеть один артефакт в два слота
   if (artifactId && state.equippedArtifacts.includes(artifactId)) {
-    import('./ui.js').then(ui => ui.showToast('Этот артефакт уже надет в другой слот!', '⚠️'));
-    return;
+    // Проверяем, не в этом ли слоте он уже стоит
+    if (state.equippedArtifacts[slotIndex] !== artifactId) {
+      import('./ui.js').then(ui => ui.showToast('Этот артефакт уже надет в другой слот! Сначала снимите его оттуда.', '⚠️'));
+      return;
+    }
   }
+  
   state.equippedArtifacts[slotIndex] = artifactId;
   saveGame();
   recalcAllBonuses();
+  updateOrbitDisplay();
   const ingot = artifactId ? CONFIG_ITEMS[artifactId] : null;
   import('./ui.js').then(ui => {
     ui.showToast(artifactId ? `${ingot.icon} ${ingot.name} экипирован в слот ${slotIndex + 1}!` : `Слот ${slotIndex + 1} освобождён.`, '🔧');
@@ -752,6 +844,15 @@ export function renderIngotScreen(container) {
         animation: rushTimerPulse 0.3s ease-out;
       }
       
+      .orbit-artifact {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        pointer-events: none;
+        z-index: 3;
+        will-change: transform;
+      }
+      
       .ingot-energy-divider {
         width: 100%;
         padding: 0 20px;
@@ -976,6 +1077,8 @@ export function renderIngotScreen(container) {
       .artifact-pick-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 14px; cursor: pointer; margin-bottom: 4px; transition: all 0.2s; border: 1px solid transparent; }
       .artifact-pick-item:active { background: rgba(255,215,0,0.08); border-color: rgba(255,215,0,0.3); }
       .artifact-pick-item.equipped { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.05); }
+      .artifact-pick-item.disabled { opacity: 0.35; cursor: not-allowed; }
+      .artifact-pick-item.disabled:active { background: rgba(255,255,255,0.03); border-color: transparent; }
       .artifact-pick-icon { font-size: 24px; min-width: 30px; text-align: center; }
       .artifact-pick-info { flex: 1; text-align: left; }
       .artifact-pick-name { font-weight: 600; font-size: 13px; color: #fff; }
@@ -1047,6 +1150,8 @@ export function renderIngotScreen(container) {
   }
   html += `</div></div>`;
   container.innerHTML = html;
+  
+  // Восстанавливаем таймер ража
   if (forgeRushState.active && forgeRushState.countdownDisplay === null) {
     const coreArea = document.getElementById('ingotCoreArea');
     if (coreArea) {
@@ -1056,11 +1161,15 @@ export function renderIngotScreen(container) {
       coreArea.appendChild(forgeRushState.countdownDisplay);
     }
   }
+  
   startUIUpdates();
+  startOrbitAnimation();
+  
   const coreArea2 = document.getElementById('ingotCoreArea');
   const imageContainer = document.getElementById('ingotImageContainer');
   const ingotImage = document.getElementById('ingotImage');
   const ingotFallback = document.getElementById('ingotFallback');
+  
   if (imageContainer && coreArea2) {
     const executeTap = (clientX, clientY) => {
       const result = tapIngot();
@@ -1081,10 +1190,12 @@ export function renderIngotScreen(container) {
       const sparkY = clientY - coreRect.top;
       spawnSparks(coreArea2, sparkX, sparkY, forgeRushState.active ? 8 : 4);
     };
+    
     const applySquish = () => {
       if (ingotImage) ingotImage.classList.add('squish-active');
       if (ingotFallback) ingotFallback.classList.add('squish-active');
     };
+    
     const removeSquish = (e) => {
       if (ingotImage) ingotImage.classList.remove('squish-active');
       if (ingotFallback) ingotFallback.classList.remove('squish-active');
@@ -1092,6 +1203,7 @@ export function renderIngotScreen(container) {
         executeTap(e.clientX || (e.touches && e.touches[0]?.clientX) || 0, e.clientY || (e.touches && e.touches[0]?.clientY) || 0);
       }
     };
+    
     imageContainer.addEventListener('mousedown', (e) => { e.preventDefault(); applySquish(); });
     imageContainer.addEventListener('mouseup', (e) => { e.preventDefault(); removeSquish(e); });
     imageContainer.addEventListener('mouseleave', () => { if (ingotImage) ingotImage.classList.remove('squish-active'); if (ingotFallback) ingotFallback.classList.remove('squish-active'); });
@@ -1099,6 +1211,7 @@ export function renderIngotScreen(container) {
     imageContainer.addEventListener('touchend', (e) => { e.preventDefault(); removeSquish(e); }, { passive: false });
     imageContainer.addEventListener('touchcancel', () => { if (ingotImage) ingotImage.classList.remove('squish-active'); if (ingotFallback) ingotFallback.classList.remove('squish-active'); });
   }
+  
   const upgradeBtn = document.getElementById('performUpgradeBtn');
   if (upgradeBtn) {
     upgradeBtn.addEventListener('click', () => {
@@ -1114,6 +1227,7 @@ export function renderIngotScreen(container) {
       setTimeout(() => { showEvolutionModal(result.oldIngot, result.newIngot); }, 300);
     });
   }
+  
   document.querySelectorAll('.equip-slot:not(.locked)').forEach(slot => {
     slot.addEventListener('click', () => {
       const idx = parseInt(slot.dataset.slot);
@@ -1161,6 +1275,7 @@ function showEvolutionModal(oldData, newData) {
     if (e.target === overlay || e.target.id === 'evolutionCloseBtn') {
       overlay.remove();
       stopUIUpdates();
+      stopOrbitAnimation();
       import('./ui.js').then(ui => ui.renderCurrentTab());
     }
   });
