@@ -230,7 +230,6 @@ function recalcAllBonuses() {
     if (handler) handler.apply(b.power);
   });
 
-  // Перезапуск орбиты
   updateOrbitDisplay();
 }
 
@@ -334,14 +333,11 @@ function startOrbitAnimation() {
   const equipped = getEquippedArtifacts();
   const activeArtifacts = equipped.filter(id => id !== null);
 
-  // Удаляем старые элементы орбиты
   orbitElements.forEach(el => el.remove());
   orbitElements = [];
 
   if (activeArtifacts.length === 0) return;
 
-  const centerX = 0;
-  const centerY = 0;
   const orbitRadius = 105;
   const angles = activeArtifacts.map((_, i) => (i / activeArtifacts.length) * Math.PI * 2);
 
@@ -588,9 +584,7 @@ function equipArtifact(slotIndex, artifactId) {
   const state = getPlayerState();
   if (!state.equippedArtifacts) state.equippedArtifacts = [null, null, null];
   
-  // Проверка уникальности: нельзя надеть один артефакт в два слота
   if (artifactId && state.equippedArtifacts.includes(artifactId)) {
-    // Проверяем, не в этом ли слоте он уже стоит
     if (state.equippedArtifacts[slotIndex] !== artifactId) {
       import('./ui.js').then(ui => ui.showToast('Этот артефакт уже надет в другой слот! Сначала снимите его оттуда.', '⚠️'));
       return;
@@ -1151,7 +1145,6 @@ export function renderIngotScreen(container) {
   html += `</div></div>`;
   container.innerHTML = html;
   
-  // Восстанавливаем таймер ража
   if (forgeRushState.active && forgeRushState.countdownDisplay === null) {
     const coreArea = document.getElementById('ingotCoreArea');
     if (coreArea) {
