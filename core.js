@@ -1,5 +1,5 @@
 // ========== CORE МОДУЛЬ: ЛОГИКА ИГРЫ ==========
-import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, CRAFT_RECIPES, LEVELS, DEFAULT_STATE, GUILD_QUESTS } from './config.js';
+import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, CRAFT_RECIPES, LEVELS, DEFAULT_STATE, GUILD_QUESTS } from './config.js';
 import { regenEnergy, checkLevelLock, getIngotSaveData, initIngotState, getBonusExpeditionSpeed, getBonusXP, getBonusDoubleDrop } from './ingot.js';
 
 // ========== ЗАГЛУШКИ UI ФУНКЦИЙ ==========
@@ -43,7 +43,8 @@ export let playerState = {
   activeQuests: [],
   questRefreshTime: null,
   completedQuests: [],
-  questCooldownEnd: null
+  questCooldownEnd: null,
+  unlockedExpeditions: ['mine']
 };
 
 export function getPlayerState() {
@@ -604,6 +605,15 @@ export function devGiveGeodes() {
 
 export function devUnlockLocations() {
   playerState.player.level = Math.max(playerState.player.level, 10);
+  if (!playerState.unlockedExpeditions) playerState.unlockedExpeditions = ['mine'];
+  // Разблокируем все экспедиции
+  EXPEDITION_GROUPS.forEach(group => {
+    group.expeditions.forEach(exp => {
+      if (!playerState.unlockedExpeditions.includes(exp.id)) {
+        playerState.unlockedExpeditions.push(exp.id);
+      }
+    });
+  });
   if (_updateProfileUI) _updateProfileUI();
 }
 
@@ -1245,7 +1255,8 @@ export function saveGame() {
       maxTapEnergy: ingotSave.maxTapEnergy,
       lastEnergyRegen: ingotSave.lastEnergyRegen,
       levelLocked: ingotSave.levelLocked,
-      equippedArtifacts: playerState.equippedArtifacts || [null, null, null]
+      equippedArtifacts: playerState.equippedArtifacts || [null, null, null],
+      unlockedExpeditions: playerState.unlockedExpeditions || ['mine']
     },
     collectibleSerials,
     nextSerial,
@@ -1357,6 +1368,12 @@ function applySaveData(data) {
     playerState.equippedArtifacts = [null, null, null];
   }
   
+  if (Array.isArray(saved.unlockedExpeditions)) {
+    playerState.unlockedExpeditions = [...saved.unlockedExpeditions];
+  } else {
+    playerState.unlockedExpeditions = ['mine'];
+  }
+  
   initIngotState({
     ingotShavings: saved.ingotShavings || 0,
     tapEnergy: saved.tapEnergy || 500,
@@ -1411,6 +1428,7 @@ export const saveToLocalStorage = saveGame;
   playerState.completedQuests = [];
   playerState.questCooldownEnd = null;
   playerState.equippedArtifacts = [null, null, null];
+  playerState.unlockedExpeditions = ['mine'];
   
   console.log('[Core] DEFAULT_STATE применён синхронно при загрузке модуля');
 })();
@@ -1559,6 +1577,12 @@ export function startExpedition(expId) {
   
   const exp = playerState.expeditions[expId];
   if (!exp || exp.active) return;
+  
+  // Проверяем, разблокирована ли экспедиция
+  if (playerState.unlockedExpeditions && !playerState.unlockedExpeditions.includes(expId)) {
+    if (_showToast) _showToast('Эта экспедиция ещё не открыта!', '🔒');
+    return;
+  }
   
   const bonusSpeed = getBonusExpeditionSpeed();
   const baseTimer = CONFIG_EXPEDITIONS[expId].timer * 1000;
