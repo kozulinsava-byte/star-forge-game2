@@ -1,5 +1,5 @@
 // ========== UI МОДУЛЬ: ОТРИСОВКА ИНТЕРФЕЙСА ==========
-import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, LEVELS, STATUSES, GUILD_QUESTS } from './config.js';
+import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, LEVELS, STATUSES, GUILD_QUESTS } from './config.js';
 import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining } from './core.js';
 import { renderIngotScreen } from './ingot.js';
 
@@ -50,6 +50,9 @@ export let collectionSubTab = 'encyclopedia';
 
 // ID интервала для живого таймера в модалке
 let modalTimerInterval = null;
+
+// Состояние аккордеона
+let expandedGroups = {};
 
 // ---------- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ----------
 function initTheme() {
@@ -272,6 +275,7 @@ function openCollectionShowcase(ingotId) {
     showcaseContent.style.opacity = '0.8';
     
   } else if (isCollectible) {
+    const effectText = ingot.effect_name ? `<div style="font-size:12px; color:#FFD700; margin-top:8px;">✨ Бонус: ${ingot.effect_name}</div>` : '';
     html = `
       <div class="showcase-image" id="showcaseImage"></div>
       <div class="showcase-info" style="border: 2px solid #FFD700; box-shadow: 0 0 40px rgba(255,215,0,0.6), 0 0 80px rgba(180,0,255,0.4); background: linear-gradient(135deg, rgba(255,215,0,0.1) 0%, rgba(180,0,255,0.1) 100%); animation: legendaryGlow 3s ease-in-out infinite;">
@@ -283,6 +287,7 @@ function openCollectionShowcase(ingotId) {
         <div style="font-size: 18px; font-weight: 800; color: #FFD700; margin: 16px 0; text-transform: uppercase; letter-spacing: 2px;">СТАТУС: ДОБЫТО В КОЛЛЕКЦИЮ СЛАВЫ</div>
         <div class="showcase-serial"><span class="showcase-serial-label">Серийный номер</span><span class="showcase-serial-value">#${getSerialForCollectible(ingotId)}</span></div>
         <div class="showcase-description">${ingot.description}</div>
+        ${effectText}
         <div style="font-size: 12px; color: var(--accent-gold); margin-top: 12px;">Применение: [👑 Легендарный трофей]</div>
         <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
       </div>
@@ -481,6 +486,9 @@ function showAdminPanel() {
       state.questRefreshTime = null;
       state.completedQuests = [];
       state.questCooldownEnd = null;
+      
+      // Сброс разблокированных экспедиций
+      state.unlockedExpeditions = ['mine'];
       
       // Сброс слитка-кликера
       import('./ingot.js').then(ingot => {
@@ -885,155 +893,349 @@ export function updateMeteorShardsDisplay() {
   }
 }
 
-// ---------- РЕНДЕРИНГ ВКЛАДОК ----------
-export function renderProfileTab() {
-  const state = getPlayerState();
-  const userName = 'Старатель';
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-  const themeBtnText = currentTheme === 'dark' ? '🌙 Сменить тему (Светлая)' : '☀️ Сменить тему (Тёмная)';
-  
-  let html = `<div class="section-title">👤 Профиль <button class="help-btn" data-help="profile">?</button></div>`;
-  
-  html += `
-    <div class="card">
-      <div class="profile-header">
-        <div class="profile-avatar">👤</div>
-        <div class="profile-info">
-          <div class="profile-name">${userName}</div>
-          <div class="profile-status" id="profileStatus">${STATUSES[Math.min(state.player.level - 1, STATUSES.length - 1)]}</div>
-          <span class="level-badge" id="profileLevel">${state.player.level}</span> уровень
-          <button class="dev-menu-btn" id="adminPanelBtn">🛠️ АДМИН</button>
-        </div>
-      </div>
-      <div class="xp-bar-container"><div class="xp-bar-fill" id="xpFill" style="width:0%"></div></div>
-      <div class="xp-text" id="xpText">${state.player.xp} / ${LEVELS[state.player.level] || 15000} XP</div>
-      
-      <button class="theme-profile-btn" id="themeProfileBtn">${themeBtnText}</button>
-      <button class="vip-button" id="vipButton">💎 АКТИВИРОВАТЬ VIP</button>
-      <button class="btn" id="leaderboardBtn" style="margin-top:12px;">🏆 ТОП ИГРОКОВ</button>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value" id="statOpened">${state.player.totalOpened}</div><div class="stat-label">Открыто жеод</div></div>
-        <div class="stat-card"><div class="stat-value" id="statIngots">${state.player.totalIngots}</div><div class="stat-label">Добыто слитков</div></div>
-        <div class="stat-card"><div class="stat-value" id="statArtifacts">${state.player.totalArtifacts}</div><div class="stat-label">Артефактов</div></div>
-      </div>
-    </div>
-    <div class="card sell-section"><div class="section-title">💰 Сбыт сырья</div>
-  `;
-  
-  const availableIngots = Object.entries(state.ingots).filter(([k, v]) => v > 0 && !CONFIG_ITEMS[k].isCollectible);
-  if (availableIngots.length === 0) {
-    html += '<div class="empty-state">Нет ресурсов для сдачи</div>';
-  } else {
-    availableIngots.forEach(([k, v]) => {
-      const ing = CONFIG_ITEMS[k];
-      html += `
-        <div class="resource-item">
-          <div class="resource-info">
-            <div class="resource-icon" id="sell-icon-${k}"></div>
-            <div>
-              <div class="resource-name">${ing.name}</div>
-              <div class="resource-count">${v} шт. (+${ing.sellValue} XP/шт)</div>
-            </div>
-          </div>
-          <button class="sell-btn" data-sell="${k}">Сдать всё</button>
-        </div>
-      `;
-    });
-  }
-  html += '</div>';
-  
-  mainContent.innerHTML = html;
-
-  availableIngots.forEach(([k]) => {
-    const el = document.getElementById(`sell-icon-${k}`);
-    if (el) {
-      const ing = CONFIG_ITEMS[k];
-      renderImageToElement(el, ing.imagePath, ing.icon, ing.fallbackColor);
-    }
-  });
-  
-  document.getElementById('themeProfileBtn').addEventListener('click', toggleTheme);
-  document.querySelectorAll('[data-sell]').forEach((b) => b.addEventListener('click', () => sellIngot(b.dataset.sell)));
-  document.getElementById('vipButton').addEventListener('click', () => showToast('Оплата через Crypto Bot скоро будет доступна', '💎'));
-  
-  document.getElementById('leaderboardBtn')?.addEventListener('click', async () => {
-    try {
-      const { updateLeaderboard } = await import('./core.js');
-      updateLeaderboard();
-    } catch (e) {
-      showToast('Не удалось загрузить таблицу лидеров', '⚠️');
-    }
-  });
-  
-  document.getElementById('adminPanelBtn').addEventListener('click', () => {
-    showAdminPanel();
-  });
-  
-  updateProfileUI();
-}
-
+// ========== РЕНДЕРИНГ ВКЛАДКИ ЭКСПЕДИЦИЙ (С АККОРДЕОНОМ) ==========
 export function renderExpeditionsTab() {
   const state = getPlayerState();
   let html = '<div class="section-title">⛏️ Экспедиции <button class="help-btn" data-help="expeditions">?</button></div>';
   
-  for (let k in CONFIG_EXPEDITIONS) {
-    const exp = CONFIG_EXPEDITIONS[k];
-    const act = state.expeditions[k] || { active: false };
-    const isLocked = state.player.level < exp.requiredLevel;
-    let timerHtml = '';
+  // Стили для аккордеона и анимации открытия
+  html += `
+    <style>
+      .expedition-group {
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        border-radius: 28px;
+        margin-bottom: 16px;
+        border: 1px solid var(--card-border);
+        box-shadow: 0 8px 32px var(--shadow-color);
+        overflow: hidden;
+        transition: background 0.3s ease, border 0.3s ease;
+      }
+      .expedition-group-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 18px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s;
+      }
+      .expedition-group-header:active {
+        background: rgba(255,255,255,0.03);
+      }
+      .expedition-group-icon {
+        font-size: 24px;
+        min-width: 30px;
+        text-align: center;
+      }
+      .expedition-group-name {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-primary);
+        flex: 1;
+      }
+      .expedition-group-arrow {
+        font-size: 14px;
+        color: var(--text-secondary);
+        transition: transform 0.3s ease;
+        min-width: 20px;
+        text-align: center;
+      }
+      .expedition-group-arrow.open {
+        transform: rotate(180deg);
+      }
+      .expedition-group-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+      }
+      .expedition-group-body.open {
+        max-height: 2000px;
+      }
+      .expedition-group-body-inner {
+        padding: 0 18px 18px;
+      }
+      
+      .expedition-card-locked {
+        background: rgba(255,255,255,0.02);
+        border: 2px dashed rgba(255,255,255,0.08);
+        border-radius: 20px;
+        padding: 18px;
+        margin-bottom: 10px;
+        text-align: center;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      .expedition-card-locked.unlocking {
+        animation: unlockGlow 0.8s ease-out;
+        border-color: rgba(255,215,0,0.6);
+        background: rgba(255,215,0,0.05);
+      }
+      @keyframes unlockGlow {
+        0% { box-shadow: 0 0 0 rgba(255,215,0,0); border-color: rgba(255,255,255,0.08); }
+        30% { box-shadow: 0 0 60px rgba(255,215,0,0.8); border-color: rgba(255,215,0,1); }
+        100% { box-shadow: 0 0 0 rgba(255,215,0,0); border-color: rgba(255,215,0,0.3); }
+      }
+      .expedition-card-locked-icon {
+        font-size: 40px;
+        margin-bottom: 8px;
+        opacity: 0.5;
+      }
+      .expedition-card-locked-name {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+      }
+      .expedition-card-locked-desc {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+      .expedition-unlock-btn {
+        background: linear-gradient(135deg, #FFD700, #FF8C00);
+        color: #000;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(255,140,0,0.3);
+        transition: all 0.2s;
+        font-family: 'Montserrat', sans-serif;
+      }
+      .expedition-unlock-btn:active { transform: scale(0.94); }
+      .expedition-unlock-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+    </style>
+  `;
+  
+  if (!state.unlockedExpeditions) state.unlockedExpeditions = ['mine'];
+  
+  EXPEDITION_GROUPS.forEach((group, groupIndex) => {
+    const isOpen = expandedGroups[group.id] !== undefined ? expandedGroups[group.id] : true;
     
-    if (isLocked) {
-      timerHtml = `<span class="lock-icon">🔒</span> <span style="color:var(--text-muted);">Ур. ${exp.requiredLevel}</span>`;
-    } else if (act.active && act.endTime) {
-      const diff = Math.max(0, act.endTime - Date.now());
-      const m = Math.floor(diff / 60000);
-      const s = Math.ceil((diff % 60000) / 1000);
-      timerHtml = `<div class="timer-badge" id="timer-${k}">⏳ ${m}:${s.toString().padStart(2, '0')}</div>`;
-    } else {
-      timerHtml = `<button class="small-btn" data-info-exp="${k}">Подробнее</button>`;
-    }
-    
+    html += `<div class="expedition-group">`;
     html += `
-      <div class="card">
-        <div class="expedition-item ${isLocked ? 'locked' : ''}" data-expedition-click="${k}">
-          <div class="expedition-info">
-            <div class="expedition-icon" id="expedition-icon-${k}"></div>
-            <div class="expedition-text">
-              <h3>${exp.name} ${isLocked ? '🔒' : ''}</h3>
-              <p>⏱️ ${exp.timer} сек</p>
-            </div>
-          </div>
-          <div class="expedition-action">${timerHtml}</div>
-        </div>
+      <div class="expedition-group-header" data-group-id="${group.id}">
+        <span class="expedition-group-icon">${group.icon}</span>
+        <span class="expedition-group-name">${group.name}</span>
+        <span class="expedition-group-arrow ${isOpen ? 'open' : ''}">▼</span>
       </div>
     `;
-  }
+    html += `<div class="expedition-group-body ${isOpen ? 'open' : ''}" data-group-body="${group.id}">`;
+    html += `<div class="expedition-group-body-inner">`;
+    
+    group.expeditions.forEach((exp) => {
+      const isUnlocked = state.unlockedExpeditions.includes(exp.id);
+      const act = state.expeditions[exp.id] || { active: false };
+      
+      if (!isUnlocked) {
+        // Заблокированная экспедиция
+        const canUnlock = state.player.level >= exp.unlockLevel;
+        html += `
+          <div class="expedition-card-locked" id="locked-${exp.id}">
+            <div class="expedition-card-locked-icon">🔒</div>
+            <div class="expedition-card-locked-name">${exp.name}</div>
+            <div class="expedition-card-locked-desc">${exp.description}</div>
+            <button class="expedition-unlock-btn" id="unlockBtn-${exp.id}" ${canUnlock ? '' : 'disabled'}>
+              ${canUnlock ? '🔓 Открыть' : `🔒 Нужен ур. ${exp.unlockLevel}`}
+            </button>
+          </div>
+        `;
+      } else {
+        // Разблокированная экспедиция
+        const isLockedByLevel = state.player.level < exp.requiredLevel;
+        let timerHtml = '';
+        
+        if (isLockedByLevel) {
+          timerHtml = `<span class="lock-icon">🔒</span> <span style="color:var(--text-muted);">Ур. ${exp.requiredLevel}</span>`;
+        } else if (act.active && act.endTime) {
+          const diff = Math.max(0, act.endTime - Date.now());
+          const m = Math.floor(diff / 60000);
+          const s = Math.ceil((diff % 60000) / 1000);
+          timerHtml = `<div class="timer-badge" id="timer-${exp.id}">⏳ ${m}:${s.toString().padStart(2, '0')}</div>`;
+        } else {
+          timerHtml = `<button class="small-btn" data-info-exp="${exp.id}">Подробнее</button>`;
+        }
+        
+        html += `
+          <div class="card" style="margin-bottom:10px;">
+            <div class="expedition-item ${isLockedByLevel ? 'locked' : ''}" data-expedition-click="${exp.id}">
+              <div class="expedition-info">
+                <div class="expedition-icon" id="expedition-icon-${exp.id}"></div>
+                <div class="expedition-text">
+                  <h3>${exp.name} ${isLockedByLevel ? '🔒' : ''}</h3>
+                  <p>⏱️ ${exp.timer} сек</p>
+                </div>
+              </div>
+              <div class="expedition-action">${timerHtml}</div>
+            </div>
+          </div>
+        `;
+      }
+    });
+    
+    html += `</div></div></div>`;
+  });
   
   mainContent.innerHTML = html;
   
-  for (let k in CONFIG_EXPEDITIONS) {
-    renderImageToElement(document.getElementById(`expedition-icon-${k}`), CONFIG_EXPEDITIONS[k].imagePath, CONFIG_EXPEDITIONS[k].fallbackIcon, '#FFD700');
-  }
+  // Рендеринг иконок экспедиций
+  EXPEDITION_GROUPS.forEach(group => {
+    group.expeditions.forEach(exp => {
+      const el = document.getElementById(`expedition-icon-${exp.id}`);
+      if (el) {
+        renderImageToElement(el, exp.imagePath, exp.fallbackIcon, '#FFD700');
+      }
+    });
+  });
   
-  document.querySelectorAll('[data-expedition-click]').forEach((el) =>
+  // Обработчики аккордеона
+  document.querySelectorAll('.expedition-group-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const groupId = header.dataset.groupId;
+      const body = document.querySelector(`[data-group-body="${groupId}"]`);
+      const arrow = header.querySelector('.expedition-group-arrow');
+      
+      if (body) {
+        const isOpen = body.classList.contains('open');
+        if (isOpen) {
+          body.classList.remove('open');
+          if (arrow) arrow.classList.remove('open');
+          expandedGroups[groupId] = false;
+        } else {
+          body.classList.add('open');
+          if (arrow) arrow.classList.add('open');
+          expandedGroups[groupId] = true;
+        }
+      }
+    });
+  });
+  
+  // Обработчики кликов по экспедициям
+  document.querySelectorAll('[data-expedition-click]').forEach(el => {
     el.addEventListener('click', function (e) {
       const key = this.dataset.expeditionClick;
-      if (state.player.level < CONFIG_EXPEDITIONS[key].requiredLevel) {
-        showToast(`Требуется ${CONFIG_EXPEDITIONS[key].requiredLevel} уровень!`, '🔒');
+      const exp = CONFIG_EXPEDITIONS[key];
+      if (!exp) return;
+      if (state.player.level < exp.requiredLevel) {
+        showToast(`Требуется ${exp.requiredLevel} уровень!`, '🔒');
         return;
       }
       if (!e.target.classList.contains('small-btn')) showExpeditionInfoModal(key);
-    })
-  );
+    });
+  });
   
-  document.querySelectorAll('[data-info-exp]').forEach((btn) =>
+  document.querySelectorAll('[data-info-exp]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       showExpeditionInfoModal(btn.dataset.infoExp);
-    })
-  );
+    });
+  });
+  
+  // Обработчики кнопок «Открыть»
+  EXPEDITION_GROUPS.forEach(group => {
+    group.expeditions.forEach(exp => {
+      if (!state.unlockedExpeditions.includes(exp.id)) {
+        const unlockBtn = document.getElementById(`unlockBtn-${exp.id}`);
+        if (unlockBtn) {
+          unlockBtn.addEventListener('click', () => {
+            const currentLevel = state.player.level;
+            if (currentLevel >= exp.unlockLevel) {
+              unlockExpedition(exp.id);
+            }
+          });
+        }
+      }
+    });
+  });
 }
 
+// ========== РАЗБЛОКИРОВКА ЭКСПЕДИЦИИ С АНИМАЦИЕЙ ==========
+function unlockExpedition(expId) {
+  const state = getPlayerState();
+  if (!state.unlockedExpeditions) state.unlockedExpeditions = ['mine'];
+  
+  if (state.unlockedExpeditions.includes(expId)) return;
+  
+  const exp = CONFIG_EXPEDITIONS[expId];
+  if (!exp) return;
+  
+  if (state.player.level < exp.unlockLevel) {
+    showToast(`Нужен ${exp.unlockLevel} уровень!`, '🔒');
+    return;
+  }
+  
+  // Анимация открытия
+  const lockedCard = document.getElementById(`locked-${expId}`);
+  if (lockedCard) {
+    lockedCard.classList.add('unlocking');
+    
+    // Создаём частицы
+    const app = document.getElementById('app');
+    const cardRect = lockedCard.getBoundingClientRect();
+    const appRect = app.getBoundingClientRect();
+    const centerX = cardRect.left + cardRect.width / 2;
+    const centerY = cardRect.top + cardRect.height / 2;
+    
+    for (let i = 0; i < 20; i++) {
+      const particle = document.createElement('div');
+      particle.style.cssText = `
+        position: fixed;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #FFD700;
+        pointer-events: none;
+        z-index: 9999;
+        left: ${centerX}px;
+        top: ${centerY}px;
+        box-shadow: 0 0 10px #FFD700;
+        animation: unlockParticle 0.8s ease-out forwards;
+        animation-delay: ${i * 0.02}s;
+      `;
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 50 + Math.random() * 100;
+      const tx = Math.cos(angle) * distance;
+      const ty = Math.sin(angle) * distance;
+      particle.style.setProperty('--tx', tx + 'px');
+      particle.style.setProperty('--ty', ty + 'px');
+      document.body.appendChild(particle);
+      setTimeout(() => particle.remove(), 900);
+    }
+    
+    // Добавляем стиль анимации если его нет
+    if (!document.getElementById('unlockParticleStyle')) {
+      const particleStyle = document.createElement('style');
+      particleStyle.id = 'unlockParticleStyle';
+      particleStyle.textContent = `
+        @keyframes unlockParticle {
+          0% { opacity: 1; transform: translate(0, 0) scale(1); }
+          100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+        }
+      `;
+      document.head.appendChild(particleStyle);
+    }
+    
+    // Ждём окончания анимации и обновляем состояние
+    setTimeout(() => {
+      state.unlockedExpeditions.push(expId);
+      saveGame();
+      showToast(`🔓 ${exp.name} открыты!`, '🎉');
+      renderExpeditionsTab();
+    }, 600);
+  }
+}
+
+// ========== РЕНДЕРИНГ ВКЛАДКИ ИНВЕНТАРЯ ==========
 export function renderInventoryTab() {
   const state = getPlayerState();
   let html = `
@@ -1201,10 +1403,12 @@ export function renderCollectionTab() {
     html += '<div class="grid-container">';
     coll.forEach((ing) => {
       const owned = state.ingots[ing.id] > 0;
+      const effectLine = ing.effect_name ? `<div style="font-size:8px; color:#FFD700; margin-top:2px;">${ing.effect_name}</div>` : '';
       html += `
         <div class="collection-card ${owned ? '' : 'silhouette'}" data-ingot="${ing.id}">
           <div class="card-icon" id="hall-${ing.id}"></div>
           <div class="card-name">${owned ? ing.name : '???'}</div>
+          ${owned ? effectLine : ''}
           <div class="card-count-badge">${owned ? '★ Найдено' : 'Неизвестно'}</div>
         </div>
       `;
@@ -1589,6 +1793,93 @@ function updateEventTimerInterval() {
       eventTimerInterval = null;
     }
   }, 1000);
+}
+
+// ========== РЕНДЕРИНГ ПРОФИЛЯ ==========
+export function renderProfileTab() {
+  const state = getPlayerState();
+  const userName = 'Старатель';
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const themeBtnText = currentTheme === 'dark' ? '🌙 Сменить тему (Светлая)' : '☀️ Сменить тему (Тёмная)';
+  
+  let html = `<div class="section-title">👤 Профиль <button class="help-btn" data-help="profile">?</button></div>`;
+  
+  html += `
+    <div class="card">
+      <div class="profile-header">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-info">
+          <div class="profile-name">${userName}</div>
+          <div class="profile-status" id="profileStatus">${STATUSES[Math.min(state.player.level - 1, STATUSES.length - 1)]}</div>
+          <span class="level-badge" id="profileLevel">${state.player.level}</span> уровень
+          <button class="dev-menu-btn" id="adminPanelBtn">🛠️ АДМИН</button>
+        </div>
+      </div>
+      <div class="xp-bar-container"><div class="xp-bar-fill" id="xpFill" style="width:0%"></div></div>
+      <div class="xp-text" id="xpText">${state.player.xp} / ${LEVELS[state.player.level] || 15000} XP</div>
+      
+      <button class="theme-profile-btn" id="themeProfileBtn">${themeBtnText}</button>
+      <button class="vip-button" id="vipButton">💎 АКТИВИРОВАТЬ VIP</button>
+      <button class="btn" id="leaderboardBtn" style="margin-top:12px;">🏆 ТОП ИГРОКОВ</button>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="statOpened">${state.player.totalOpened}</div><div class="stat-label">Открыто жеод</div></div>
+        <div class="stat-card"><div class="stat-value" id="statIngots">${state.player.totalIngots}</div><div class="stat-label">Добыто слитков</div></div>
+        <div class="stat-card"><div class="stat-value" id="statArtifacts">${state.player.totalArtifacts}</div><div class="stat-label">Артефактов</div></div>
+      </div>
+    </div>
+    <div class="card sell-section"><div class="section-title">💰 Сбыт сырья</div>
+  `;
+  
+  const availableIngots = Object.entries(state.ingots).filter(([k, v]) => v > 0 && !CONFIG_ITEMS[k].isCollectible);
+  if (availableIngots.length === 0) {
+    html += '<div class="empty-state">Нет ресурсов для сдачи</div>';
+  } else {
+    availableIngots.forEach(([k, v]) => {
+      const ing = CONFIG_ITEMS[k];
+      html += `
+        <div class="resource-item">
+          <div class="resource-info">
+            <div class="resource-icon" id="sell-icon-${k}"></div>
+            <div>
+              <div class="resource-name">${ing.name}</div>
+              <div class="resource-count">${v} шт. (+${ing.sellValue} XP/шт)</div>
+            </div>
+          </div>
+          <button class="sell-btn" data-sell="${k}">Сдать всё</button>
+        </div>
+      `;
+    });
+  }
+  html += '</div>';
+  
+  mainContent.innerHTML = html;
+
+  availableIngots.forEach(([k]) => {
+    const el = document.getElementById(`sell-icon-${k}`);
+    if (el) {
+      const ing = CONFIG_ITEMS[k];
+      renderImageToElement(el, ing.imagePath, ing.icon, ing.fallbackColor);
+    }
+  });
+  
+  document.getElementById('themeProfileBtn').addEventListener('click', toggleTheme);
+  document.querySelectorAll('[data-sell]').forEach((b) => b.addEventListener('click', () => sellIngot(b.dataset.sell)));
+  document.getElementById('vipButton').addEventListener('click', () => showToast('Оплата через Crypto Bot скоро будет доступна', '💎'));
+  
+  document.getElementById('leaderboardBtn')?.addEventListener('click', async () => {
+    try {
+      const { updateLeaderboard } = await import('./core.js');
+      updateLeaderboard();
+    } catch (e) {
+      showToast('Не удалось загрузить таблицу лидеров', '⚠️');
+    }
+  });
+  
+  document.getElementById('adminPanelBtn').addEventListener('click', () => {
+    showAdminPanel();
+  });
+  
+  updateProfileUI();
 }
 
 export function renderCurrentTab() {
