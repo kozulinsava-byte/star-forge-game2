@@ -266,13 +266,13 @@ export const CONFIG_ITEMS = {
         imagePath: 'assets/ingots/cosmonium.png', fallbackColor: '#FFFFFF', isCollectible: false, xpValue: 150, sellValue: 150 
     },
     
-    // ========== КОЛЛЕКЦИОННЫЕ АРТЕФАКТЫ (с бонусами!) ==========
+    // ========== КОЛЛЕКЦИОННЫЕ АРТЕФАКТЫ ==========
     isotope: { 
         id: 'isotope', name: 'Изотоп-256', icon: '☢️', 
         rarity: 'COLLECTIBLE', rarityClass: 'collectible', rarityLevel: 'collectible',
         sourceType: 'expedition', location: 'mine',
         glowClass: 'glow-isotope', 
-        description: 'Древняя легенда шахтёров. Говорят, Изотоп-256 — это осколок давно погасшей звезды, упавший в недра планеты миллионы лет назад. Его радиоактивное мерцание гипнотизирует.',
+        description: 'Древняя легенда шахтёров. Говорят, Изотоп-256 — это осколок давно погасшей звезды, упавший в недра планеты миллионы лет назад. Его радиоактивное мерцание гипнотизирует. Учёные до сих пор спорят о его происхождении, но сходятся в одном: второго такого артефакта во всей галактике не существует.', 
         imagePath: 'assets/ingots/isotope.png', fallbackColor: '#00FFC8', isCollectible: true, xpValue: 300, sellValue: 500,
         effect_id: 'energy_regen', effect_power: 2, effect_name: 'Ускоренная регенерация энергии'
     },
@@ -281,7 +281,7 @@ export const CONFIG_ITEMS = {
         rarity: 'COLLECTIBLE', rarityClass: 'collectible', rarityLevel: 'collectible',
         sourceType: 'expedition', location: 'mine',
         glowClass: 'glow-osmium', 
-        description: 'Самый плотный природный элемент во вселенной. Этот осмий старше самой Солнечной системы. Прикоснуться к нему — значит прикоснуться к вечности.',
+        description: 'Самый плотный природный элемент во вселенной. Этот осмий старше самой Солнечной системы. Он прибыл к нам из глубин Млечного Пути, пережив рождение и смерть десятков звёзд. Прикоснуться к нему — значит прикоснуться к вечности.', 
         imagePath: 'assets/ingots/osmium.png', fallbackColor: '#9664FF', isCollectible: true, xpValue: 300, sellValue: 500,
         effect_id: 'heavy_tap', effect_power: 25, effect_name: 'Тяжёлый удар +25% к силе тапа'
     },
@@ -290,7 +290,7 @@ export const CONFIG_ITEMS = {
         rarity: 'COLLECTIBLE', rarityClass: 'collectible', rarityLevel: 'collectible',
         sourceType: 'expedition', location: 'jungle',
         glowClass: 'glow-biosteel', 
-        description: 'Венец эволюции органических металлов. Био-Сталь растёт, дышит и способна к примитивной регенерации.',
+        description: 'Венец эволюции органических металлов. Био-Сталь — это не просто материал, это симбионт. Она растёт, дышит и способна к примитивной регенерации. Слиток Био-Стали тёплый на ощупь и едва заметно вибрирует, словно живое сердце.', 
         imagePath: 'assets/ingots/biosteel.png', fallbackColor: '#32C864', isCollectible: true, xpValue: 400, sellValue: 700,
         effect_id: 'auto_tap', effect_power: 3, effect_name: 'Авто-тап: 1 удар каждые 3 сек'
     },
@@ -299,7 +299,7 @@ export const CONFIG_ITEMS = {
         rarity: 'COLLECTIBLE', rarityClass: 'collectible', rarityLevel: 'collectible',
         sourceType: 'expedition', location: 'jungle',
         glowClass: 'glow-relicbronze', 
-        description: 'Сплав, созданный не человеческими руками. На поверхности выгравированы символы, не поддающиеся расшифровке.',
+        description: 'Сплав, созданный не человеческими руками. На его поверхности выгравированы символы, не поддающиеся расшифровке. Реликтовая Бронза не поддаётся никаким современным инструментам — её нельзя расплавить, разрезать или поцарапать.', 
         imagePath: 'assets/ingots/relicbronze.png', fallbackColor: '#C87832', isCollectible: true, xpValue: 400, sellValue: 700,
         effect_id: 'expedition_speed', effect_power: 20, effect_name: 'Ускорение экспедиций на 20%'
     },
@@ -308,7 +308,7 @@ export const CONFIG_ITEMS = {
         rarity: 'COLLECTIBLE', rarityClass: 'collectible', rarityLevel: 'collectible',
         sourceType: 'expedition', location: 'asteroid',
         glowClass: 'glow-tungsten', 
-        description: 'Металл, прошедший горнило сверхновой. Имеет самую высокую температуру плавления среди всех известных веществ.',
+        description: 'Металл, прошедший горнило сверхновой. Имеет самую высокую температуру плавления среди всех известных веществ. Способен накапливать и высвобождать огромное количество энергии.', 
         imagePath: 'assets/ingots/tungsten.png', fallbackColor: '#6496FF', isCollectible: true, xpValue: 500, sellValue: 900,
         effect_id: 'rush_chance', effect_power: 2, effect_name: 'Шанс Ража повышен до 2%'
     },
@@ -317,7 +317,7 @@ export const CONFIG_ITEMS = {
         rarity: 'COLLECTIBLE', rarityClass: 'collectible', rarityLevel: 'collectible',
         sourceType: 'expedition', location: 'asteroid',
         glowClass: 'glow-darkmatter', 
-        description: 'Стабилизированный сгусток невидимой субстанции. Не взаимодействует со светом, но её гравитационное влияние колоссально.',
+        description: 'Стабилизированный сгусток невидимой субстанции, из которой состоит большая часть Вселенной. Не взаимодействует со светом, но её гравитационное влияние колоссально. Учёные предполагают, что это ключ к пониманию структуры мироздания.', 
         imagePath: 'assets/ingots/darkmatter.png', fallbackColor: '#B400FF', isCollectible: true, xpValue: 500, sellValue: 900,
         effect_id: 'rush_duration', effect_power: 3, effect_name: 'Длительность Ража +3 сек'
     },
@@ -326,7 +326,7 @@ export const CONFIG_ITEMS = {
         rarity: 'COLLECTIBLE', rarityClass: 'collectible', rarityLevel: 'collectible',
         sourceType: 'special_meteor', location: 'meteor',
         glowClass: 'glow-osmium', 
-        description: 'Глубокий тёмно-синий слиток с эффектом живого звёздного неба внутри.',
+        description: 'Глубокий тёмно-синий слиток с эффектом живого звёздного неба внутри. Вглядываясь в Орион, можно увидеть движущиеся созвездия и целые галактические рукава. Говорят, что он был создан в поясе Ориона — колыбели самых ярких звёзд Млечного Пути.', 
         imagePath: 'assets/ingots/orion.png', fallbackColor: '#0D47A1', isCollectible: true, xpValue: 800, sellValue: 1500,
         effect_id: 'xp_boost', effect_power: 35, effect_name: 'Бонус опыта +35% из всех источников'
     },
@@ -335,13 +335,13 @@ export const CONFIG_ITEMS = {
         rarity: 'COLLECTIBLE', rarityClass: 'collectible', rarityLevel: 'collectible',
         sourceType: 'special_meteor', location: 'meteor',
         glowClass: 'glow-darkmatter', 
-        description: 'Красно-фиолетовый бурлящий металл, символизирующий расширение Вселенной.',
+        description: 'Красно-фиолетовый бурлящий металл, символизирующий расширение Вселенной. Андромеда пульсирует в такт с движением нашей галактики к туманности Андромеды. Учёные считают, что этот металл содержит в себе энергию Великого Аттрактора — загадочной силы, притягивающей целые скопления галактик.', 
         imagePath: 'assets/ingots/andromeda.png', fallbackColor: '#6A1B9A', isCollectible: true, xpValue: 800, sellValue: 1500,
         effect_id: 'double_drop', effect_power: 15, effect_name: 'Шанс двойного дропа жеоды 15%'
     }
 };
 
-// ========== КРАФТЫ ==========
+// ========== КРАФТЫ (ОБНОВЛЁННЫЕ ПОД НОВЫЙ ДРОП) ==========
 export const CRAFT_RECIPES = {
     black_mirror: { id: 'black_mirror', name: 'Чёрное Зеркало', icon: '🌑', description: 'Объедини уголь и железо.', resultIngotId: 'black_mirror', ingredients: { iron: 2, coal: 1 }, xpReward: 30, smeltTime: 10, reqLevel: 1 },
     astro_bronze: { id: 'astro_bronze', name: 'Астро-Бронза', icon: '🛰️', description: 'Сплав космических технологий.', resultIngotId: 'astro_bronze', ingredients: { vinebronze: 3, lunarsilver: 1 }, xpReward: 45, smeltTime: 15, reqLevel: 3 },
@@ -349,43 +349,193 @@ export const CRAFT_RECIPES = {
     platinum_alloy: { id: 'platinum_alloy', name: 'Платиновый Сплав', icon: '💎', description: 'Платина и иридий.', resultIngotId: 'platinum_alloy', ingredients: { platincon: 5, iridium: 2 }, xpReward: 75, smeltTime: 25, reqLevel: 8 }
 };
 
-// ========== ЖЕОДЫ ==========
+// ========== ЖЕОДЫ (ОБНОВЛЁННЫЙ ДРОП: 2-3 СЛИТКА НА ЖЕОДУ) ==========
 export const CONFIG_GEODES = {
-    mine: { id: 'mine', name: 'Жеода Шахт', icon: '🪨', isSpecial: false, timer: 30, description: 'Глубинная порода, хранящая тепло земных недр.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/mine_stage1.png', fallbackIcon: '🪨' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/mine_stage2.png', fallbackIcon: '💔' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/mine_stage3.png', fallbackIcon: '💥' }], lootTable: [{ ingotId: 'copper', chance: 0.30 }, { ingotId: 'iron', chance: 0.25 }, { ingotId: 'coal', chance: 0.15 }, { ingotId: 'tin', chance: 0.10 }, { ingotId: 'nickel', chance: 0.10 }, { ingotId: 'lead', chance: 0.10 }], xpValue: 10 },
-    jungle: { id: 'jungle', name: 'Жеода Джунглей', icon: '🌲', isSpecial: false, timer: 300, description: 'Таинственная жеода, пропитанная энергией древних лесов.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/jungle_stage1.png', fallbackIcon: '🌲' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/jungle_stage2.png', fallbackIcon: '🍂' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/jungle_stage3.png', fallbackIcon: '🪵' }], lootTable: [{ ingotId: 'biocopper', chance: 0.20 }, { ingotId: 'oxidizedsilver', chance: 0.20 }, { ingotId: 'emeraldsteel', chance: 0.15 }, { ingotId: 'woodalloy', chance: 0.20 }, { ingotId: 'vinebronze', chance: 0.25 }], xpValue: 20 },
-    asteroid: { id: 'asteroid', name: 'Жеода Астероидов', icon: '🌌', isSpecial: false, timer: 1200, description: 'Космический артефакт из пояса астероидов.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/asteroid_stage1.png', fallbackIcon: '🌌' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/asteroid_stage2.png', fallbackIcon: '☄️' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/asteroid_stage3.png', fallbackIcon: '💫' }], lootTable: [{ ingotId: 'titanium', chance: 0.20 }, { ingotId: 'cobalt', chance: 0.15 }, { ingotId: 'iridium', chance: 0.10 }, { ingotId: 'platincon', chance: 0.20 }, { ingotId: 'lunarsilver', chance: 0.15 }, { ingotId: 'starchrome', chance: 0.20 }], xpValue: 40 },
-    meteor_common: { id: 'meteor_common', name: 'Космический обломок', icon: '☄️', isSpecial: false, timer: 60, description: 'Обычный осколок метеоритного дождя.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/meteor_common_stage1.png', fallbackIcon: '☄️' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/meteor_common_stage2.png', fallbackIcon: '💫' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/meteor_common_stage3.png', fallbackIcon: '💥' }], lootTable: [{ ingotId: 'rheolite', chance: 0.35 }, { ingotId: 'ferrite', chance: 0.30 }, { ingotId: 'cosmic_steel', chance: 0.20 }, { ingotId: 'siderite', chance: 0.10 }, { ingotId: 'star_silver', chance: 0.05 }], xpValue: 15 },
-    meteor_rare: { id: 'meteor_rare', name: 'Звёздное ядро', icon: '🌟', isSpecial: false, timer: 600, description: 'Редкое ядро разрушенной звезды.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/meteor_rare_stage1.png', fallbackIcon: '🌟' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/meteor_rare_stage2.png', fallbackIcon: '✨' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/meteor_rare_stage3.png', fallbackIcon: '💥' }], lootTable: [{ ingotId: 'siderite', chance: 0.25 }, { ingotId: 'star_silver', chance: 0.25 }, { ingotId: 'astralium', chance: 0.20 }, { ingotId: 'luminor', chance: 0.15 }, { ingotId: 'meteor_gold', chance: 0.10 }, { ingotId: 'singular', chance: 0.05 }], xpValue: 50 },
-    meteor_legendary: { id: 'meteor_legendary', name: 'Осколок Пустоты', icon: '🕳️', isSpecial: false, timer: 1800, description: 'Легендарный осколок из глубин Межгалактической Пустоты.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/meteor_legendary_stage1.png', fallbackIcon: '🕳️' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/meteor_legendary_stage2.png', fallbackIcon: '🌌' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/meteor_legendary_stage3.png', fallbackIcon: '💥' }], lootTable: [{ ingotId: 'astralium', chance: 0.20 }, { ingotId: 'meteor_gold', chance: 0.20 }, { ingotId: 'singular', chance: 0.25 }, { ingotId: 'nebulite', chance: 0.25 }, { ingotId: 'cosmonium', chance: 0.10 }], xpValue: 120 },
+    // Шахты: медь, железо, уголь
+    mine: { 
+        id: 'mine', name: 'Жеода Шахт', icon: '🪨', isSpecial: false, timer: 30, 
+        description: 'Глубинная порода, хранящая тепло земных недр.', 
+        stages: [
+            { minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/mine_stage1.png', fallbackIcon: '🪨' }, 
+            { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/mine_stage2.png', fallbackIcon: '💔' }, 
+            { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/mine_stage3.png', fallbackIcon: '💥' }
+        ], 
+        lootTable: [
+            { ingotId: 'copper', chance: 0.45 }, 
+            { ingotId: 'iron', chance: 0.35 }, 
+            { ingotId: 'coal', chance: 0.20 }
+        ], 
+        xpValue: 10 
+    },
+    // Джунгли: био-медь, окисленное серебро, древесный сплав
+    jungle: { 
+        id: 'jungle', name: 'Жеода Джунглей', icon: '🌲', isSpecial: false, timer: 300, 
+        description: 'Таинственная жеода, пропитанная энергией древних лесов.', 
+        stages: [
+            { minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/jungle_stage1.png', fallbackIcon: '🌲' }, 
+            { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/jungle_stage2.png', fallbackIcon: '🍂' }, 
+            { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/jungle_stage3.png', fallbackIcon: '🪵' }
+        ], 
+        lootTable: [
+            { ingotId: 'biocopper', chance: 0.40 }, 
+            { ingotId: 'oxidizedsilver', chance: 0.35 }, 
+            { ingotId: 'woodalloy', chance: 0.25 }
+        ], 
+        xpValue: 20 
+    },
+    // Астероиды: титан, кобальт, лунное серебро
+    asteroid: { 
+        id: 'asteroid', name: 'Жеода Астероидов', icon: '🌌', isSpecial: false, timer: 1200, 
+        description: 'Космический артефакт из пояса астероидов.', 
+        stages: [
+            { minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/asteroid_stage1.png', fallbackIcon: '🌌' }, 
+            { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/asteroid_stage2.png', fallbackIcon: '☄️' }, 
+            { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/asteroid_stage3.png', fallbackIcon: '💫' }
+        ], 
+        lootTable: [
+            { ingotId: 'titanium', chance: 0.40 }, 
+            { ingotId: 'cobalt', chance: 0.35 }, 
+            { ingotId: 'lunarsilver', chance: 0.25 }
+        ], 
+        xpValue: 40 
+    },
+    
+    // ========== МЕТЕОРИТНЫЕ ЖЕОДЫ (дроп не трогаем) ==========
+    meteor_common: { 
+        id: 'meteor_common', name: 'Космический обломок', icon: '☄️', isSpecial: false, timer: 60, 
+        description: 'Обычный осколок метеоритного дождя, упавший из пояса астероидов.', 
+        stages: [
+            { minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/meteor_common_stage1.png', fallbackIcon: '☄️' }, 
+            { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/meteor_common_stage2.png', fallbackIcon: '💫' }, 
+            { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/meteor_common_stage3.png', fallbackIcon: '💥' }
+        ], 
+        lootTable: [
+            { ingotId: 'rheolite', chance: 0.35 },
+            { ingotId: 'ferrite', chance: 0.30 },
+            { ingotId: 'cosmic_steel', chance: 0.20 },
+            { ingotId: 'siderite', chance: 0.10 },
+            { ingotId: 'star_silver', chance: 0.05 }
+        ], 
+        xpValue: 15 
+    },
+    meteor_rare: { 
+        id: 'meteor_rare', name: 'Звёздное ядро', icon: '🌟', isSpecial: false, timer: 600, 
+        description: 'Редкое ядро разрушенной звезды.', 
+        stages: [
+            { minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/meteor_rare_stage1.png', fallbackIcon: '🌟' }, 
+            { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/meteor_rare_stage2.png', fallbackIcon: '✨' }, 
+            { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/meteor_rare_stage3.png', fallbackIcon: '💥' }
+        ], 
+        lootTable: [
+            { ingotId: 'siderite', chance: 0.25 },
+            { ingotId: 'star_silver', chance: 0.25 },
+            { ingotId: 'astralium', chance: 0.20 },
+            { ingotId: 'luminor', chance: 0.15 },
+            { ingotId: 'meteor_gold', chance: 0.10 },
+            { ingotId: 'singular', chance: 0.05 }
+        ], 
+        xpValue: 50 
+    },
+    meteor_legendary: { 
+        id: 'meteor_legendary', name: 'Осколок Пустоты', icon: '🕳️', isSpecial: false, timer: 1800, 
+        description: 'Легендарный осколок из глубин Межгалактической Пустоты.', 
+        stages: [
+            { minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/meteor_legendary_stage1.png', fallbackIcon: '🕳️' }, 
+            { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/meteor_legendary_stage2.png', fallbackIcon: '🌌' }, 
+            { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/meteor_legendary_stage3.png', fallbackIcon: '💥' }
+        ], 
+        lootTable: [
+            { ingotId: 'astralium', chance: 0.20 },
+            { ingotId: 'meteor_gold', chance: 0.20 },
+            { ingotId: 'singular', chance: 0.25 },
+            { ingotId: 'nebulite', chance: 0.25 },
+            { ingotId: 'cosmonium', chance: 0.10 }
+        ], 
+        xpValue: 120 
+    },
+    
+    // ========== ОСОБЫЕ ЖЕОДЫ (НЕ ТРОГАЕМ) ==========
     special_mine: { id: 'special_mine', name: 'Реликтовая Руда', icon: '💠', isSpecial: true, location: 'mine', timer: 45, description: 'Древняя руда, пульсирующая энергией.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/special_mine_stage1.png', fallbackIcon: '💠' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/special_mine_stage2.png', fallbackIcon: '🔶' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/special_mine_stage3.png', fallbackIcon: '🔸' }], possibleIngots: ['isotope', 'osmium'], xpValue: 100 },
     special_jungle: { id: 'special_jungle', name: 'Окисленный Сплав', icon: '🧪', isSpecial: true, location: 'jungle', timer: 450, description: 'Сплав, созданный природой за миллионы лет.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/special_jungle_stage1.png', fallbackIcon: '🧪' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/special_jungle_stage2.png', fallbackIcon: '🧫' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/special_jungle_stage3.png', fallbackIcon: '⚗️' }], possibleIngots: ['biosteel', 'relicbronze'], xpValue: 150 },
     special_asteroid: { id: 'special_asteroid', name: 'Метеоритное Ядро', icon: '☄️', isSpecial: true, location: 'asteroid', timer: 1800, description: 'Ядро древнего метеорита.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/special_asteroid_stage1.png', fallbackIcon: '☄️' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/special_asteroid_stage2.png', fallbackIcon: '🌠' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/special_asteroid_stage3.png', fallbackIcon: '💫' }], possibleIngots: ['tungsten', 'darkmatter'], xpValue: 200 },
     special_meteor: { id: 'special_meteor', name: 'Ядро Галактики', icon: '🌀', isSpecial: true, location: 'meteor', timer: 3600, description: 'Сердце падшей звезды.', stages: [{ minTaps: 7, maxTaps: 10, imagePath: 'assets/geodes/special_meteor_stage1.png', fallbackIcon: '🌀' }, { minTaps: 3, maxTaps: 6, imagePath: 'assets/geodes/special_meteor_stage2.png', fallbackIcon: '🌌' }, { minTaps: 1, maxTaps: 2, imagePath: 'assets/geodes/special_meteor_stage3.png', fallbackIcon: '💫' }], possibleIngots: ['orion', 'andromeda'], xpValue: 300 }
 };
 
-export const CONFIG_EXPEDITIONS = {
-    mine: { id: 'mine', name: 'Шахты', description: 'Глубинная разработка в коре планеты.', imagePath: 'assets/expeditions/mine.png', fallbackIcon: '⛏️', timer: 30, requiredLevel: 1, specialGeodeChance: 0.10, specialGeodeId: 'special_mine' },
-    jungle: { id: 'jungle', name: 'Джунгли', description: 'Опасные, но богатые заросли.', imagePath: 'assets/expeditions/jungle.png', fallbackIcon: '🌴', timer: 300, requiredLevel: 5, specialGeodeChance: 0.15, specialGeodeId: 'special_jungle' },
-    asteroid: { id: 'asteroid', name: 'Пояс Астероидов', description: 'Экстремальная экспедиция в открытый космос.', imagePath: 'assets/expeditions/asteroid.png', fallbackIcon: '🪐', timer: 1200, requiredLevel: 10, specialGeodeChance: 0.25, specialGeodeId: 'special_asteroid' }
-};
+// ========== ГРУППЫ ЭКСПЕДИЦИЙ ==========
+export const EXPEDITION_GROUPS = [
+    {
+        id: 'test',
+        name: 'Тест',
+        icon: '🧪',
+        expeditions: [
+            {
+                id: 'mine',
+                name: 'Шахты',
+                description: 'Глубинная разработка в коре планеты.',
+                imagePath: 'assets/expeditions/mine.png',
+                fallbackIcon: '⛏️',
+                timer: 30,
+                requiredLevel: 1,
+                specialGeodeChance: 0.10,
+                specialGeodeId: 'special_mine',
+                unlockedByDefault: true
+            },
+            {
+                id: 'jungle',
+                name: 'Джунгли',
+                description: 'Опасные, но богатые заросли.',
+                imagePath: 'assets/expeditions/jungle.png',
+                fallbackIcon: '🌴',
+                timer: 300,
+                requiredLevel: 5,
+                specialGeodeChance: 0.15,
+                specialGeodeId: 'special_jungle',
+                unlockedByDefault: false,
+                unlockCost: 0,
+                unlockLevel: 5
+            },
+            {
+                id: 'asteroid',
+                name: 'Пояс Астероидов',
+                description: 'Экстремальная экспедиция в открытый космос.',
+                imagePath: 'assets/expeditions/asteroid.png',
+                fallbackIcon: '🪐',
+                timer: 1200,
+                requiredLevel: 10,
+                specialGeodeChance: 0.25,
+                specialGeodeId: 'special_asteroid',
+                unlockedByDefault: false,
+                unlockCost: 0,
+                unlockLevel: 10
+            }
+        ]
+    }
+];
+
+// Обратная совместимость
+export const CONFIG_EXPEDITIONS = {};
+EXPEDITION_GROUPS.forEach(group => {
+    group.expeditions.forEach(exp => {
+        CONFIG_EXPEDITIONS[exp.id] = exp;
+    });
+});
 
 export const GUILD_QUESTS = [
-    { id: 'quest_1', name: 'Медный заказ', description: 'Гильдия просит поставить партию меди для электропроводки.', reqLevel: 1, ingredients: { copper: 3 }, rewardXP: 25 },
-    { id: 'quest_2', name: 'Железная партия', description: 'Строителям нужны железные слитки для каркаса станции.', reqLevel: 1, ingredients: { iron: 3 }, rewardXP: 25 },
-    { id: 'quest_3', name: 'Топливный контракт', description: 'Угольные брикеты требуются для систем фильтрации.', reqLevel: 2, ingredients: { coal: 4 }, rewardXP: 30 },
-    { id: 'quest_4', name: 'Био-сплав для медиков', description: 'Медицинский центр запрашивает Био-медь для регенеративных камер.', reqLevel: 4, ingredients: { biocopper: 2 }, rewardXP: 60, rewardGeode: 'jungle' },
-    { id: 'quest_5', name: 'Метеоритный груз', description: 'Инженеры просят доставить Реолит и Феррит для анализа.', reqLevel: 4, ingredients: { rheolite: 3, ferrite: 2 }, rewardXP: 80 },
-    { id: 'quest_6', name: 'Звёздный блеск', description: 'Ювелиры ищут Звёздное Серебро для украшений.', reqLevel: 5, ingredients: { star_silver: 2 }, rewardXP: 100, rewardGeode: 'meteor_common' },
-    { id: 'quest_7', name: 'Эпический сплав', description: 'Военные просят Изумрудную сталь для экспериментального оружия.', reqLevel: 6, ingredients: { emeraldsteel: 1, titanium: 1 }, rewardXP: 150, rewardGeode: 'meteor_rare' },
-    { id: 'quest_8', name: 'Крафтовый заказ', description: 'Гильдия кузнецов просит Чёрное Зеркало для изучения.', reqLevel: 7, ingredients: { black_mirror: 1 }, rewardXP: 200 },
-    { id: 'quest_9', name: 'Астро-контракт', description: 'Космическая верфь запрашивает Астро-Бронзу для обшивки.', reqLevel: 8, ingredients: { astro_bronze: 1 }, rewardXP: 250, rewardGeode: 'meteor_legendary' },
-    { id: 'quest_10', name: 'Элитный заказ Гильдии', description: 'Верховный совет просит Хромированный Титан для защиты штаба.', reqLevel: 9, ingredients: { chrome_titan: 1, meteor_gold: 2 }, rewardXP: 400, rewardGeode: 'special_meteor' }
+    { id: 'quest_1', name: 'Медный заказ', description: 'Гильдия просит поставить партию меди.', reqLevel: 1, ingredients: { copper: 3 }, rewardXP: 25 },
+    { id: 'quest_2', name: 'Железная партия', description: 'Строителям нужны железные слитки.', reqLevel: 1, ingredients: { iron: 3 }, rewardXP: 25 },
+    { id: 'quest_3', name: 'Топливный контракт', description: 'Угольные брикеты для фильтрации.', reqLevel: 2, ingredients: { coal: 4 }, rewardXP: 30 },
+    { id: 'quest_4', name: 'Био-сплав для медиков', description: 'Медцентр запрашивает Био-медь.', reqLevel: 4, ingredients: { biocopper: 2 }, rewardXP: 60, rewardGeode: 'jungle' },
+    { id: 'quest_5', name: 'Метеоритный груз', description: 'Доставить Реолит и Феррит.', reqLevel: 4, ingredients: { rheolite: 3, ferrite: 2 }, rewardXP: 80 },
+    { id: 'quest_6', name: 'Звёздный блеск', description: 'Ювелиры ищут Звёздное Серебро.', reqLevel: 5, ingredients: { star_silver: 2 }, rewardXP: 100, rewardGeode: 'meteor_common' },
+    { id: 'quest_7', name: 'Эпический сплав', description: 'Военные просят Изумрудную сталь и Титан.', reqLevel: 6, ingredients: { emeraldsteel: 1, titanium: 1 }, rewardXP: 150, rewardGeode: 'meteor_rare' },
+    { id: 'quest_8', name: 'Крафтовый заказ', description: 'Гильдия просит Чёрное Зеркало.', reqLevel: 7, ingredients: { black_mirror: 1 }, rewardXP: 200 },
+    { id: 'quest_9', name: 'Астро-контракт', description: 'Верфь запрашивает Астро-Бронзу.', reqLevel: 8, ingredients: { astro_bronze: 1 }, rewardXP: 250, rewardGeode: 'meteor_legendary' },
+    { id: 'quest_10', name: 'Элитный заказ Гильдии', description: 'Верховный совет просит Хромированный Титан.', reqLevel: 9, ingredients: { chrome_titan: 1, meteor_gold: 2 }, rewardXP: 400, rewardGeode: 'special_meteor' }
 ];
 
 export const LEVELS = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3300, 4000, 4800, 5700, 6700, 7800, 9000, 10300, 11700, 13200, 15000];
 export const STATUSES = ['Новичок', 'Старатель', 'Геолог', 'Шахтёр', 'Исследователь', 'Космопроходец', 'Мастер Жеод', 'Хранитель', 'Легенда'];
 
-// ========== КОНФИГУРАЦИЯ СЛОТОВ ЭКИПИРОВКИ ==========
 export const EQUIP_SLOTS_CONFIG = {
     maxSlots: 3,
     unlockLevels: { 2: 10, 3: 20 },
@@ -403,7 +553,8 @@ export const DEFAULT_STATE = {
     echoCooldowns: {},
     expeditionBonuses: {},
     completedQuests: [],
-    equippedArtifacts: [null, null, null]
+    equippedArtifacts: [null, null, null],
+    unlockedExpeditions: ['mine']
 };
 
 export const EVENTS_CONFIG = {
@@ -411,5 +562,5 @@ export const EVENTS_CONFIG = {
     eventDuration: 15 * 60 * 1000,
     events: ['great_smelt', 'meteor_storm'],
     great_smelt: { id: 'great_smelt', name: 'Великая Переплавка', icon: '🔥', description: 'Древние кузни остывают!', longDescription: 'Собери ресурсы и создай крафтовые предметы в Плавильне!' },
-    meteor_storm: { id: 'meteor_storm', name: 'Метеоритный Шторм', icon: '☄️', description: 'Небо пылает! Лови падающие метеориты!', longDescription: 'Метеориты падают с небес! Тапай по ним, чтобы собрать. Обменяй осколки на жеоды!', stormDuration: 30, meteorTypes: { legendary: { icon: '✨', emoji: '✨', color: '#FFD700', glowColor: 'rgba(255, 215, 0, 0.8)', speed: 2.2, size: 55, spawnWeight: 0.08, pointsPerUnit: 1, requiredForGeode: 2 }, rare: { icon: '🔥', emoji: '🔥', color: '#FF8C00', glowColor: 'rgba(255, 140, 0, 0.7)', speed: 3.0, size: 48, spawnWeight: 0.27, pointsPerUnit: 1, requiredForGeode: 4 }, common: { icon: '☄️', emoji: '☄️', color: '#A0A0A0', glowColor: 'rgba(160, 160, 160, 0.6)', speed: 3.8, size: 40, spawnWeight: 0.65, pointsPerUnit: 1, requiredForGeode: 6 } }, spawnInterval: 400, maxMeteorsOnScreen: 12, rewards: { legendary: { geodeId: 'special_asteroid', geodeCount: 1, xpBonus: 150 }, rare: { geodeId: 'asteroid', geodeCount: 1, xpBonus: 60 }, common: { geodeId: 'mine', geodeCount: 1, xpBonus: 20 } } }
+    meteor_storm: { id: 'meteor_storm', name: 'Метеоритный Шторм', icon: '☄️', description: 'Небо пылает!', longDescription: 'Метеориты падают с небес! Тапай по ним, чтобы собрать осколки.', stormDuration: 30, meteorTypes: { legendary: { icon: '✨', emoji: '✨', color: '#FFD700', glowColor: 'rgba(255, 215, 0, 0.8)', speed: 2.2, size: 55, spawnWeight: 0.08, pointsPerUnit: 1, requiredForGeode: 2 }, rare: { icon: '🔥', emoji: '🔥', color: '#FF8C00', glowColor: 'rgba(255, 140, 0, 0.7)', speed: 3.0, size: 48, spawnWeight: 0.27, pointsPerUnit: 1, requiredForGeode: 4 }, common: { icon: '☄️', emoji: '☄️', color: '#A0A0A0', glowColor: 'rgba(160, 160, 160, 0.6)', speed: 3.8, size: 40, spawnWeight: 0.65, pointsPerUnit: 1, requiredForGeode: 6 } }, spawnInterval: 400, maxMeteorsOnScreen: 12, rewards: { legendary: { geodeId: 'special_asteroid', geodeCount: 1, xpBonus: 150 }, rare: { geodeId: 'asteroid', geodeCount: 1, xpBonus: 60 }, common: { geodeId: 'mine', geodeCount: 1, xpBonus: 20 } } }
 };
