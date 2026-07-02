@@ -259,7 +259,11 @@ export const eventsManager = {
     sendBotNotification(`🚀 Ивент запущен: ${def.name}`);
     saveGame();
     
-    if (_renderEventsTab) _renderEventsTab();
+    // НЕ переключаем вкладку — только обновляем если игрок уже на вкладке Игр
+    if (_renderEventsTab) {
+      const { currentTab } = require('./ui.js');
+      if (currentTab === 'events') _renderEventsTab();
+    }
   },
   
   endEventInternal() {
@@ -274,7 +278,13 @@ export const eventsManager = {
     this.eventEndTime = null;
     
     saveGame();
-    if (_renderEventsTab) _renderEventsTab();
+    
+    // НЕ переключаем вкладку — только обновляем если игрок уже на вкладке Игр
+    if (_renderEventsTab) {
+      import('./ui.js').then(ui => {
+        if (ui.currentTab === 'events') _renderEventsTab();
+      });
+    }
   },
   
   startEventById(eventId) {
@@ -291,7 +301,11 @@ export const eventsManager = {
     sendBotNotification(`🚀 Ивент запущен вручную: ${def.name}`);
     saveGame();
     
-    if (_renderEventsTab) _renderEventsTab();
+    if (_renderEventsTab) {
+      import('./ui.js').then(ui => {
+        if (ui.currentTab === 'events') _renderEventsTab();
+      });
+    }
   },
   
   forceEndEvent() {
@@ -323,7 +337,12 @@ export const eventsManager = {
     this.eventEndTime = null;
     
     saveGame();
-    if (_renderEventsTab) _renderEventsTab();
+    
+    if (_renderEventsTab) {
+      import('./ui.js').then(ui => {
+        if (ui.currentTab === 'events') _renderEventsTab();
+      });
+    }
   }
 };
 
@@ -606,7 +625,6 @@ export function devGiveGeodes() {
 export function devUnlockLocations() {
   playerState.player.level = Math.max(playerState.player.level, 10);
   if (!playerState.unlockedExpeditions) playerState.unlockedExpeditions = ['mine'];
-  // Разблокируем все экспедиции
   EXPEDITION_GROUPS.forEach(group => {
     group.expeditions.forEach(exp => {
       if (!playerState.unlockedExpeditions.includes(exp.id)) {
@@ -1504,7 +1522,6 @@ function checkCompletedExpeditions() {
       
       const drop = getRandomDropFromExpedition(k);
       
-      // Проверка на двойной дроп
       const doubleDropChance = getBonusDoubleDrop();
       let extraDrop = false;
       if (doubleDropChance > 0 && Math.random() * 100 < doubleDropChance) {
@@ -1578,7 +1595,6 @@ export function startExpedition(expId) {
   const exp = playerState.expeditions[expId];
   if (!exp || exp.active) return;
   
-  // Проверяем, разблокирована ли экспедиция
   if (playerState.unlockedExpeditions && !playerState.unlockedExpeditions.includes(expId)) {
     if (_showToast) _showToast('Эта экспедиция ещё не открыта!', '🔒');
     return;
