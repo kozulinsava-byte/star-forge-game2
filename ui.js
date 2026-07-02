@@ -349,7 +349,7 @@ function showAdminPanel() {
     <div class="modal-content" style="text-align:left;">
       <div style="margin-bottom:12px; font-weight:600; color:var(--accent-gold);">⚡ Быстрые действия</div>
       <button class="btn" id="adminMaxXP" style="margin-bottom:6px;">🌟 Дать 1M XP</button>
-      <button class="btn" id="adminUnlockAll" style="margin-bottom:6px;">🔓 Открыть все локации (ур.10)</button>
+      <button class="btn" id="adminUnlockAll" style="margin-bottom:6px;">🔓 Открыть все локации (ур.6)</button>
       <button class="btn" id="adminFillGeodes" style="margin-bottom:6px;">🪨 +10 всех жеод</button>
       <button class="btn" id="adminFillIngots" style="margin-bottom:6px;">✨ +10 всех обычных слитков</button>
       <button class="btn" id="adminFillArtifacts" style="margin-bottom:6px;">💎 +1 всех коллекционных артефактов</button>
@@ -407,7 +407,7 @@ function showAdminPanel() {
     document.getElementById('adminUnlockAll')?.addEventListener('click', () => { 
       devUnlockLocations(); 
       saveGame(); 
-      showToast('Локации открыты (уровень 10)!', '🔓'); 
+      showToast('Локации открыты (уровень 6)!', '🔓'); 
       closeModal(); 
     });
     
@@ -435,12 +435,12 @@ function showAdminPanel() {
     document.getElementById('adminFillArtifacts')?.addEventListener('click', () => {
       const state = getPlayerState();
       Object.keys(CONFIG_ITEMS).forEach(id => {
-        if (CONFIG_ITEMS[id].isCollectible && CONFIG_ITEMS[id].location !== 'craft') {
+        if (CONFIG_ITEMS[id].isCollectible) {
           state.ingots[id] = (state.ingots[id] || 0) + 1;
           state.minedStats[id] = (state.minedStats[id] || 0) + 1;
         }
       });
-      state.player.totalArtifacts += 8;
+      state.player.totalArtifacts += Object.keys(CONFIG_ITEMS).filter(id => CONFIG_ITEMS[id].isCollectible).length;
       saveGame(); 
       showToast('+1 артефакт каждого типа!', '💎'); 
       closeModal(); 
@@ -467,8 +467,7 @@ function showAdminPanel() {
       
       // Сброс жеод до стартовых
       Object.keys(state.geodes).forEach(k => { state.geodes[k] = 0; });
-      state.geodes['mine'] = 2;
-      state.geodes['jungle'] = 1;
+      state.geodes['swamp'] = 3;
       
       // Полный сброс слитков и статистики
       Object.keys(state.ingots).forEach(k => { state.ingots[k] = 0; });
@@ -476,9 +475,9 @@ function showAdminPanel() {
       
       // Сброс особых жеод и артефактов
       Object.keys(state.discoveredSpecialGeodes).forEach(k => { state.discoveredSpecialGeodes[k] = false; });
-      state.collectedArtifacts.mine = [];
-      state.collectedArtifacts.jungle = [];
-      state.collectedArtifacts.asteroid = [];
+      state.collectedArtifacts.swamp = [];
+      state.collectedArtifacts.rotforest = [];
+      state.collectedArtifacts.rustbottom = [];
       state.collectedArtifacts.meteor = [];
       
       // Сброс эхо-кулдаунов и бонусов экспедиций
@@ -496,7 +495,7 @@ function showAdminPanel() {
       state.questCooldownEnd = null;
       
       // Сброс разблокированных экспедиций до стартовых
-      state.unlockedExpeditions = ['mine'];
+      state.unlockedExpeditions = ['swamp'];
       
       // Сброс слотов экипировки
       state.equippedArtifacts = [null, null, null];
@@ -783,7 +782,7 @@ export function showExpeditionInfoModal(expId) {
   }
 
   let scoutButton = '';
-  if (expId !== 'mine' && isActive) {
+  if (expId !== 'swamp' && isActive) {
     const bonusUsed = state.expeditionBonuses && state.expeditionBonuses[expId] !== undefined;
     const echoCooldown = state.echoCooldowns?.[expId] || 0;
     const now = Date.now();
@@ -1030,7 +1029,7 @@ export function renderExpeditionsTab() {
     </style>
   `;
   
-  if (!state.unlockedExpeditions) state.unlockedExpeditions = ['mine'];
+  if (!state.unlockedExpeditions) state.unlockedExpeditions = ['swamp'];
   
   EXPEDITION_GROUPS.forEach((group, groupIndex) => {
     const isOpen = expandedGroups[group.id] !== undefined ? expandedGroups[group.id] : true;
@@ -1169,7 +1168,7 @@ export function renderExpeditionsTab() {
 // ========== РАЗБЛОКИРОВКА ЭКСПЕДИЦИИ С АНИМАЦИЕЙ ==========
 function unlockExpedition(expId) {
   const state = getPlayerState();
-  if (!state.unlockedExpeditions) state.unlockedExpeditions = ['mine'];
+  if (!state.unlockedExpeditions) state.unlockedExpeditions = ['swamp'];
   
   if (state.unlockedExpeditions.includes(expId)) return;
   
@@ -1939,7 +1938,7 @@ export function renderCollectionTab() {
       `;
     }
     
-    html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:16px; font-weight:700; margin:20px 0 12px; color:var(--accent-gold);">⛏️ Шахты и Экспедиции</div>';
+    html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:16px; font-weight:700; margin:20px 0 12px; color:var(--accent-gold);">🫧 Трясина</div>';
     html += '<div class="grid-container">';
     regularIngots.filter(i => i.sourceType === 'expedition').forEach(ing => { html += renderIngotCard(ing); });
     html += '</div>';
