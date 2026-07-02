@@ -1280,22 +1280,20 @@ export function renderInventoryTab() {
     // Вкладка слитков
     const items = Object.entries(state.ingots).filter(([k, c]) => c > 0 && !CONFIG_ITEMS[k].isCollectible);
     
-    // Кнопка Алхимии
+    // Кнопка Алхимии — всегда видна, disabled до 3 уровня
     const alchemyAvailable = state.player.level >= 3;
-    const alchemyBtnText = alchemyMode ? '❌ Отмена' : '⚗️ Сплавить';
+    const alchemyBtnText = !alchemyAvailable ? '🔒 Сплавить (ур. 3)' : (alchemyMode ? '❌ Отмена' : '⚗️ Сплавить');
     const alchemyBtnStyle = alchemyMode ? 'background: rgba(255,68,68,0.15); border-color: rgba(255,68,68,0.4); color: #FF4444;' : '';
     
-    if (alchemyAvailable) {
-      html += `
-        <div style="margin-bottom:14px;">
-          <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyBtnStyle}">
-            ${alchemyBtnText}
-          </button>
-          ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
-          ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй слиток.</div>` : ''}
-        </div>
-      `;
-    }
+    html += `
+      <div style="margin-bottom:14px;">
+        <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyBtnStyle}" ${!alchemyAvailable ? 'disabled' : ''}>
+          ${alchemyBtnText}
+        </button>
+        ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
+        ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй слиток.</div>` : ''}
+      </div>
+    `;
     
     if (!items.length) {
       html += '<div class="empty-state">Нет слитков. Откройте жеоды.</div>';
@@ -1362,7 +1360,7 @@ export function renderInventoryTab() {
     
     // Обработчик кнопки Алхимии
     const alchemyBtn = document.getElementById('toggleAlchemyBtn');
-    if (alchemyBtn) {
+    if (alchemyBtn && alchemyAvailable) {
       alchemyBtn.addEventListener('click', () => {
         if (alchemyMode) {
           // Выход из режима
@@ -1423,7 +1421,7 @@ export function renderInventoryTab() {
   document.querySelectorAll('[data-geode]').forEach((c) => c.addEventListener('click', () => showGeodeModal(c.dataset.geode)));
 }
 
-// ========== МОДАЛКА ПОДТВЕРЖДЕНИЯ АЛХИМИИ ==========
+// ========== ★ ПРЕМИАЛЬНАЯ МОДАЛКА АЛХИМИИ (БЕЗ ТЕКСТА, ТОЛЬКО ВИЗУАЛ) ★ ==========
 function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const state = getPlayerState();
   
@@ -1442,55 +1440,135 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const ing1 = CONFIG_ITEMS[ingotId1];
   const ing2 = CONFIG_ITEMS[ingotId2];
   const resultIngot = CONFIG_ITEMS[matchedRecipe.resultIngotId];
-  
   const isFirstDiscovery = !state.discoveredAlchemyRecipes || !state.discoveredAlchemyRecipes.includes(matchedRecipe.id);
   const totalXP = matchedRecipe.xpReward + (isFirstDiscovery ? matchedRecipe.discoveryBonusXP : 0);
   
-  const resultDisplay = isFirstDiscovery ? `<span style="font-size:28px;">❓</span>` : `<span style="font-size:28px;">${resultIngot.icon}</span>`;
-  
   const html = `
+    <style>
+      @keyframes alchemyGlow {
+        0%,100% { box-shadow: 0 0 30px rgba(255,215,0,0.3), inset 0 0 30px rgba(255,180,0,0.05); }
+        50% { box-shadow: 0 0 60px rgba(255,215,0,0.6), inset 0 0 50px rgba(255,180,0,0.1); }
+      }
+      @keyframes alchemyResultAppear {
+        0% { opacity: 0; transform: scale(0.3) rotate(-10deg); }
+        60% { opacity: 1; transform: scale(1.15) rotate(3deg); }
+        100% { opacity: 1; transform: scale(1) rotate(0deg); }
+      }
+      @keyframes alchemyPulse {
+        0%,100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+      @keyframes alchemySpark {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0); }
+      }
+      .alchemy-modal-bg {
+        background: radial-gradient(circle at 50% 30%, rgba(255,140,0,0.08) 0%, rgba(20,20,22,0.98) 70%);
+      }
+      .alchemy-slots-area {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin: 20px 0;
+      }
+      .alchemy-slot {
+        width: 70px;
+        height: 70px;
+        background: rgba(255,255,255,0.03);
+        border: 2px solid rgba(255,215,0,0.2);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        transition: all 0.3s ease;
+      }
+      .alchemy-slot.selected {
+        border-color: rgba(255,215,0,0.6);
+        background: rgba(255,215,0,0.06);
+        box-shadow: 0 0 20px rgba(255,180,0,0.2);
+      }
+      .alchemy-operator {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--accent-gold);
+        min-width: 24px;
+        text-align: center;
+      }
+      .alchemy-result-area {
+        width: 90px;
+        height: 90px;
+        margin: 0 auto;
+        background: rgba(0,0,0,0.3);
+        border: 2px solid rgba(255,215,0,0.4);
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 38px;
+        animation: alchemyGlow 3s ease-in-out infinite;
+        position: relative;
+        overflow: hidden;
+      }
+      .alchemy-result-area .result-icon {
+        animation: alchemyResultAppear 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .alchemy-result-area .result-mystery {
+        font-size: 32px;
+        color: rgba(255,255,255,0.2);
+        animation: alchemyPulse 2s ease-in-out infinite;
+      }
+      .alchemy-reward-badge {
+        display: inline-block;
+        background: rgba(255,215,0,0.1);
+        border: 1px solid rgba(255,215,0,0.3);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 11px;
+        color: var(--accent-gold);
+        font-weight: 600;
+        margin-top: 8px;
+      }
+      .alchemy-confirm-btn {
+        background: linear-gradient(135deg, #FFD700, #FF8C00);
+        color: #000;
+        border: none;
+        padding: 14px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        width: 100%;
+        box-shadow: 0 4px 20px rgba(255,140,0,0.3);
+        transition: all 0.2s;
+        margin-top: 8px;
+      }
+      .alchemy-confirm-btn:active { transform: scale(0.94); }
+    </style>
     <div class="modal-header">
-      <div class="modal-title">⚗️ Алхимический сплав</div>
+      <div class="modal-title" style="font-size:18px;">⚗️ Алхимический сплав</div>
       <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
     </div>
-    <div class="modal-content">
-      <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin:16px 0;">
-        <div style="text-align:center;">
-          <div style="font-size:36px;">${ing1.icon}</div>
-          <div style="font-size:10px; color:var(--text-secondary);">${ing1.name}</div>
-        </div>
-        <div style="font-size:20px; color:var(--accent-gold); font-weight:700;">+</div>
-        <div style="text-align:center;">
-          <div style="font-size:36px;">${ing2.icon}</div>
-          <div style="font-size:10px; color:var(--text-secondary);">${ing2.name}</div>
-        </div>
-        <div style="font-size:24px; color:var(--accent-gold); margin:0 8px;">→</div>
-        <div style="text-align:center;">
-          ${resultDisplay}
-          <div style="font-size:10px; color:${isFirstDiscovery ? 'var(--text-muted)' : 'var(--text-primary)'};">
-            ${isFirstDiscovery ? '???' : resultIngot.name}
-          </div>
+    <div class="modal-content alchemy-modal-bg">
+      <div class="alchemy-slots-area">
+        <div class="alchemy-slot selected">${ing1.icon}</div>
+        <div class="alchemy-operator">+</div>
+        <div class="alchemy-slot selected">${ing2.icon}</div>
+        <div class="alchemy-operator">→</div>
+        <div class="alchemy-result-area">
+          ${isFirstDiscovery ? '<div class="result-mystery">❓</div>' : `<div class="result-icon">${resultIngot.icon}</div>`}
         </div>
       </div>
-      
-      <div style="background:rgba(0,0,0,0.2); border-radius:16px; padding:14px; margin:12px 0;">
-        <div style="font-weight:700; font-size:14px; color:var(--accent-gold); margin-bottom:6px;">${matchedRecipe.name}</div>
-        <div style="font-size:11px; color:var(--text-secondary);">${matchedRecipe.description}</div>
-        <div style="font-size:11px; color:var(--accent-gold); margin-top:8px;">
-          Награда: +${totalXP} XP
-          ${isFirstDiscovery ? ' (включая бонус за первое открытие!)' : ''}
-        </div>
-        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">
-          Требуемый уровень: ${matchedRecipe.reqLevel}
-        </div>
+      <div style="text-align:center;">
+        ${isFirstDiscovery 
+          ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Неизвестный сплав</div>' 
+          : `<div style="font-size:13px;color:var(--text-primary);font-weight:600;">${resultIngot.name}</div>`}
+        <div class="alchemy-reward-badge">⚡ +${totalXP} XP</div>
+        ${isFirstDiscovery ? '<div style="font-size:10px;color:#FFD700;margin-top:4px;">🌟 Первое открытие — бонус!</div>' : ''}
       </div>
-      
-      <button class="btn" id="confirmAlchemyBtn" style="background: linear-gradient(135deg, #FFD700, #FF8C00); color:#000; font-weight:700; margin-bottom:8px;">
-        ⚗️ СПЛАВИТЬ
-      </button>
-      <button class="btn" id="cancelAlchemyBtn" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color:var(--text-secondary);">
-        Отмена
-      </button>
+      <button class="alchemy-confirm-btn" id="confirmAlchemyBtn">⚗️ СПЛАВИТЬ</button>
+      <button class="btn" id="cancelAlchemyBtn" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:var(--text-secondary);margin-top:6px;">Отмена</button>
     </div>
   `;
   
@@ -1508,7 +1586,7 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
         alchemyFirstIngot = null;
         
         if (result.isFirstDiscovery) {
-          showToast(`🎉 ПЕРВОЕ ОТКРЫТИЕ! ${result.resultIngot.name}! +${result.xpGained} XP`, '⚗️');
+          showAlchemyDiscoveryAnimation(result.resultIngot, result.xpGained);
         } else {
           showToast(`Создано: ${result.resultIngot.name}! +${result.xpGained} XP`, '⚗️');
         }
@@ -1523,6 +1601,52 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
       closeModal();
     });
   }, 30);
+}
+
+// ★ АНИМАЦИЯ ПЕРВОГО ОТКРЫТИЯ ★
+function showAlchemyDiscoveryAnimation(ingot, xpGained) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10001;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+  
+  const icon = document.createElement('div');
+  icon.textContent = ingot.icon;
+  icon.style.cssText = 'font-size:80px;animation:alchemyResultAppear 0.8s cubic-bezier(0.175,0.885,0.32,1.275);filter:drop-shadow(0 0 40px rgba(255,215,0,0.8));';
+  
+  const name = document.createElement('div');
+  name.textContent = ingot.name;
+  name.style.cssText = 'font-family:Unbounded,sans-serif;font-size:22px;font-weight:800;color:#FFD700;margin-top:16px;text-shadow:0 0 20px rgba(255,215,0,0.5);';
+  
+  const xp = document.createElement('div');
+  xp.textContent = `+${xpGained} XP`;
+  xp.style.cssText = 'font-size:16px;color:#50C878;margin-top:8px;font-weight:700;';
+  
+  const label = document.createElement('div');
+  label.textContent = '🌟 ПЕРВОЕ АЛХИМИЧЕСКОЕ ОТКРЫТИЕ!';
+  label.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.5);margin-top:12px;letter-spacing:2px;text-transform:uppercase;';
+  
+  overlay.appendChild(icon);
+  overlay.appendChild(name);
+  overlay.appendChild(xp);
+  overlay.appendChild(label);
+  document.body.appendChild(overlay);
+  
+  // Частицы
+  for (let i = 0; i < 24; i++) {
+    const spark = document.createElement('div');
+    spark.style.cssText = `position:fixed;width:4px;height:4px;border-radius:50%;background:#FFD700;z-index:10002;left:50%;top:50%;box-shadow:0 0 10px #FFD700;animation:alchemySpark 1s ease-out forwards;animation-delay:${i * 0.03}s;`;
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 120;
+    spark.style.setProperty('--sx', Math.cos(angle) * dist + 'px');
+    spark.style.setProperty('--sy', Math.sin(angle) * dist + 'px');
+    document.body.appendChild(spark);
+    setTimeout(() => spark.remove(), 1100);
+  }
+  
+  setTimeout(() => {
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.5s';
+    setTimeout(() => overlay.remove(), 500);
+  }, 2000);
 }
 
 // ========== КОЛЛЕКЦИЯ: ПОЛОЧКИ ==========
