@@ -1,5 +1,5 @@
 // ========== CORE МОДУЛЬ: ЛОГИКА ИГРЫ ==========
-import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, CRAFT_RECIPES, LEVELS, DEFAULT_STATE, GUILD_QUESTS } from './config.js';
+import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, CRAFT_RECIPES, ALCHEMY_RECIPES, LEVELS, DEFAULT_STATE, GUILD_QUESTS } from './config.js';
 import { regenEnergy, checkLevelLock, getIngotSaveData, initIngotState, getBonusExpeditionSpeed, getBonusXP, getBonusDoubleDrop } from './ingot.js';
 
 // ========== ЗАГЛУШКИ UI ФУНКЦИЙ ==========
@@ -44,7 +44,8 @@ export let playerState = {
   questRefreshTime: null,
   completedQuests: [],
   questCooldownEnd: null,
-  unlockedExpeditions: ['mine']
+  unlockedExpeditions: ['mine'],
+  discoveredAlchemyRecipes: []
 };
 
 export function getPlayerState() {
@@ -259,10 +260,10 @@ export const eventsManager = {
     sendBotNotification(`🚀 Ивент запущен: ${def.name}`);
     saveGame();
     
-    // НЕ переключаем вкладку — только обновляем если игрок уже на вкладке Игр
     if (_renderEventsTab) {
-      const { currentTab } = require('./ui.js');
-      if (currentTab === 'events') _renderEventsTab();
+      import('./ui.js').then(ui => {
+        if (ui.currentTab === 'events') _renderEventsTab();
+      });
     }
   },
   
@@ -279,7 +280,6 @@ export const eventsManager = {
     
     saveGame();
     
-    // НЕ переключаем вкладку — только обновляем если игрок уже на вкладке Игр
     if (_renderEventsTab) {
       import('./ui.js').then(ui => {
         if (ui.currentTab === 'events') _renderEventsTab();
@@ -1274,7 +1274,8 @@ export function saveGame() {
       lastEnergyRegen: ingotSave.lastEnergyRegen,
       levelLocked: ingotSave.levelLocked,
       equippedArtifacts: playerState.equippedArtifacts || [null, null, null],
-      unlockedExpeditions: playerState.unlockedExpeditions || ['mine']
+      unlockedExpeditions: playerState.unlockedExpeditions || ['mine'],
+      discoveredAlchemyRecipes: playerState.discoveredAlchemyRecipes || []
     },
     collectibleSerials,
     nextSerial,
@@ -1392,6 +1393,12 @@ function applySaveData(data) {
     playerState.unlockedExpeditions = ['mine'];
   }
   
+  if (Array.isArray(saved.discoveredAlchemyRecipes)) {
+    playerState.discoveredAlchemyRecipes = [...saved.discoveredAlchemyRecipes];
+  } else {
+    playerState.discoveredAlchemyRecipes = [];
+  }
+  
   initIngotState({
     ingotShavings: saved.ingotShavings || 0,
     tapEnergy: saved.tapEnergy || 500,
@@ -1447,6 +1454,7 @@ export const saveToLocalStorage = saveGame;
   playerState.questCooldownEnd = null;
   playerState.equippedArtifacts = [null, null, null];
   playerState.unlockedExpeditions = ['mine'];
+  playerState.discoveredAlchemyRecipes = [];
   
   console.log('[Core] DEFAULT_STATE применён синхронно при загрузке модуля');
 })();
@@ -1614,6 +1622,74 @@ export function startExpedition(expId) {
   if (_renderExpeditionsTab) _renderExpeditionsTab();
   if (_showToast) _showToast(`Экспедиция началась!`, CONFIG_EXPEDITIONS[expId].fallbackIcon);
   sendBotNotification(`⛏️ Игрок отправился в экспедицию: ${CONFIG_EXPEDITIONS[expId].name}`);
+}
+
+// ========== 🧪 АЛХИМИЯ: СПЛАВЛЕНИЕ СЛИТКОВ ==========
+export function performAlchemy(ingotId1, ingotId2) {
+  if (!playerState) return { success: false, message: 'Ошибка состояния игры.' };
+  
+  // Ищем рецепт по двум ингредиентам
+  let matchedRecipe = null;
+  for (let recipeId in ALCHEMY_RECIPES) {
+    const recipe = ALCHEMY_RECIPES[recipeId];
+    const hasBoth = recipe.ingredients.includes(ingotId1) && recipe.ingredients.includes(ingotId2);
+    if (hasBoth) {
+      matchedRecipe = recipe;
+      break;
+    }
+  }
+  
+  if (!matchedRecipe) {
+    return { success: false, message: 'Рецепт не найден!' };
+  }
+  
+  // Проверка уровня
+  if (playerState.player.level < matchedRecipe.reqLevel) {
+    return { success: false, message: `Требуется ${matchedRecipe.reqLevel} уровень!` };
+  }
+  
+  // Проверка наличия слитков
+  if ((playerState.ingots[ingotId1] || 0) < 1) {
+    return { success: false, message: `Недостаточно ${CONFIG_ITEMS[ingotId1]?.name || ingotId1}!` };
+  }
+  if ((playerState.ingots[ingotId2] || 0) < 1) {
+    return { success: false, message: `Недостаточно ${CONFIG_ITEMS[ingotId2]?.name || ingotId2}!` };
+  }
+  
+  // Проверка на первое открытие
+  if (!playerState.discoveredAlchemyRecipes) {
+    playerState.discoveredAlchemyRecipes = [];
+  }
+  const isFirstDiscovery = !playerState.discoveredAlchemyRecipes.includes(matchedRecipe.id);
+  
+  // Списываем ингредиенты
+  playerState.ingots[ingotId1]--;
+  playerState.ingots[ingotId2]--;
+  
+  // Добавляем результат
+  playerState.ingots[matchedRecipe.resultIngotId] = (playerState.ingots[matchedRecipe.resultIngotId] || 0) + 1;
+  playerState.minedStats[matchedRecipe.resultIngotId] = (playerState.minedStats[matchedRecipe.resultIngotId] || 0) + 1;
+  playerState.player.totalIngots++;
+  
+  // Начисляем опыт
+  let totalXP = matchedRecipe.xpReward;
+  if (isFirstDiscovery) {
+    playerState.discoveredAlchemyRecipes.push(matchedRecipe.id);
+    totalXP += matchedRecipe.discoveryBonusXP;
+  }
+  addXP(totalXP);
+  
+  saveGame();
+  
+  const resultIngot = CONFIG_ITEMS[matchedRecipe.resultIngotId];
+  
+  return {
+    success: true,
+    recipe: matchedRecipe,
+    resultIngot: resultIngot,
+    isFirstDiscovery: isFirstDiscovery,
+    xpGained: totalXP
+  };
 }
 
 // ---------- ЧАСТИЦЫ И ТРЯСКА ----------
