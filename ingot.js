@@ -2,23 +2,14 @@
 import { CONFIG_ITEMS, EQUIP_SLOTS_CONFIG } from './config.js';
 import { getPlayerState, saveGame } from './core.js';
 
-// ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (15 УРОВНЕЙ) — ОБНОВЛЁННЫЕ РЕЦЕПТЫ С АЛХИМИЕЙ ==========
+// ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (6 УРОВНЕЙ) — ЭПОХА «ТРЯСИНА» ==========
 const INGOT_LEVELS = {
-  1: { level: 1, name: 'Ржавый Слиток', icon: '🪨', era: 'Эпоха Шахт', shavingsCost: 150, ingotCost: { copper: 3 }, tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
-  2: { level: 2, name: 'Чугунный Слиток', icon: '⚫', era: 'Эпоха Шахт', shavingsCost: 500, ingotCost: { iron: 2, coal: 2 }, tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
-  3: { level: 3, name: 'Медный Слиток', icon: '🟫', era: 'Эпоха Шахт', shavingsCost: 1500, ingotCost: { copper: 5, coal: 3 }, tapPower: 7, image: 'assets/king_ingot/ingot_3.png' },
-  4: { level: 4, name: 'Железный Слиток', icon: '⬜', era: 'Эпоха Шахт', shavingsCost: 4000, ingotCost: { cement_steel: 1, iron: 3, coal: 2 }, tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
-  5: { level: 5, name: 'Бронзовый Слиток', icon: '🟤', era: 'Эпоха Джунглей', shavingsCost: 10000, ingotCost: { forged_bronze: 1, cement_steel: 1, woodalloy: 1 }, tapPower: 30, image: 'assets/king_ingot/ingot_5.png' },
-  6: { level: 6, name: 'Стальной Слиток', icon: '🔩', era: 'Эпоха Джунглей', shavingsCost: 25000, ingotCost: { cement_steel: 2, biocopper: 2, woodalloy: 1 }, tapPower: 60, image: 'assets/king_ingot/ingot_6.png' },
-  7: { level: 7, name: 'Изумрудный Слиток', icon: '💚', era: 'Эпоха Джунглей', shavingsCost: 60000, ingotCost: { graphite_copper: 2, biocopper: 3, oxidizedsilver: 2 }, tapPower: 120, image: 'assets/king_ingot/ingot_7.png' },
-  8: { level: 8, name: 'Окисленный Слиток', icon: '🥈', era: 'Эпоха Джунглей', shavingsCost: 150000, ingotCost: { forged_bronze: 2, graphite_copper: 2, oxidizedsilver: 3 }, tapPower: 250, image: 'assets/king_ingot/ingot_8.png' },
-  9: { level: 9, name: 'Био-Стальной Слиток', icon: '🧬', era: 'Эпоха Джунглей', shavingsCost: 350000, ingotCost: { cement_steel: 3, forged_bronze: 2, biocopper: 4 }, tapPower: 500, image: 'assets/king_ingot/ingot_9.png' },
-  10: { level: 10, name: 'Вольфрамовый Слиток', icon: '⭐', era: 'Пояс Астероидов', shavingsCost: 800000, ingotCost: { graphite_copper: 3, cement_steel: 3, titanium: 2 }, tapPower: 1000, image: 'assets/king_ingot/ingot_10.png' },
-  11: { level: 11, name: 'Титановый Слиток', icon: '🔷', era: 'Пояс Астероидов', shavingsCost: 1800000, ingotCost: { forged_bronze: 3, titanium: 3, cobalt: 2 }, tapPower: 2200, image: 'assets/king_ingot/ingot_11.png' },
-  12: { level: 12, name: 'Кобальтовый Слиток', icon: '🔵', era: 'Пояс Астероидов', shavingsCost: 4000000, ingotCost: { cement_steel: 4, titanium: 4, cobalt: 3 }, tapPower: 5000, image: 'assets/king_ingot/ingot_12.png' },
-  13: { level: 13, name: 'Иридиевый Слиток', icon: '💠', era: 'Далёкий Космос', shavingsCost: 10000000, ingotCost: { graphite_copper: 4, cobalt: 4, lunarsilver: 3 }, tapPower: 12000, image: 'assets/king_ingot/ingot_13.png' },
-  14: { level: 14, name: 'Платиновый Слиток', icon: '💎', era: 'Далёкий Космос', shavingsCost: 25000000, ingotCost: { forged_bronze: 4, graphite_copper: 4, titanium: 5 }, tapPower: 30000, image: 'assets/king_ingot/ingot_14.png' },
-  15: { level: 15, name: 'Космониумный Слиток', icon: '🌈', era: 'Далёкий Космос', shavingsCost: 60000000, ingotCost: { cement_steel: 5, forged_bronze: 5, titanium: 6 }, tapPower: 70000, image: 'assets/king_ingot/ingot_15.png' }
+  1: { level: 1, name: 'Грязевой сгусток', icon: '🟤', era: 'Трясина', shavingsCost: 150, ingotCost: { wet_sand: 2, mud_ingot: 1 }, tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
+  2: { level: 2, name: 'Болотная сердцевина', icon: '🟢', era: 'Трясина', shavingsCost: 500, ingotCost: { mud_ingot: 2, silt_clump: 1 }, tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
+  3: { level: 3, name: 'Тинистый стержень', icon: '🪵', era: 'Трясина', shavingsCost: 1500, ingotCost: { silt_clump: 2, warped_bar: 1 }, tapPower: 7, image: 'assets/king_ingot/ingot_3.png' },
+  4: { level: 4, name: 'Гнилая опора', icon: '🦴', era: 'Трясина', shavingsCost: 4000, ingotCost: { warped_bar: 2, bark_ingot: 2, rotted_bough: 1 }, tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
+  5: { level: 5, name: 'Ржавый остов', icon: '🔩', era: 'Трясина', shavingsCost: 10000, ingotCost: { rotted_bough: 2, wire_clump: 2, rusty_scrap: 1 }, tapPower: 30, image: 'assets/king_ingot/ingot_5.png' },
+  6: { level: 6, name: 'Мусорный сплав', icon: '🧡', era: 'Трясина', shavingsCost: 25000, ingotCost: { rusty_scrap: 3, wire_clump: 2, broken_tile: 2 }, tapPower: 60, image: 'assets/king_ingot/ingot_6.png' }
 };
 
 // ========== РЕЕСТР БОНУСОВ ==========
@@ -93,6 +84,12 @@ const EFFECT_HANDLERS = {
     apply: (power) => { ingotState._bonusDoubleDrop = (ingotState._bonusDoubleDrop || 0) + power; },
     remove: (power) => { ingotState._bonusDoubleDrop = Math.max(0, (ingotState._bonusDoubleDrop || 0) - power); },
     getDescription: (power) => `${power}% шанс двойной жеоды`
+  },
+  recycled_chance: {
+    name: 'Шанс Вторичного лута',
+    apply: (power) => { ingotState._bonusRecycledChance = (ingotState._bonusRecycledChance || 0) + power; },
+    remove: (power) => { ingotState._bonusRecycledChance = Math.max(0, (ingotState._bonusRecycledChance || 0) - power); },
+    getDescription: (power) => `+${power}% к шансу Вторичного лута`
   }
 };
 
@@ -114,7 +111,8 @@ let ingotState = {
   _bonusRushChance: 0,
   _bonusRushDuration: 0,
   _bonusXP: 0,
-  _bonusDoubleDrop: 0
+  _bonusDoubleDrop: 0,
+  _bonusRecycledChance: 0
 };
 
 // ========== СОСТОЯНИЕ РЕЖИМА «КУЗНЕЧНЫЙ РАЖ» ==========
@@ -161,6 +159,7 @@ export function resetIngotState() {
   ingotState._bonusRushDuration = 0;
   ingotState._bonusXP = 0;
   ingotState._bonusDoubleDrop = 0;
+  ingotState._bonusRecycledChance = 0;
   if (ingotState.saveDebounceTimer) { clearTimeout(ingotState.saveDebounceTimer); ingotState.saveDebounceTimer = null; }
 }
 
@@ -221,6 +220,7 @@ function recalcAllBonuses() {
   ingotState._bonusRushDuration = 0;
   ingotState._bonusXP = 0;
   ingotState._bonusDoubleDrop = 0;
+  ingotState._bonusRecycledChance = 0;
   if (ingotState._autoTapTimer) { clearInterval(ingotState._autoTapTimer); ingotState._autoTapTimer = null; }
   ingotState._autoTapInterval = 0;
 
@@ -236,6 +236,7 @@ function recalcAllBonuses() {
 export function getBonusExpeditionSpeed() { return ingotState._bonusExpeditionSpeed || 0; }
 export function getBonusXP() { return ingotState._bonusXP || 0; }
 export function getBonusDoubleDrop() { return ingotState._bonusDoubleDrop || 0; }
+export function getBonusRecycledChance() { return ingotState._bonusRecycledChance || 0; }
 
 // ========== РЕГЕНЕРАЦИЯ ЭНЕРГИИ ==========
 export function regenEnergy() {
@@ -696,7 +697,7 @@ export function renderIngotScreen(container) {
         display: flex;
         flex-direction: column;
         padding: 0;
-        background: radial-gradient(circle at 50% 40%, rgba(230,92,0,0.08) 0%, rgba(15,15,15,1) 75%);
+        background: radial-gradient(circle at 50% 40%, rgba(139, 115, 85, 0.08) 0%, rgba(15,15,15,1) 75%);
         position: relative;
         overflow-y: auto;
         overflow-x: hidden;
@@ -723,7 +724,7 @@ export function renderIngotScreen(container) {
         font-family: 'Unbounded', sans-serif;
         font-size: 44px;
         font-weight: 800;
-        background: linear-gradient(180deg, #FFE55C 0%, #FFD700 40%, #FF8C00 100%);
+        background: linear-gradient(180deg, #FFE55C 0%, #FFD700 40%, #8B7355 100%);
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -768,7 +769,7 @@ export function renderIngotScreen(container) {
         user-select: none;
         -webkit-tap-highlight-color: transparent;
         position: relative;
-        filter: drop-shadow(0 0 25px rgba(255,140,0,0.4));
+        filter: drop-shadow(0 0 25px rgba(139, 115, 85, 0.4));
         transition: filter 0.3s ease;
       }
       .forge-rush-active .ingot-image-container {
@@ -792,7 +793,7 @@ export function renderIngotScreen(container) {
         width: 140px;
         height: 140px;
         border-radius: 32px;
-        background: linear-gradient(135deg, #B87333 0%, #FFD700 40%, #FF8C00 70%, #8B4513 100%);
+        background: linear-gradient(135deg, #8B7355 0%, #A08060 40%, #6B5A45 70%, #5C4A3A 100%);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -811,10 +812,10 @@ export function renderIngotScreen(container) {
         font-family: 'Unbounded', sans-serif;
         font-weight: 800;
         font-size: 18px;
-        color: #FFD700;
+        color: #8B7355;
         pointer-events: none;
         z-index: 10;
-        text-shadow: 0 0 10px rgba(255,180,0,0.9);
+        text-shadow: 0 0 10px rgba(139, 115, 85, 0.9);
         animation: textFloatUp 0.7s ease-out forwards;
       }
       .forge-rush-active .tap-particle {
@@ -828,11 +829,11 @@ export function renderIngotScreen(container) {
         width: 5px;
         height: 5px;
         border-radius: 50%;
-        background: #FFD700;
+        background: #8B7355;
         pointer-events: none;
         z-index: 9;
         animation: sparkFly 0.3s ease-out forwards;
-        box-shadow: 0 0 6px #FFD700;
+        box-shadow: 0 0 6px #8B7355;
       }
       .forge-rush-active .forge-spark {
         background: #FF4500;
@@ -883,7 +884,7 @@ export function renderIngotScreen(container) {
       .ingot-energy-bar-inner {
         height: 100%;
         border-radius: 10px;
-        background: linear-gradient(90deg, #3A8CFF, #00D4FF);
+        background: linear-gradient(90deg, #5C4A3A, #8B7355);
         transition: width 0.4s ease;
         transform: translate3d(0, 0, 0);
       }
@@ -901,7 +902,7 @@ export function renderIngotScreen(container) {
         margin-bottom: 14px;
         letter-spacing: 1px;
       }
-      .ingot-goal-title strong { color: #FFD700; }
+      .ingot-goal-title strong { color: #8B7355; }
       
       .ingot-progress-list { display: flex; flex-direction: column; gap: 10px; }
       .ingot-progress-row { display: flex; align-items: center; gap: 10px; }
@@ -929,9 +930,9 @@ export function renderIngotScreen(container) {
         transition: width 0.5s ease;
         transform: translate3d(0, 0, 0);
       }
-      .ingot-progress-bar-inner.shavings { background: linear-gradient(90deg, #FFD700, #FFA500); }
-      .ingot-progress-bar-inner.ingot { background: linear-gradient(90deg, #C0C0C0, #E0E0E0); }
-      .ingot-progress-bar-inner.xp { background: linear-gradient(90deg, #FF4500, #FF8C00); }
+      .ingot-progress-bar-inner.shavings { background: linear-gradient(90deg, #8B7355, #A08060); }
+      .ingot-progress-bar-inner.ingot { background: linear-gradient(90deg, #6B5A45, #8B7355); }
+      .ingot-progress-bar-inner.xp { background: linear-gradient(90deg, #5C4A3A, #8B7355); }
       
       .ingot-upgrade-btn {
         display: block;
@@ -945,8 +946,8 @@ export function renderIngotScreen(container) {
         letter-spacing: 2px;
         cursor: pointer;
         text-transform: uppercase;
-        background: linear-gradient(135deg, #FF3D00 0%, #FF6D00 40%, #FFD700 100%);
-        color: #000;
+        background: linear-gradient(135deg, #5C4A3A 0%, #8B7355 40%, #A08060 100%);
+        color: #fff;
         animation: pulseUpgrade 2s ease-in-out infinite;
         margin-top: 4px;
         transform: translate3d(0, 0, 0);
@@ -958,7 +959,7 @@ export function renderIngotScreen(container) {
         font-family: 'Unbounded', sans-serif;
         font-size: 16px;
         font-weight: 800;
-        color: #FFD700;
+        color: #8B7355;
         text-align: center;
         padding: 24px;
       }
@@ -975,8 +976,8 @@ export function renderIngotScreen(container) {
         justify-content: center;
       }
       .evolution-card {
-        background: radial-gradient(circle at 50% 0%, rgba(255,140,0,0.2) 0%, rgba(20,20,20,0.95) 70%);
-        border: 1px solid rgba(255,180,0,0.3);
+        background: radial-gradient(circle at 50% 0%, rgba(139, 115, 85, 0.2) 0%, rgba(20,20,20,0.95) 70%);
+        border: 1px solid rgba(139, 115, 85, 0.3);
         border-radius: 32px;
         padding: 30px 20px;
         text-align: center;
@@ -989,7 +990,7 @@ export function renderIngotScreen(container) {
         position: absolute;
         top: 50%; left: 50%;
         width: 300px; height: 300px;
-        background: conic-gradient(from 0deg, transparent, rgba(255,180,0,0.1), transparent, rgba(255,100,0,0.1), transparent);
+        background: conic-gradient(from 0deg, transparent, rgba(139, 115, 85, 0.1), transparent, rgba(100, 80, 50, 0.1), transparent);
         border-radius: 50%;
         transform: translate(-50%, -50%);
         animation: spinGlow 8s linear infinite;
@@ -1016,7 +1017,7 @@ export function renderIngotScreen(container) {
         width: 100px;
         height: 100px;
         border-radius: 24px;
-        background: linear-gradient(135deg, #B87333, #FFD700, #FF8C00);
+        background: linear-gradient(135deg, #8B7355, #A08060, #6B5A45);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1026,7 +1027,7 @@ export function renderIngotScreen(container) {
         font-family: 'Unbounded', sans-serif;
         font-size: 20px;
         font-weight: 800;
-        color: #FFD700;
+        color: #8B7355;
         margin: 12px 0 8px;
         position: relative;
         z-index: 1;
@@ -1040,8 +1041,8 @@ export function renderIngotScreen(container) {
         line-height: 1.5;
       }
       .evolution-close-btn {
-        background: linear-gradient(135deg, #FFD700, #FF8C00);
-        color: #000;
+        background: linear-gradient(135deg, #8B7355, #6B5A45);
+        color: #fff;
         border: none;
         padding: 14px 32px;
         border-radius: 50px;
@@ -1067,7 +1068,7 @@ export function renderIngotScreen(container) {
         width: 90px;
         height: 90px;
         background: rgba(255,255,255,0.04);
-        border: 2px dashed rgba(255,215,0,0.2);
+        border: 2px dashed rgba(139, 115, 85, 0.2);
         border-radius: 18px;
         display: flex;
         flex-direction: column;
@@ -1078,26 +1079,26 @@ export function renderIngotScreen(container) {
         text-align: center;
         padding: 4px;
       }
-      .equip-slot:active { transform: scale(0.93); border-color: rgba(255,215,0,0.6); background: rgba(255,215,0,0.08); }
+      .equip-slot:active { transform: scale(0.93); border-color: rgba(139, 115, 85, 0.6); background: rgba(139, 115, 85, 0.08); }
       .equip-slot.locked { opacity: 0.35; cursor: not-allowed; border-color: rgba(255,255,255,0.06); }
       .equip-slot.locked:active { transform: none; }
       .equip-slot-lock { font-size: 8px; color: rgba(255,255,255,0.3); }
-      .equip-slot-empty { font-size: 26px; color: rgba(255,215,0,0.35); font-weight: 300; }
+      .equip-slot-empty { font-size: 26px; color: rgba(139, 115, 85, 0.35); font-weight: 300; }
       .equip-slot-hint { font-size: 8px; color: rgba(255,255,255,0.2); margin-top: 2px; }
       .equip-slot-icon { font-size: 28px; }
       .equip-slot-name { font-size: 8px; color: rgba(255,255,255,0.7); margin-top: 2px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
-      .equip-slot-effect { font-size: 7px; color: rgba(255,215,0,0.6); margin-top: 2px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
+      .equip-slot-effect { font-size: 7px; color: rgba(139, 115, 85, 0.6); margin-top: 2px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
       
       .artifact-pick-list { max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; border: 1px solid rgba(255,255,255,0.06); }
       .artifact-pick-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 14px; cursor: pointer; margin-bottom: 4px; transition: all 0.2s; border: 1px solid transparent; }
-      .artifact-pick-item:active { background: rgba(255,215,0,0.08); border-color: rgba(255,215,0,0.3); }
-      .artifact-pick-item.equipped { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.05); }
+      .artifact-pick-item:active { background: rgba(139, 115, 85, 0.08); border-color: rgba(139, 115, 85, 0.3); }
+      .artifact-pick-item.equipped { border-color: rgba(139, 115, 85, 0.4); background: rgba(139, 115, 85, 0.05); }
       .artifact-pick-item.disabled { opacity: 0.35; cursor: not-allowed; }
       .artifact-pick-item.disabled:active { background: rgba(255,255,255,0.03); border-color: transparent; }
       .artifact-pick-icon { font-size: 24px; min-width: 30px; text-align: center; }
       .artifact-pick-info { flex: 1; text-align: left; }
       .artifact-pick-name { font-weight: 600; font-size: 13px; color: #fff; }
-      .artifact-pick-effect { font-size: 10px; color: rgba(255,215,0,0.7); margin-top: 2px; }
+      .artifact-pick-effect { font-size: 10px; color: rgba(139, 115, 85, 0.7); margin-top: 2px; }
       .artifact-pick-count { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
     </style>
   `;
@@ -1132,7 +1133,7 @@ export function renderIngotScreen(container) {
   `;
   html += `<div class="ingot-bottom">`;
   if (!nextIngot) {
-    html += `<div class="ingot-max-msg">🏆 Максимальный уровень</div>`;
+    html += `<div class="ingot-max-msg">🏆 Максимальный уровень Трясины</div>`;
   } else if (locked) {
     const canUpgrade = shavings >= nextIngot.shavingsCost && (!nextIngot.ingotCost || Object.entries(nextIngot.ingotCost).every(([id, r]) => (state.ingots[id] || 0) >= r));
     if (canUpgrade) {
