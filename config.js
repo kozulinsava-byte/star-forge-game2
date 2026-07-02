@@ -1,6 +1,6 @@
 // ========== КОНФИГУРАЦИЯ ИГРЫ STAR FORGE ==========
 export const CONFIG_ITEMS = {
-    // ========== ОБЫЧНЫЕ СЛИТКИ (ШАХТЫ) — только те, что выпадают из жеоды mine ==========
+    // ========== ОБЫЧНЫЕ СЛИТКИ (ШАХТЫ) ==========
     copper: { 
         id: 'copper', name: 'Медь', icon: '🟫', 
         rarity: 'Обычный', rarityClass: 'common', rarityLevel: 'common',
@@ -26,7 +26,7 @@ export const CONFIG_ITEMS = {
         imagePath: 'assets/ingots/coal.png', fallbackColor: '#2C2C2E', isCollectible: false, xpValue: 4, sellValue: 4 
     },
     
-    // ========== СЛИТКИ ДЖУНГЛЕЙ — только те, что выпадают из жеоды jungle ==========
+    // ========== СЛИТКИ ДЖУНГЛЕЙ ==========
     biocopper: { 
         id: 'biocopper', name: 'Био-медь', icon: '🧪', 
         rarity: 'Редкий', rarityClass: 'rare', rarityLevel: 'rare',
@@ -52,7 +52,7 @@ export const CONFIG_ITEMS = {
         imagePath: 'assets/ingots/woodalloy.png', fallbackColor: '#8B4513', isCollectible: false, xpValue: 20, sellValue: 20 
     },
     
-    // ========== СЛИТКИ АСТЕРОИДОВ — только те, что выпадают из жеоды asteroid ==========
+    // ========== СЛИТКИ АСТЕРОИДОВ ==========
     titanium: { 
         id: 'titanium', name: 'Титан', icon: '🔷', 
         rarity: 'Эпический', rarityClass: 'epic', rarityLevel: 'epic',
@@ -78,7 +78,7 @@ export const CONFIG_ITEMS = {
         imagePath: 'assets/ingots/lunarsilver.png', fallbackColor: '#F5F5DC', isCollectible: false, xpValue: 28, sellValue: 28 
     },
     
-    // ========== КРАФТОВЫЕ СЛИТКИ (обновлённые требования) ==========
+    // ========== КРАФТОВЫЕ СЛИТКИ ==========
     black_mirror: { 
         id: 'black_mirror', name: 'Чёрное Зеркало', icon: '🌑', 
         rarity: 'Крафтовый', rarityClass: 'epic', rarityLevel: 'epic',
@@ -112,7 +112,7 @@ export const CONFIG_ITEMS = {
         imagePath: 'assets/ingots/platinum_alloy.png', fallbackColor: '#E6E8FA', isCollectible: false, xpValue: 120, sellValue: 250 
     },
     
-    // ========== ☄️ МЕТЕОРИТНЫЕ СЛИТКИ (дроп не трогаем) ==========
+    // ========== ☄️ МЕТЕОРИТНЫЕ СЛИТКИ ==========
     rheolite: { 
         id: 'rheolite', name: 'Реолит', icon: '🪨', 
         rarity: 'Обычный', rarityClass: 'common', rarityLevel: 'common',
@@ -274,10 +274,36 @@ export const CONFIG_ITEMS = {
         description: 'Красно-фиолетовый бурлящий металл, символизирующий расширение Вселенной.', 
         imagePath: 'assets/ingots/andromeda.png', fallbackColor: '#6A1B9A', isCollectible: true, xpValue: 800, sellValue: 1500,
         effect_id: 'double_drop', effect_power: 15, effect_name: 'Шанс двойного дропа жеоды 15%'
+    },
+    
+    // ========== 🧪 АЛХИМИЧЕСКИЕ СПЛАВЫ (результаты сплавления) ==========
+    forged_bronze: {
+        id: 'forged_bronze', name: 'Кованая Бронза', icon: '🟧',
+        rarity: 'Редкий', rarityClass: 'rare', rarityLevel: 'rare',
+        sourceType: 'alchemy', location: 'mine',
+        glowClass: 'glow-gold',
+        description: 'Грубый, но прочный сплав меди и железа, рождённый в кустарной кузнице. Кованая бронза ценится за неприхотливость и устойчивость к ударам.',
+        imagePath: 'assets/ingots/forged_bronze.png', fallbackColor: '#CD7F32', isCollectible: false, xpValue: 25, sellValue: 25
+    },
+    graphite_copper: {
+        id: 'graphite_copper', name: 'Графитовая Медь', icon: '⬛🟫',
+        rarity: 'Редкий', rarityClass: 'rare', rarityLevel: 'rare',
+        sourceType: 'alchemy', location: 'mine',
+        glowClass: 'glow-gold',
+        description: 'Медь, обогащённая углеродом. Графитовые включения делают сплав самосмазывающимся — идеален для механизмов.',
+        imagePath: 'assets/ingots/graphite_copper.png', fallbackColor: '#5C4033', isCollectible: false, xpValue: 25, sellValue: 25
+    },
+    cement_steel: {
+        id: 'cement_steel', name: 'Цементная Сталь', icon: '🔩',
+        rarity: 'Редкий', rarityClass: 'rare', rarityLevel: 'rare',
+        sourceType: 'alchemy', location: 'mine',
+        glowClass: 'glow-gold',
+        description: 'Железо, прошедшее цементацию углеродом. Первый шаг человечества к настоящей стали — прочной и упругой.',
+        imagePath: 'assets/ingots/cement_steel.png', fallbackColor: '#71797E', isCollectible: false, xpValue: 25, sellValue: 25
     }
 };
 
-// ========== КРАФТЫ (ОБНОВЛЁННЫЕ ПОД НОВЫЙ ДРОП) ==========
+// ========== КРАФТЫ ==========
 export const CRAFT_RECIPES = {
     black_mirror: { id: 'black_mirror', name: 'Чёрное Зеркало', icon: '🌑', description: 'Объедини уголь и железо.', resultIngotId: 'black_mirror', ingredients: { iron: 2, coal: 1 }, xpReward: 30, smeltTime: 10, reqLevel: 1 },
     astro_bronze: { id: 'astro_bronze', name: 'Астро-Бронза', icon: '🛰️', description: 'Сплав космических технологий.', resultIngotId: 'astro_bronze', ingredients: { woodalloy: 3, lunarsilver: 1 }, xpReward: 45, smeltTime: 15, reqLevel: 3 },
@@ -285,7 +311,7 @@ export const CRAFT_RECIPES = {
     platinum_alloy: { id: 'platinum_alloy', name: 'Платиновый Сплав', icon: '💎', description: 'Платина и иридий.', resultIngotId: 'platinum_alloy', ingredients: { oxidizedsilver: 5, titanium: 2 }, xpReward: 75, smeltTime: 25, reqLevel: 8 }
 };
 
-// ========== ЖЕОДЫ (ОБНОВЛЁННЫЙ ДРОП: 2-3 СЛИТКА НА ЖЕОДУ) ==========
+// ========== ЖЕОДЫ ==========
 export const CONFIG_GEODES = {
     mine: { 
         id: 'mine', name: 'Жеода Шахт', icon: '🪨', isSpecial: false, timer: 30, 
@@ -450,6 +476,46 @@ EXPEDITION_GROUPS.forEach(group => {
     });
 });
 
+// ========== 🧪 АЛХИМИЯ: РЕЦЕПТЫ СПЛАВОВ ==========
+export const ALCHEMY_RECIPES = {
+    forged_bronze: {
+        id: 'forged_bronze',
+        name: 'Кованая Бронза',
+        icon: '🟧',
+        description: 'Сплав меди и железа в кустарной кузнице.',
+        ingredients: ['copper', 'iron'],
+        resultIngotId: 'forged_bronze',
+        location: 'mine',
+        reqLevel: 3,
+        xpReward: 40,
+        discoveryBonusXP: 80
+    },
+    graphite_copper: {
+        id: 'graphite_copper',
+        name: 'Графитовая Медь',
+        icon: '⬛🟫',
+        description: 'Медь, обогащённая углеродом.',
+        ingredients: ['copper', 'coal'],
+        resultIngotId: 'graphite_copper',
+        location: 'mine',
+        reqLevel: 3,
+        xpReward: 40,
+        discoveryBonusXP: 80
+    },
+    cement_steel: {
+        id: 'cement_steel',
+        name: 'Цементная Сталь',
+        icon: '🔩',
+        description: 'Железо, прошедшее цементацию углеродом.',
+        ingredients: ['iron', 'coal'],
+        resultIngotId: 'cement_steel',
+        location: 'mine',
+        reqLevel: 3,
+        xpReward: 40,
+        discoveryBonusXP: 80
+    }
+};
+
 export const GUILD_QUESTS = [
     { id: 'quest_1', name: 'Медный заказ', description: 'Гильдия просит поставить партию меди.', reqLevel: 1, ingredients: { copper: 3 }, rewardXP: 25 },
     { id: 'quest_2', name: 'Железная партия', description: 'Строителям нужны железные слитки.', reqLevel: 1, ingredients: { iron: 3 }, rewardXP: 25 },
@@ -484,7 +550,8 @@ export const DEFAULT_STATE = {
     expeditionBonuses: {},
     completedQuests: [],
     equippedArtifacts: [null, null, null],
-    unlockedExpeditions: ['mine']
+    unlockedExpeditions: ['mine'],
+    discoveredAlchemyRecipes: []
 };
 
 export const EVENTS_CONFIG = {
