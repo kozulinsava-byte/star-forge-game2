@@ -3,6 +3,7 @@ import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, ALC
 import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy } from './core.js';
 import { renderIngotScreen } from './ingot.js';
 
+// 🆕 Точка входа для мини-игр
 let _startQuenchGame = null;
 let _startStackGame = null;
 let _startUpgradeGame = null;
@@ -18,8 +19,10 @@ async function loadMiniGames() {
   }
 }
 
+// Загружаем мини-игры при старте
 loadMiniGames();
 
+// Регистрируем UI функции в core.js
 registerUIFunctions({
     showToast: showToast,
     getGeodeStageImage: getGeodeStageImage,
@@ -33,21 +36,29 @@ registerUIFunctions({
     updateMeteorShardsDisplay: updateMeteorShardsDisplay
 });
 
+// DOM-элементы
 export const mainContent = document.getElementById('mainContent');
 const showcaseOverlay = document.getElementById('showcaseOverlay');
 const showcaseContent = document.getElementById('showcaseContent');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalContent = document.getElementById('modalContent');
 
+// Текущие вкладки
 export let currentTab = 'expeditions';
 export let inventorySubTab = 'geodes';
 export let collectionSubTab = 'encyclopedia';
 
+// ID интервала для живого таймера в модалке
 let modalTimerInterval = null;
+
+// Состояние аккордеона
 let expandedGroups = {};
+
+// Состояние алхимии
 let alchemyMode = false;
 let alchemyFirstIngot = null;
 
+// ---------- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ----------
 function initTheme() {
   const savedTheme = localStorage.getItem('starforge_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', savedTheme);
@@ -58,14 +69,19 @@ function toggleTheme() {
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', newTheme);
   localStorage.setItem('starforge_theme', newTheme);
+  
   const btn = document.getElementById('themeProfileBtn');
-  if (btn) btn.innerHTML = newTheme === 'dark' ? '🌙 Сменить тему (Светлая)' : '☀️ Сменить тему (Тёмная)';
+  if (btn) {
+    btn.innerHTML = newTheme === 'dark' ? '🌙 Сменить тему (Светлая)' : '☀️ Сменить тему (Тёмная)';
+  }
 }
 
 initTheme();
 
+// ---------- УТИЛИТЫ РЕНДЕРИНГА (ЭМОДЗИ-ЗАГЛУШКИ) ----------
 export function renderImageToElement(el, src, fallbackIcon, fallbackColor) {
   if (!el) return;
+  
   el.innerHTML = '';
   const fb = document.createElement('span');
   fb.className = 'fallback-icon';
@@ -73,8 +89,15 @@ export function renderImageToElement(el, src, fallbackIcon, fallbackColor) {
   fb.style.color = fallbackColor || '#FFD700';
   fb.style.fontSize = el.classList.contains('card-icon') ? '40px' : 'inherit';
   el.appendChild(fb);
+  
   const img = new Image();
-  img.onload = () => { el.innerHTML = ''; const i = document.createElement('img'); i.src = src; i.alt = ''; el.appendChild(i); };
+  img.onload = () => {
+    el.innerHTML = '';
+    const i = document.createElement('img');
+    i.src = src;
+    i.alt = '';
+    el.appendChild(i);
+  };
   img.onerror = () => {};
   img.src = src;
 }
@@ -87,99 +110,237 @@ export function renderMysteryPlaceholder(el) {
 export function getGeodeStageImage(geodeId, taps) {
   const g = CONFIG_GEODES[geodeId];
   if (!g) return { imagePath: '', fallbackIcon: '🪨' };
-  for (let s of g.stages) { if (taps >= s.minTaps && taps <= s.maxTaps) return { imagePath: s.imagePath, fallbackIcon: s.fallbackIcon }; }
+  
+  for (let s of g.stages) {
+    if (taps >= s.minTaps && taps <= s.maxTaps) {
+      return { imagePath: s.imagePath, fallbackIcon: s.fallbackIcon };
+    }
+  }
+  
   return { imagePath: g.stages[0].imagePath, fallbackIcon: g.stages[0].fallbackIcon };
 }
 
 export function showToast(msg, emoji = '✨') {
   const c = document.getElementById('toastContainer');
   if (!c) return;
+  
   const t = document.createElement('div');
   t.className = 'toast';
   t.innerHTML = `<span>${emoji}</span> ${msg}`;
   c.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
+  
+  setTimeout(() => {
+    t.style.opacity = '0';
+    setTimeout(() => t.remove(), 300);
+  }, 2500);
 }
 
+// ---------- REWARD POPUP ----------
 export function showRewardPopup(ingot) {
   const overlay = document.getElementById('rewardPopupOverlay');
   const iconEl = document.getElementById('rewardPopupIcon');
   const nameEl = document.getElementById('rewardPopupName');
   const closeBtn = document.getElementById('rewardPopupClose');
+  
   renderImageToElement(iconEl, ingot.imagePath, ingot.icon, ingot.fallbackColor);
   nameEl.textContent = ingot.name;
+  
   overlay.classList.add('active');
-  const closeHandler = () => { overlay.classList.remove('active'); closeBtn.removeEventListener('click', closeHandler); };
+  
+  const closeHandler = () => {
+    overlay.classList.remove('active');
+    closeBtn.removeEventListener('click', closeHandler);
+  };
   closeBtn.addEventListener('click', closeHandler);
 }
 
+// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ ИНВЕНТАРЯ) ----------
 function openInventoryShowcase(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
   if (!ingot) return;
+  
   const owned = state.ingots[ingotId] > 0;
   if (!owned) return;
-  const rarityColors = { 'common': '#A0A0A0', 'rare': '#4A9CFF', 'epic': '#B44AFF', 'legendary': '#FFD700', 'collectible': '#FF64FF' };
-  const sourceNames = { 'expedition': 'Экспедиционный', 'crafted': 'Крафтовый', 'meteor': 'Метеоритный', 'special_meteor': 'Метеоритный', 'alchemy': 'Алхимический' };
-  const sourceColors = { 'expedition': '#50C878', 'crafted': '#FF8C00', 'meteor': '#FF4444', 'special_meteor': '#FF4444', 'alchemy': '#FFD700' };
+  
+  const rarityColors = {
+    'common': '#A0A0A0',
+    'rare': '#4A9CFF',
+    'epic': '#B44AFF',
+    'legendary': '#FFD700',
+    'collectible': '#FF64FF'
+  };
+  
+  const sourceNames = {
+    'expedition': 'Экспедиционный',
+    'crafted': 'Крафтовый',
+    'meteor': 'Метеоритный',
+    'special_meteor': 'Метеоритный',
+    'alchemy': 'Алхимический'
+  };
+  
+  const sourceColors = {
+    'expedition': '#50C878',
+    'crafted': '#FF8C00',
+    'meteor': '#FF4444',
+    'special_meteor': '#FF4444',
+    'alchemy': '#FFD700'
+  };
+
   const rarityColor = rarityColors[ingot.rarityLevel] || '#A0A0A0';
   const sourceColor = sourceColors[ingot.sourceType] || '#A0A0A0';
   const sourceName = sourceNames[ingot.sourceType] || ingot.sourceType;
-  let html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info"><div class="showcase-name">${ingot.name}</div><div style="display:flex;gap:8px;justify-content:center;margin:12px 0;"><span style="background:${rarityColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${ingot.rarity}</span><span style="background:${sourceColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${sourceName}</span></div><div class="showcase-description">${ingot.description}</div><div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div></div>`;
+  
+  let html = `
+    <div class="showcase-image" id="showcaseImage"></div>
+    <div class="showcase-info">
+      <div class="showcase-name">${ingot.name}</div>
+      <div style="display:flex; gap:8px; justify-content:center; margin:12px 0;">
+        <span style="background:${rarityColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${ingot.rarity}</span>
+        <span style="background:${sourceColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${sourceName}</span>
+      </div>
+      <div class="showcase-description">${ingot.description}</div>
+      <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
+    </div>
+  `;
+  
   showcaseContent.innerHTML = html;
-  renderImageToElement(document.getElementById('showcaseImage'), ingot.imagePath, ingot.icon, ingot.fallbackColor);
+  
+  const imgEl = document.getElementById('showcaseImage');
+  renderImageToElement(imgEl, ingot.imagePath, ingot.icon, ingot.fallbackColor);
   showcaseContent.style.opacity = '1';
   showcaseOverlay.classList.add('active');
 }
 
+// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ КОЛЛЕКЦИИ) ----------
 function openCollectionShowcase(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
   if (!ingot) return;
+  
   const discovered = state.minedStats[ingotId] > 0;
   const isCollectible = ingot.isCollectible;
-  const rarityColors = { 'common': '#A0A0A0', 'rare': '#4A9CFF', 'epic': '#B44AFF', 'legendary': '#FFD700', 'collectible': '#FF64FF' };
-  const sourceNames = { 'expedition': 'Экспедиционный', 'crafted': 'Крафтовый', 'meteor': 'Метеоритный', 'special_meteor': 'Метеоритный', 'alchemy': 'Алхимический' };
-  const sourceColors = { 'expedition': '#50C878', 'crafted': '#FF8C00', 'meteor': '#FF4444', 'special_meteor': '#FF4444', 'alchemy': '#FFD700' };
+  
+  const rarityColors = {
+    'common': '#A0A0A0',
+    'rare': '#4A9CFF',
+    'epic': '#B44AFF',
+    'legendary': '#FFD700',
+    'collectible': '#FF64FF'
+  };
+  
+  const sourceNames = {
+    'expedition': 'Экспедиционный',
+    'crafted': 'Крафтовый',
+    'meteor': 'Метеоритный',
+    'special_meteor': 'Метеоритный',
+    'alchemy': 'Алхимический'
+  };
+  
+  const sourceColors = {
+    'expedition': '#50C878',
+    'crafted': '#FF8C00',
+    'meteor': '#FF4444',
+    'special_meteor': '#FF4444',
+    'alchemy': '#FFD700'
+  };
+
   const rarityColor = rarityColors[ingot.rarityLevel] || '#A0A0A0';
   const sourceColor = sourceColors[ingot.sourceType] || '#A0A0A0';
   const sourceName = sourceNames[ingot.sourceType] || ingot.sourceType;
+  
   let html = '';
+
   if (!discovered && !ingot.isCollectible) {
     const locationName = CONFIG_EXPEDITIONS[ingot.location]?.name || 'неизвестной локации';
-    html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info"><div class="showcase-name">Неизвестный материал</div><div class="showcase-rarity common">???</div><div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ИЗУЧЕН</span></div><div class="showcase-description">Месторождение: ${locationName}</div><div class="showcase-count">Ещё не найден</div></div>`;
+    html = `
+      <div class="showcase-image" id="showcaseImage"></div>
+      <div class="showcase-info">
+        <div class="showcase-name">Неизвестный материал</div>
+        <div class="showcase-rarity common">???</div>
+        <div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ИЗУЧЕН</span></div>
+        <div class="showcase-description">Месторождение: ${locationName}</div>
+        <div class="showcase-count">Ещё не найден</div>
+      </div>
+    `;
     showcaseContent.innerHTML = html;
     renderMysteryPlaceholder(document.getElementById('showcaseImage'));
     showcaseContent.style.opacity = '0.8';
+    
   } else if (!discovered && isCollectible) {
-    html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info"><div class="showcase-name">Неизвестный Артефакт</div><div class="showcase-rarity common">???</div><div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ОТКРЫТ</span></div><div class="showcase-description">Глубины космоса хранят это сокровище.</div><div class="showcase-count">Ещё не найден</div></div>`;
+    html = `
+      <div class="showcase-image" id="showcaseImage"></div>
+      <div class="showcase-info">
+        <div class="showcase-name">Неизвестный Артефакт</div>
+        <div class="showcase-rarity common">???</div>
+        <div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ОТКРЫТ</span></div>
+        <div class="showcase-description">Глубины космоса хранят это сокровище.</div>
+        <div class="showcase-count">Ещё не найден</div>
+      </div>
+    `;
     showcaseContent.innerHTML = html;
     renderMysteryPlaceholder(document.getElementById('showcaseImage'));
     showcaseContent.style.opacity = '0.8';
+    
   } else if (isCollectible) {
-    const effectText = ingot.effect_name ? `<div style="font-size:12px;color:#FFD700;margin-top:8px;">✨ Бонус: ${ingot.effect_name}</div>` : '';
-    html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info" style="border:2px solid #FFD700;box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(180,0,255,0.4);background:linear-gradient(135deg,rgba(255,215,0,0.1) 0%,rgba(180,0,255,0.1) 100%);animation:legendaryGlow 3s ease-in-out infinite;"><div class="showcase-name" style="font-size:26px;">${ingot.name}</div><div style="display:flex;gap:8px;justify-content:center;margin:12px 0;"><span style="background:${rarityColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${ingot.rarity}</span><span style="background:${sourceColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${sourceName}</span></div><div style="font-size:18px;font-weight:800;color:#FFD700;margin:16px 0;text-transform:uppercase;letter-spacing:2px;">СТАТУС: ДОБЫТО В КОЛЛЕКЦИЮ СЛАВЫ</div><div class="showcase-serial"><span class="showcase-serial-label">Серийный номер</span><span class="showcase-serial-value">#${getSerialForCollectible(ingotId)}</span></div><div class="showcase-description">${ingot.description}</div>${effectText}<div style="font-size:12px;color:var(--accent-gold);margin-top:12px;">Применение: [👑 Легендарный трофей]</div><div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div></div>`;
+    const effectText = ingot.effect_name ? `<div style="font-size:12px; color:#FFD700; margin-top:8px;">✨ Бонус: ${ingot.effect_name}</div>` : '';
+    html = `
+      <div class="showcase-image" id="showcaseImage"></div>
+      <div class="showcase-info" style="border: 2px solid #FFD700; box-shadow: 0 0 40px rgba(255,215,0,0.6), 0 0 80px rgba(180,0,255,0.4); background: linear-gradient(135deg, rgba(255,215,0,0.1) 0%, rgba(180,0,255,0.1) 100%); animation: legendaryGlow 3s ease-in-out infinite;">
+        <div class="showcase-name" style="font-size: 26px;">${ingot.name}</div>
+        <div style="display:flex; gap:8px; justify-content:center; margin:12px 0;">
+          <span style="background:${rarityColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${ingot.rarity}</span>
+          <span style="background:${sourceColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${sourceName}</span>
+        </div>
+        <div style="font-size: 18px; font-weight: 800; color: #FFD700; margin: 16px 0; text-transform: uppercase; letter-spacing: 2px;">СТАТУС: ДОБЫТО В КОЛЛЕКЦИЮ СЛАВЫ</div>
+        <div class="showcase-serial"><span class="showcase-serial-label">Серийный номер</span><span class="showcase-serial-value">#${getSerialForCollectible(ingotId)}</span></div>
+        <div class="showcase-description">${ingot.description}</div>
+        ${effectText}
+        <div style="font-size: 12px; color: var(--accent-gold); margin-top: 12px;">Применение: [👑 Легендарный трофей]</div>
+        <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
+      </div>
+    `;
     showcaseContent.innerHTML = html;
     renderImageToElement(document.getElementById('showcaseImage'), ingot.imagePath, ingot.icon, ingot.fallbackColor);
     showcaseContent.style.opacity = '1';
+    
     const styleEl = document.createElement('style');
-    styleEl.textContent = '@keyframes legendaryGlow{0%,100%{box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(180,0,255,0.4)}50%{box-shadow:0 0 60px rgba(255,215,0,0.9),0 0 120px rgba(180,0,255,0.7)}}';
+    styleEl.textContent = '@keyframes legendaryGlow { 0%,100%{box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(180,0,255,0.4);} 50%{box-shadow:0 0 60px rgba(255,215,0,0.9),0 0 120px rgba(180,0,255,0.7);} }';
     showcaseContent.appendChild(styleEl);
+    
   } else {
-    html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info"><div class="showcase-name">${ingot.name}</div><div style="display:flex;gap:8px;justify-content:center;margin:12px 0;"><span style="background:${rarityColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${ingot.rarity}</span><span style="background:${sourceColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${sourceName}</span></div><div class="showcase-id"><span class="showcase-id-label">Добыто за всё время</span><span class="showcase-id-value">${state.minedStats[ingotId] || 0} ед.</span></div><div class="showcase-description">${ingot.description}</div><div style="font-size:12px;color:var(--text-secondary);margin-top:8px;">Применение: [⏳ В разработке для будущих ивентов]</div><div style="font-size:12px;color:var(--accent-gold);margin-top:4px;">Опыт при продаже: +${ingot.sellValue} EXP</div><div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div></div>`;
+    html = `
+      <div class="showcase-image" id="showcaseImage"></div>
+      <div class="showcase-info">
+        <div class="showcase-name">${ingot.name}</div>
+        <div style="display:flex; gap:8px; justify-content:center; margin:12px 0;">
+          <span style="background:${rarityColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${ingot.rarity}</span>
+          <span style="background:${sourceColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${sourceName}</span>
+        </div>
+        <div class="showcase-id"><span class="showcase-id-label">Добыто за всё время</span><span class="showcase-id-value">${state.minedStats[ingotId] || 0} ед.</span></div>
+        <div class="showcase-description">${ingot.description}</div>
+        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Применение: [⏳ В разработке для будущих ивентов]</div>
+        <div style="font-size: 12px; color: var(--accent-gold); margin-top: 4px;">Опыт при продаже: +${ingot.sellValue} EXP</div>
+        <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
+      </div>
+    `;
     showcaseContent.innerHTML = html;
     renderImageToElement(document.getElementById('showcaseImage'), ingot.imagePath, ingot.icon, ingot.fallbackColor);
     showcaseContent.style.opacity = '1';
   }
+  
   showcaseOverlay.classList.add('active');
 }
 
-export function closeShowcase() { showcaseOverlay.classList.remove('active'); }
+export function closeShowcase() {
+  showcaseOverlay.classList.remove('active');
+}
 
 // ---------- АДМИН-ПАНЕЛЬ ----------
 function showAdminPanel() {
   const state = getPlayerState();
   const activeEventId = eventsManager.getActiveEventId();
+  
   let html = `
     <div class="modal-header">
       <div class="modal-title">🛠️ Админ-панель</div>
@@ -1256,7 +1417,7 @@ export function renderInventoryTab() {
   document.querySelectorAll('[data-geode]').forEach((c) => c.addEventListener('click', () => showGeodeModal(c.dataset.geode)));
 }
 
-// ========== ★ ПРЕМИАЛЬНАЯ МОДАЛКА АЛХИМИИ ★ ==========
+// ========== ★ МОДАЛКА АЛХИМИИ ★ ==========
 function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const state = getPlayerState();
   
@@ -1278,60 +1439,52 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   
   const html = `
     <style>
-      @keyframes alchemyFloatIn {
-        0% { opacity: 0; transform: scale(0.5); }
-        100% { opacity: 1; transform: scale(1); }
-      }
-      @keyframes alchemyMergeLeft {
+      @keyframes alchMergeLeft {
         0% { transform: translateX(0) scale(1); opacity: 1; }
-        50% { transform: translateX(30px) scale(0.4); opacity: 0.6; }
+        50% { transform: translateX(35px) scale(0.3); opacity: 0.5; }
         100% { transform: translateX(0) scale(0); opacity: 0; }
       }
-      @keyframes alchemyMergeRight {
+      @keyframes alchMergeRight {
         0% { transform: translateX(0) scale(1); opacity: 1; }
-        50% { transform: translateX(-30px) scale(0.4); opacity: 0.6; }
+        50% { transform: translateX(-35px) scale(0.3); opacity: 0.5; }
         100% { transform: translateX(0) scale(0); opacity: 0; }
       }
-      @keyframes alchemyCorePulse {
+      @keyframes alchCorePulse {
         0% { transform: scale(1); box-shadow: 0 0 20px rgba(255,200,0,0.6); }
-        50% { transform: scale(2.5); box-shadow: 0 0 50px rgba(255,200,0,0.9), 0 0 80px rgba(255,100,0,0.4); }
+        50% { transform: scale(2.8); box-shadow: 0 0 60px rgba(255,200,0,0.9), 0 0 100px rgba(255,100,0,0.4); }
         100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,200,0,0.3); }
       }
-      @keyframes alchemyFlashOverlay {
+      @keyframes alchFlashOverlay {
         0% { opacity: 0; }
-        40% { opacity: 1; }
+        35% { opacity: 1; }
         100% { opacity: 0; }
       }
-      @keyframes alchemyResultAppear {
-        0% { opacity: 0; transform: scale(0.3); }
-        60% { opacity: 1; transform: scale(1.1); }
+      @keyframes alchResultAppear {
+        0% { opacity: 0; transform: scale(0.2); }
+        60% { opacity: 1; transform: scale(1.15); }
         100% { opacity: 1; transform: scale(1); }
       }
       
-      .alchemy-modal-wrapper {
-        position: relative;
-        overflow: hidden;
-      }
-      .alchemy-bg {
-        background: radial-gradient(circle at 50% 35%, rgba(30,30,35,0.98) 0%, rgba(10,10,12,0.99) 100%);
+      .alch-bg {
+        background: radial-gradient(circle at 50% 35%, rgba(28,28,33,0.98) 0%, rgba(8,8,10,0.99) 100%);
         border-radius: 32px;
         padding: 8px 0 16px;
         position: relative;
       }
-      .alchemy-flash-layer {
+      .alch-flash-layer {
         position: absolute;
         top: 0; left: 0;
         width: 100%; height: 100%;
-        background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.6) 0%, rgba(255,200,0,0.3) 40%, transparent 70%);
+        background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.7) 0%, rgba(255,200,0,0.3) 40%, transparent 70%);
         border-radius: 32px;
         pointer-events: none;
         opacity: 0;
         z-index: 5;
       }
-      .alchemy-flash-layer.active {
-        animation: alchemyFlashOverlay 0.5s ease-out forwards;
+      .alch-flash-layer.go {
+        animation: alchFlashOverlay 0.5s ease-out forwards;
       }
-      .alchemy-stage {
+      .alch-stage {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1341,29 +1494,29 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
         min-height: 80px;
         z-index: 2;
       }
-      .alchemy-ingot-slot {
+      .alch-ingot-slot {
         font-size: 42px;
         filter: drop-shadow(0 0 14px rgba(255,180,0,0.4));
         transition: none;
       }
-      .alchemy-ingot-slot.merging-left {
-        animation: alchemyMergeLeft 0.6s ease-in forwards;
+      .alch-ingot-slot.merge-left {
+        animation: alchMergeLeft 0.6s ease-in forwards;
       }
-      .alchemy-ingot-slot.merging-right {
-        animation: alchemyMergeRight 0.6s ease-in forwards;
+      .alch-ingot-slot.merge-right {
+        animation: alchMergeRight 0.6s ease-in forwards;
       }
-      .alchemy-core {
-        width: 20px;
-        height: 20px;
+      .alch-core {
+        width: 22px;
+        height: 22px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(255,200,0,0.8) 0%, rgba(255,100,0,0.3) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(255,200,0,0.85) 0%, rgba(255,100,0,0.3) 50%, transparent 70%);
         margin: 0 16px;
         transition: none;
       }
-      .alchemy-core.pulsing {
-        animation: alchemyCorePulse 0.6s ease-in-out;
+      .alch-core.pulsing {
+        animation: alchCorePulse 0.6s ease-in-out;
       }
-      .alchemy-result-zone {
+      .alch-result-zone {
         width: 90px;
         height: 90px;
         margin: 8px auto 0;
@@ -1378,14 +1531,14 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
         z-index: 2;
         overflow: hidden;
       }
-      .alchemy-result-zone .result-icon-animated {
-        animation: alchemyResultAppear 0.5s ease-out forwards;
+      .alch-result-zone .result-icon-animated {
+        animation: alchResultAppear 0.5s ease-out forwards;
       }
-      .alchemy-result-zone .result-mystery {
+      .alch-result-zone .result-mystery {
         font-size: 28px;
         color: rgba(255,255,255,0.1);
       }
-      .alchemy-badge {
+      .alch-badge {
         display: inline-block;
         background: rgba(255,215,0,0.06);
         border: 1px solid rgba(255,215,0,0.18);
@@ -1396,7 +1549,7 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
         font-weight: 600;
         margin-top: 6px;
       }
-      .alchemy-btn {
+      .alch-btn {
         background: linear-gradient(135deg, #FFD700, #FF8C00);
         color: #000;
         border: none;
@@ -1409,8 +1562,8 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
         box-shadow: 0 4px 20px rgba(255,140,0,0.25);
         margin-top: 10px;
       }
-      .alchemy-btn:active { transform: scale(0.95); }
-      .alchemy-cancel-btn {
+      .alch-btn:active { transform: scale(0.95); }
+      .alch-cancel-btn {
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.06);
         color: var(--text-secondary);
@@ -1426,26 +1579,26 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
       <div class="modal-title" style="font-size:17px;">⚗️ Алхимия</div>
       <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
     </div>
-    <div class="modal-content alchemy-modal-wrapper">
-      <div class="alchemy-bg">
-        <div class="alchemy-flash-layer" id="alchemyFlashLayer"></div>
-        <div class="alchemy-stage" id="alchemyStage">
-          <div class="alchemy-ingot-slot" id="alchemyLeft">${ing1.icon}</div>
-          <div class="alchemy-core" id="alchemyCore"></div>
-          <div class="alchemy-ingot-slot" id="alchemyRight">${ing2.icon}</div>
+    <div class="modal-content">
+      <div class="alch-bg">
+        <div class="alch-flash-layer" id="alchFlashLayer"></div>
+        <div class="alch-stage" id="alchStage">
+          <div class="alch-ingot-slot" id="alchLeft">${ing1.icon}</div>
+          <div class="alch-core" id="alchCore"></div>
+          <div class="alch-ingot-slot" id="alchRight">${ing2.icon}</div>
         </div>
-        <div class="alchemy-result-zone" id="alchemyResultZone">
+        <div class="alch-result-zone" id="alchResultZone">
           ${isFirstDiscovery ? '<div class="result-mystery">???</div>' : `<div class="result-icon-animated">${resultIngot.icon}</div>`}
         </div>
         <div style="text-align:center;">
           ${isFirstDiscovery 
             ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Неизвестный сплав</div>' 
             : `<div style="font-size:12px;color:var(--text-primary);font-weight:600;">${resultIngot.name}</div>`}
-          <div class="alchemy-badge">⚡ +${totalXP} XP</div>
+          <div class="alch-badge">⚡ +${totalXP} XP</div>
           ${isFirstDiscovery ? '<div style="font-size:9px;color:#FFD700;margin-top:3px;">Первое открытие</div>' : ''}
         </div>
-        <button class="alchemy-btn" id="confirmAlchemyBtn">Сплавить</button>
-        <button class="alchemy-cancel-btn" id="cancelAlchemyBtn">Отмена</button>
+        <button class="alch-btn" id="confirmAlchemyBtn">Сплавить</button>
+        <button class="alch-cancel-btn" id="cancelAlchemyBtn">Отмена</button>
       </div>
     </div>
   `;
@@ -1454,23 +1607,19 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   
   setTimeout(() => {
     document.getElementById('confirmAlchemyBtn')?.addEventListener('click', () => {
-      const leftEl = document.getElementById('alchemyLeft');
-      const rightEl = document.getElementById('alchemyRight');
-      const coreEl = document.getElementById('alchemyCore');
-      const flashLayer = document.getElementById('alchemyFlashLayer');
-      const resultZone = document.getElementById('alchemyResultZone');
+      const leftEl = document.getElementById('alchLeft');
+      const rightEl = document.getElementById('alchRight');
+      const coreEl = document.getElementById('alchCore');
+      const flashLayer = document.getElementById('alchFlashLayer');
       
-      // Запуск анимации слияния
-      if (leftEl) leftEl.classList.add('merging-left');
-      if (rightEl) rightEl.classList.add('merging-right');
+      if (leftEl) leftEl.classList.add('merge-left');
+      if (rightEl) rightEl.classList.add('merge-right');
       if (coreEl) coreEl.classList.add('pulsing');
       
-      // Вспышка
       setTimeout(() => {
-        if (flashLayer) flashLayer.classList.add('active');
+        if (flashLayer) flashLayer.classList.add('go');
       }, 300);
       
-      // Завершение
       setTimeout(() => {
         closeModal();
         const result = performAlchemy(ingotId1, ingotId2);
@@ -1478,7 +1627,7 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
           alchemyMode = false;
           alchemyFirstIngot = null;
           if (result.isFirstDiscovery) {
-            showAlchemyDiscoveryAnimation(result.resultIngot, result.xpGained);
+            playDiscoveryAnimation(result.resultIngot, result.xpGained);
           } else {
             showToast(`Создано: ${result.resultIngot.name}! +${result.xpGained} XP`, '⚗️');
           }
@@ -1495,38 +1644,245 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   }, 30);
 }
 
-// ★ АНИМАЦИЯ ПЕРВОГО ОТКРЫТИЯ ★
-function showAlchemyDiscoveryAnimation(ingot, xpGained) {
+// ========== ★ ТРИУМФАЛЬНОЕ ОТКРЫТИЕ ★ ==========
+function playDiscoveryAnimation(ingot, xpGained) {
+  // Инжект стилей
+  if (!document.getElementById('discovery-anim-styles')) {
+    const style = document.createElement('style');
+    style.id = 'discovery-anim-styles';
+    style.textContent = `
+      @keyframes discOverlayFadeIn {
+        0% { opacity: 0; }
+        100% { opacity: 1; }
+      }
+      @keyframes discCocoonPulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(255,180,0,0.6), 0 0 80px rgba(255,100,0,0.3); }
+        50% { transform: scale(1.08); box-shadow: 0 0 70px rgba(255,200,0,0.9), 0 0 120px rgba(255,120,0,0.5); }
+      }
+      @keyframes discCocoonBreak {
+        0% { transform: rotate(0deg) scale(1); opacity: 1; }
+        30% { transform: rotate(180deg) scale(1.15); opacity: 1; }
+        60% { transform: rotate(360deg) scale(0.6); opacity: 0.7; }
+        100% { transform: rotate(540deg) scale(0.05); opacity: 0; }
+      }
+      @keyframes discResultReveal {
+        0% { opacity: 0; transform: scale(0.1); }
+        50% { opacity: 1; transform: scale(1.2); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      @keyframes discParticleFly {
+        0% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+      }
+      @keyframes discGlowPulse {
+        0%, 100% { filter: drop-shadow(0 0 20px rgba(255,215,0,0.6)); }
+        50% { filter: drop-shadow(0 0 50px rgba(255,215,0,1)); }
+      }
+      @keyframes discIconFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+      }
+      @keyframes discFlashBurst {
+        0% { opacity: 0; }
+        30% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+      
+      .disc-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.94);
+        z-index: 10001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        animation: discOverlayFadeIn 0.4s ease-out;
+      }
+      .disc-cocoon {
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255,200,0,0.2) 0%, rgba(255,100,0,0.1) 40%, transparent 70%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: discCocoonPulse 1.5s ease-in-out infinite;
+      }
+      .disc-cocoon.breaking {
+        animation: discCocoonBreak 0.8s ease-in forwards;
+      }
+      .disc-cocoon-core {
+        font-size: 50px;
+        opacity: 0.3;
+      }
+      .disc-result-wrapper {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        animation: discResultReveal 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+      .disc-result-icon {
+        font-size: 80px;
+        animation: discGlowPulse 2s ease-in-out infinite, discIconFloat 3s ease-in-out infinite;
+      }
+      .disc-result-name {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 22px;
+        font-weight: 800;
+        color: #FFD700;
+        margin-top: 14px;
+        text-shadow: 0 0 20px rgba(255,215,0,0.4);
+      }
+      .disc-result-xp {
+        font-size: 15px;
+        color: #50C878;
+        margin-top: 6px;
+        font-weight: 700;
+      }
+      .disc-result-label {
+        font-size: 10px;
+        color: rgba(255,255,255,0.45);
+        margin-top: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+      .disc-continue-btn {
+        background: linear-gradient(135deg, #FFD700, #FF8C00);
+        color: #000;
+        border: none;
+        padding: 14px 36px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        margin-top: 24px;
+        box-shadow: 0 4px 20px rgba(255,140,0,0.3);
+        transition: all 0.2s;
+        opacity: 0;
+        animation: discOverlayFadeIn 0.5s ease-out forwards;
+        animation-delay: 1.2s;
+      }
+      .disc-continue-btn:active { transform: scale(0.94); }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  // Overlay
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10001;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+  overlay.className = 'disc-overlay';
+  
+  // Кокон
+  const cocoon = document.createElement('div');
+  cocoon.className = 'disc-cocoon';
+  cocoon.id = 'discCocoon';
+  const core = document.createElement('div');
+  core.className = 'disc-cocoon-core';
+  core.textContent = '✦';
+  cocoon.appendChild(core);
+  overlay.appendChild(cocoon);
+  
+  // Результат (скрыт изначально)
+  const resultWrapper = document.createElement('div');
+  resultWrapper.className = 'disc-result-wrapper';
+  resultWrapper.id = 'discResultWrapper';
   
   const icon = document.createElement('div');
+  icon.className = 'disc-result-icon';
   icon.textContent = ingot.icon;
-  icon.style.cssText = 'font-size:72px;animation:alchemyResultAppear 0.6s ease-out forwards;filter:drop-shadow(0 0 35px rgba(255,215,0,0.7));';
   
   const name = document.createElement('div');
+  name.className = 'disc-result-name';
   name.textContent = ingot.name;
-  name.style.cssText = 'font-family:Unbounded,sans-serif;font-size:20px;font-weight:800;color:#FFD700;margin-top:14px;animation:alchemyFloatIn 0.5s ease-out forwards;animation-delay:0.2s;opacity:0;';
   
   const xp = document.createElement('div');
+  xp.className = 'disc-result-xp';
   xp.textContent = `+${xpGained} XP`;
-  xp.style.cssText = 'font-size:15px;color:#50C878;margin-top:6px;font-weight:700;animation:alchemyFloatIn 0.5s ease-out forwards;animation-delay:0.35s;opacity:0;';
   
   const label = document.createElement('div');
-  label.textContent = 'НОВОЕ АЛХИМИЧЕСКОЕ ОТКРЫТИЕ';
-  label.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.4);margin-top:10px;letter-spacing:2px;animation:alchemyFloatIn 0.5s ease-out forwards;animation-delay:0.5s;opacity:0;';
+  label.className = 'disc-result-label';
+  label.textContent = 'Новое алхимическое открытие';
   
-  overlay.appendChild(icon);
-  overlay.appendChild(name);
-  overlay.appendChild(xp);
-  overlay.appendChild(label);
+  const continueBtn = document.createElement('button');
+  continueBtn.className = 'disc-continue-btn';
+  continueBtn.textContent = 'Продолжить';
+  
+  resultWrapper.appendChild(icon);
+  resultWrapper.appendChild(name);
+  resultWrapper.appendChild(xp);
+  resultWrapper.appendChild(label);
+  resultWrapper.appendChild(continueBtn);
+  overlay.appendChild(resultWrapper);
+  
   document.body.appendChild(overlay);
   
+  // Анимация: кокон пульсирует → разрывается → появляется результат
   setTimeout(() => {
+    cocoon.classList.add('breaking');
+    createExplosionParticles();
+    
+    setTimeout(() => {
+      cocoon.style.display = 'none';
+      resultWrapper.style.display = 'flex';
+    }, 700);
+  }, 1500);
+  
+  // Кнопка «Продолжить» — закрывает оверлей
+  continueBtn.addEventListener('click', () => {
     overlay.style.opacity = '0';
     overlay.style.transition = 'opacity 0.4s ease-out';
     setTimeout(() => overlay.remove(), 400);
-  }, 2000);
+  });
+}
+
+function createExplosionParticles() {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const count = 40;
+  
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('div');
+    const size = 3 + Math.random() * 6;
+    const angle = (i / count) * Math.PI * 2;
+    const distance = 80 + Math.random() * 180;
+    const dx = Math.cos(angle) * distance;
+    const dy = Math.sin(angle) * distance;
+    
+    particle.style.cssText = `
+      position: fixed;
+      width: ${size}px;
+      height: ${size}px;
+      border-radius: 50%;
+      background: ${Math.random() > 0.5 ? '#FFD700' : '#FF8C00'};
+      pointer-events: none;
+      z-index: 10002;
+      left: ${cx}px;
+      top: ${cy}px;
+      box-shadow: 0 0 ${size * 3}px currentColor;
+      animation: discParticleFly 1s cubic-bezier(0, 0.6, 0.4, 1) forwards;
+      animation-delay: ${i * 0.012}s;
+      --dx: ${dx}px;
+      --dy: ${dy}px;
+    `;
+    
+    document.body.appendChild(particle);
+    setTimeout(() => particle.remove(), 1100);
+  }
+  
+  // Вспышка
+  const flash = document.createElement('div');
+  flash.style.cssText = `
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.8) 0%, rgba(255,200,0,0.3) 30%, transparent 60%);
+    pointer-events: none;
+    z-index: 10001;
+    animation: discFlashBurst 0.5s ease-out forwards;
+  `;
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 600);
 }
 
 // ========== КОЛЛЕКЦИЯ: ПОЛОЧКИ ==========
