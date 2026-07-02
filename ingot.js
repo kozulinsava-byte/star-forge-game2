@@ -2,7 +2,7 @@
 import { CONFIG_ITEMS, EQUIP_SLOTS_CONFIG } from './config.js';
 import { getPlayerState, saveGame } from './core.js';
 
-// ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (15 УРОВНЕЙ) — ОБНОВЛЁННЫЕ РЕЦЕПТЫ ==========
+// ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (15 УРОВНЕЙ) ==========
 const INGOT_LEVELS = {
   1: { level: 1, name: 'Ржавый Слиток', icon: '🪨', era: 'Эпоха Шахт', shavingsCost: 150, ingotCost: { copper: 3 }, tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
   2: { level: 2, name: 'Чугунный Слиток', icon: '⚫', era: 'Эпоха Шахт', shavingsCost: 500, ingotCost: { iron: 2, coal: 2 }, tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
@@ -469,22 +469,47 @@ function getNextLevelXP(level) {
   return LEVELS[level] || LEVELS[LEVELS.length - 1];
 }
 
-// ========== ПЕРЕПЛАВКА ==========
+// ========== ПЕРЕПЛАВКА (ИСПРАВЛЕНО: проверка требований СЛЕДУЮЩЕГО уровня) ==========
 export function performUpgrade() {
   const state = getPlayerState();
   if (!ingotState.levelLocked) return { success: false, message: 'Опыт ещё не заполнен!' };
-  const ingotData = INGOT_LEVELS[state.player.level];
-  if (!ingotData) return { success: false, message: 'Максимальный уровень!' };
-  if (ingotState.shavings < ingotData.shavingsCost) return { success: false, message: `Нужно ${ingotData.shavingsCost} стружки!` };
-  if (ingotData.ingotCost) for (let id in ingotData.ingotCost) if ((state.ingots[id] || 0) < ingotData.ingotCost[id]) return { success: false, message: `Недостаточно ${CONFIG_ITEMS[id]?.name || id}!` };
-  const oldIngot = { name: ingotData.name, icon: ingotData.icon, era: ingotData.era, level: state.player.level, image: ingotData.image };
-  ingotState.shavings -= ingotData.shavingsCost;
-  if (ingotData.ingotCost) for (let id in ingotData.ingotCost) state.ingots[id] -= ingotData.ingotCost[id];
+  
+  // ★ ИСПРАВЛЕНИЕ: проверяем требования СЛЕДУЮЩЕГО уровня (тот, на который переходим)
+  const nextLevel = state.player.level + 1;
+  const nextIngotData = INGOT_LEVELS[nextLevel];
+  if (!nextIngotData) return { success: false, message: 'Максимальный уровень!' };
+  
+  // Проверка стружки
+  if (ingotState.shavings < nextIngotData.shavingsCost) {
+    return { success: false, message: `Нужно ${nextIngotData.shavingsCost} стружки!` };
+  }
+  
+  // Проверка слитков
+  if (nextIngotData.ingotCost) {
+    for (let id in nextIngotData.ingotCost) {
+      if ((state.ingots[id] || 0) < nextIngotData.ingotCost[id]) {
+        return { success: false, message: `Недостаточно ${CONFIG_ITEMS[id]?.name || id}!` };
+      }
+    }
+  }
+  
+  const currentIngotData = getCurrentIngotData();
+  const oldIngot = { name: currentIngotData.name, icon: currentIngotData.icon, era: currentIngotData.era, level: state.player.level, image: currentIngotData.image };
+  
+  // Списание ресурсов
+  ingotState.shavings -= nextIngotData.shavingsCost;
+  if (nextIngotData.ingotCost) {
+    for (let id in nextIngotData.ingotCost) {
+      state.ingots[id] -= nextIngotData.ingotCost[id];
+    }
+  }
+  
   state.player.level++;
   state.player.xp = 0;
   ingotState.levelLocked = false;
   forceSaveNow();
   recalcAllBonuses();
+  
   const newData = INGOT_LEVELS[state.player.level];
   return { success: true, oldIngot, newIngot: { name: newData.name, icon: newData.icon, era: newData.era, level: state.player.level, image: newData.image } };
 }
