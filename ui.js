@@ -1280,18 +1280,16 @@ export function renderInventoryTab() {
     // Вкладка слитков
     const items = Object.entries(state.ingots).filter(([k, c]) => c > 0 && !CONFIG_ITEMS[k].isCollectible);
     
-    // Кнопка Алхимии — всегда видна, disabled до 3 уровня
+    // ★ КНОПКА АЛХИМИИ — всегда видна, но заблокирована до 3 уровня
     const alchemyAvailable = state.player.level >= 3;
-    const alchemyBtnText = !alchemyAvailable ? '🔒 Сплавить (ур. 3)' : (alchemyMode ? '❌ Отмена' : '⚗️ Сплавить');
-    const alchemyBtnStyle = alchemyMode ? 'background: rgba(255,68,68,0.15); border-color: rgba(255,68,68,0.4); color: #FF4444;' : '';
     
     html += `
       <div style="margin-bottom:14px;">
-        <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyBtnStyle}" ${!alchemyAvailable ? 'disabled' : ''}>
-          ${alchemyBtnText}
+        <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyMode ? 'background:rgba(255,68,68,0.15);border-color:rgba(255,68,68,0.4);color:#FF4444;' : ''}${!alchemyAvailable ? 'opacity:0.4;cursor:not-allowed;border-color:rgba(255,255,255,0.06);color:rgba(255,255,255,0.25);' : ''}" ${!alchemyAvailable ? 'disabled' : ''}>
+          ${!alchemyAvailable ? '🔒 Сплавить (ур. 3)' : (alchemyMode ? '❌ Отмена' : '⚗️ Сплавить')}
         </button>
-        ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
-        ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй слиток.</div>` : ''}
+        ${alchemyMode ? '<div style="text-align:center;font-size:10px;color:var(--accent-gold);margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
+        ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center;font-size:10px;color:var(--text-secondary);margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй.</div>` : ''}
       </div>
     `;
     
@@ -1302,23 +1300,16 @@ export function renderInventoryTab() {
       items.forEach(([k, c]) => {
         const ing = CONFIG_ITEMS[k];
         
-        // Определяем, совместим ли слиток с выбранным
+        // ★ ФИЛЬТРАЦИЯ: несовместимые затемняются
         let isCompatible = true;
         let cardClass = 'collection-card';
         
         if (alchemyMode) {
           if (!alchemyFirstIngot) {
-            // Режим выбора первого слитка — все доступны
             cardClass += ' alchemy-selectable';
           } else if (k === alchemyFirstIngot) {
-            // Это выбранный слиток — подсвечен
             cardClass += ' alchemy-selected';
           } else {
-            // Проверяем совместимость
-            const ing1 = CONFIG_ITEMS[alchemyFirstIngot];
-            const ing2 = ing;
-            
-            // Ищем рецепт
             let foundRecipe = false;
             for (let recipeId in ALCHEMY_RECIPES) {
               const recipe = ALCHEMY_RECIPES[recipeId];
@@ -1327,7 +1318,6 @@ export function renderInventoryTab() {
                 break;
               }
             }
-            
             if (!foundRecipe) {
               isCompatible = false;
               cardClass += ' alchemy-incompatible';
@@ -1350,6 +1340,26 @@ export function renderInventoryTab() {
     
     mainContent.innerHTML = html;
     
+    // ★ CSS ДЛЯ ФИЛЬТРАЦИИ АЛХИМИИ (внедряется инлайн для надёжности)
+    const filterStyle = document.createElement('style');
+    filterStyle.id = 'alchemy-filter-styles';
+    filterStyle.textContent = `
+      .alchemy-selectable { border-color: rgba(255,215,0,0.3) !important; cursor: pointer !important; }
+      .alchemy-selectable:active { border-color: rgba(255,215,0,0.7) !important; background: rgba(255,215,0,0.08) !important; }
+      .alchemy-selected { border-color: rgba(255,215,0,0.8) !important; background: rgba(255,215,0,0.1) !important; box-shadow: 0 0 20px rgba(255,180,0,0.3) !important; }
+      .alchemy-compatible { border-color: rgba(80,200,120,0.4) !important; cursor: pointer !important; }
+      .alchemy-compatible:active { border-color: rgba(80,200,120,0.8) !important; background: rgba(80,200,120,0.08) !important; }
+      .alchemy-incompatible { opacity: 0.3 !important; filter: grayscale(0.85) !important; cursor: not-allowed !important; pointer-events: auto !important; }
+      .alchemy-incompatible:active { animation: shakeIncompatible 0.4s ease; }
+      @keyframes shakeIncompatible {
+        0%,100% { transform: translateX(0); }
+        25% { transform: translateX(-3px); }
+        50% { transform: translateX(3px); }
+        75% { transform: translateX(-2px); }
+      }
+    `;
+    document.head.appendChild(filterStyle);
+    
     for (let k in CONFIG_ITEMS) {
       if (CONFIG_ITEMS[k].isCollectible) continue;
       const el = document.getElementById(`inv-ingot-${k}`);
@@ -1363,11 +1373,9 @@ export function renderInventoryTab() {
     if (alchemyBtn && alchemyAvailable) {
       alchemyBtn.addEventListener('click', () => {
         if (alchemyMode) {
-          // Выход из режима
           alchemyMode = false;
           alchemyFirstIngot = null;
         } else {
-          // Вход в режим
           alchemyMode = true;
           alchemyFirstIngot = null;
         }
@@ -1375,7 +1383,7 @@ export function renderInventoryTab() {
       });
     }
     
-    // Обработчики кликов по слиткам в режиме алхимии
+    // Обработчики кликов по слиткам
     if (alchemyMode) {
       document.querySelectorAll('[data-ingot]').forEach(card => {
         card.addEventListener('click', () => {
@@ -1383,24 +1391,19 @@ export function renderInventoryTab() {
           const isCompatible = card.dataset.compatible === 'true';
           
           if (!alchemyFirstIngot) {
-            // Выбор первого слитка
             alchemyFirstIngot = ingotId;
             renderInventoryTab();
           } else if (ingotId === alchemyFirstIngot) {
-            // Отмена выбора
             alchemyFirstIngot = null;
             renderInventoryTab();
           } else if (isCompatible) {
-            // Открываем модалку подтверждения
             showAlchemyConfirmModal(alchemyFirstIngot, ingotId);
           } else {
-            // Несовместимый слиток
             showToast('Сплав невозможен: слитки из разных локаций!', '⚠️');
           }
         });
       });
     } else {
-      // Обычный режим — показ showcase
       document.querySelectorAll('[data-ingot]').forEach(card => {
         card.addEventListener('click', () => {
           openInventoryShowcase(card.dataset.ingot);
@@ -1421,11 +1424,10 @@ export function renderInventoryTab() {
   document.querySelectorAll('[data-geode]').forEach((c) => c.addEventListener('click', () => showGeodeModal(c.dataset.geode)));
 }
 
-// ========== ★ ПРЕМИАЛЬНАЯ МОДАЛКА АЛХИМИИ (БЕЗ ТЕКСТА, ТОЛЬКО ВИЗУАЛ) ★ ==========
+// ========== ★ ПРЕМИАЛЬНАЯ МОДАЛКА АЛХИМИИ С ВОРОНКОЙ ★ ==========
 function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const state = getPlayerState();
   
-  // Ищем рецепт
   let matchedRecipe = null;
   for (let recipeId in ALCHEMY_RECIPES) {
     const recipe = ALCHEMY_RECIPES[recipeId];
@@ -1434,7 +1436,6 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
       break;
     }
   }
-  
   if (!matchedRecipe) return;
   
   const ing1 = CONFIG_ITEMS[ingotId1];
@@ -1445,61 +1446,85 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   
   const html = `
     <style>
-      @keyframes alchemyGlow {
+      @keyframes vortexInLeft {
+        0% { transform: translateX(-80px) scale(0.4); opacity: 0; }
+        60% { transform: translateX(5px) scale(1.1); opacity: 1; }
+        100% { transform: translateX(0) scale(1); opacity: 1; }
+      }
+      @keyframes vortexInRight {
+        0% { transform: translateX(80px) scale(0.4); opacity: 0; }
+        60% { transform: translateX(-5px) scale(1.1); opacity: 1; }
+        100% { transform: translateX(0) scale(1); opacity: 1; }
+      }
+      @keyframes vortexSpin {
+        0% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(180deg) scale(0.6); }
+        100% { transform: rotate(360deg) scale(0); }
+      }
+      @keyframes vortexGlow {
         0%,100% { box-shadow: 0 0 30px rgba(255,215,0,0.3), inset 0 0 30px rgba(255,180,0,0.05); }
-        50% { box-shadow: 0 0 60px rgba(255,215,0,0.6), inset 0 0 50px rgba(255,180,0,0.1); }
+        50% { box-shadow: 0 0 60px rgba(255,215,0,0.7), inset 0 0 50px rgba(255,180,0,0.15); }
       }
-      @keyframes alchemyResultAppear {
-        0% { opacity: 0; transform: scale(0.3) rotate(-10deg); }
-        60% { opacity: 1; transform: scale(1.15) rotate(3deg); }
-        100% { opacity: 1; transform: scale(1) rotate(0deg); }
+      @keyframes resultExplode {
+        0% { transform: scale(0) rotate(-30deg); opacity: 0; filter: brightness(3); }
+        40% { transform: scale(1.3) rotate(5deg); opacity: 1; filter: brightness(1.5); }
+        70% { transform: scale(0.9) rotate(-2deg); filter: brightness(1); }
+        100% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
       }
-      @keyframes alchemyPulse {
-        0%,100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
+      @keyframes particleBurst {
+        0% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(var(--px), var(--py)) scale(0); opacity: 0; }
       }
-      @keyframes alchemySpark {
-        0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0); }
+      @keyframes unlockFlash {
+        0% { opacity: 0; }
+        30% { opacity: 1; }
+        100% { opacity: 0; }
       }
       .alchemy-modal-bg {
-        background: radial-gradient(circle at 50% 30%, rgba(255,140,0,0.08) 0%, rgba(20,20,22,0.98) 70%);
+        background: radial-gradient(circle at 50% 40%, rgba(255,140,0,0.1) 0%, rgba(20,20,22,0.98) 70%);
+        min-height: 280px;
+        position: relative;
+        overflow: hidden;
       }
-      .alchemy-slots-area {
+      .alchemy-vortex-area {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        margin: 20px 0;
+        gap: 0px;
+        margin: 16px 0;
+        position: relative;
+        height: 100px;
       }
-      .alchemy-slot {
-        width: 70px;
-        height: 70px;
-        background: rgba(255,255,255,0.03);
-        border: 2px solid rgba(255,215,0,0.2);
-        border-radius: 20px;
+      .alchemy-vortex-center {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255,180,0,0.3) 0%, rgba(255,100,0,0.1) 50%, transparent 70%);
+        animation: vortexGlow 2s ease-in-out infinite;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 30px;
-        transition: all 0.3s ease;
+        font-size: 24px;
+        color: rgba(255,255,255,0.4);
+        z-index: 2;
       }
-      .alchemy-slot.selected {
-        border-color: rgba(255,215,0,0.6);
-        background: rgba(255,215,0,0.06);
-        box-shadow: 0 0 20px rgba(255,180,0,0.2);
+      .alchemy-ingot-left {
+        font-size: 40px;
+        z-index: 3;
+        animation: vortexInLeft 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        filter: drop-shadow(0 0 12px rgba(255,180,0,0.5));
       }
-      .alchemy-operator {
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--accent-gold);
-        min-width: 24px;
-        text-align: center;
+      .alchemy-ingot-right {
+        font-size: 40px;
+        z-index: 3;
+        animation: vortexInRight 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        animation-delay: 0.1s;
+        filter: drop-shadow(0 0 12px rgba(255,180,0,0.5));
       }
       .alchemy-result-area {
         width: 90px;
         height: 90px;
-        margin: 0 auto;
+        margin: 8px auto 0;
         background: rgba(0,0,0,0.3);
         border: 2px solid rgba(255,215,0,0.4);
         border-radius: 24px;
@@ -1507,17 +1532,17 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
         align-items: center;
         justify-content: center;
         font-size: 38px;
-        animation: alchemyGlow 3s ease-in-out infinite;
+        animation: vortexGlow 2.5s ease-in-out infinite;
         position: relative;
         overflow: hidden;
       }
       .alchemy-result-area .result-icon {
-        animation: alchemyResultAppear 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        animation: resultExplode 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
       }
       .alchemy-result-area .result-mystery {
         font-size: 32px;
         color: rgba(255,255,255,0.2);
-        animation: alchemyPulse 2s ease-in-out infinite;
+        animation: vortexGlow 2s ease-in-out infinite;
       }
       .alchemy-reward-badge {
         display: inline-block;
@@ -1550,15 +1575,14 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
       <div class="modal-title" style="font-size:18px;">⚗️ Алхимический сплав</div>
       <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
     </div>
-    <div class="modal-content alchemy-modal-bg">
-      <div class="alchemy-slots-area">
-        <div class="alchemy-slot selected">${ing1.icon}</div>
-        <div class="alchemy-operator">+</div>
-        <div class="alchemy-slot selected">${ing2.icon}</div>
-        <div class="alchemy-operator">→</div>
-        <div class="alchemy-result-area">
-          ${isFirstDiscovery ? '<div class="result-mystery">❓</div>' : `<div class="result-icon">${resultIngot.icon}</div>`}
-        </div>
+    <div class="modal-content alchemy-modal-bg" id="alchemyModalContent">
+      <div class="alchemy-vortex-area" id="alchemyVortexArea">
+        <div class="alchemy-ingot-left">${ing1.icon}</div>
+        <div class="alchemy-vortex-center">✦</div>
+        <div class="alchemy-ingot-right">${ing2.icon}</div>
+      </div>
+      <div class="alchemy-result-area" id="alchemyResultArea">
+        ${isFirstDiscovery ? '<div class="result-mystery">❓</div>' : `<div class="result-icon">${resultIngot.icon}</div>`}
       </div>
       <div style="text-align:center;">
         ${isFirstDiscovery 
@@ -1576,41 +1600,89 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   
   setTimeout(() => {
     document.getElementById('confirmAlchemyBtn')?.addEventListener('click', () => {
-      closeModal();
+      // ★ АНИМАЦИЯ ВОРОНКИ ПРИ ПОДТВЕРЖДЕНИИ
+      const vortexArea = document.getElementById('alchemyVortexArea');
+      const resultArea = document.getElementById('alchemyResultArea');
       
-      const result = performAlchemy(ingotId1, ingotId2);
-      
-      if (result.success) {
-        // Выходим из режима алхимии
-        alchemyMode = false;
-        alchemyFirstIngot = null;
+      if (vortexArea && resultArea) {
+        // Слитки всасываются в центр
+        const leftIngot = vortexArea.querySelector('.alchemy-ingot-left');
+        const rightIngot = vortexArea.querySelector('.alchemy-ingot-right');
+        const center = vortexArea.querySelector('.alchemy-vortex-center');
         
-        if (result.isFirstDiscovery) {
-          showAlchemyDiscoveryAnimation(result.resultIngot, result.xpGained);
-        } else {
-          showToast(`Создано: ${result.resultIngot.name}! +${result.xpGained} XP`, '⚗️');
-        }
+        if (leftIngot) leftIngot.style.animation = 'vortexSpin 0.5s ease-in forwards';
+        if (rightIngot) rightIngot.style.animation = 'vortexSpin 0.5s ease-in forwards';
+        if (center) center.style.animation = 'vortexSpin 0.5s ease-in forwards';
         
-        renderInventoryTab();
-      } else {
-        showToast(result.message, '⚠️');
+        // Частицы из центра
+        setTimeout(() => {
+          const vortexRect = vortexArea.getBoundingClientRect();
+          const cx = vortexRect.left + vortexRect.width / 2;
+          const cy = vortexRect.top + vortexRect.height / 2;
+          
+          for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.style.cssText = `
+              position: fixed;
+              width: 5px;
+              height: 5px;
+              border-radius: 50%;
+              background: #FFD700;
+              pointer-events: none;
+              z-index: 10002;
+              left: ${cx}px;
+              top: ${cy}px;
+              box-shadow: 0 0 12px #FFD700, 0 0 24px #FF8C00;
+              animation: particleBurst 0.8s cubic-bezier(0, 0.6, 0.4, 1) forwards;
+              animation-delay: ${i * 0.02}s;
+            `;
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 40 + Math.random() * 80;
+            particle.style.setProperty('--px', Math.cos(angle) * dist + 'px');
+            particle.style.setProperty('--py', Math.sin(angle) * dist + 'px');
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 900);
+          }
+          
+          // Вспышка на результате
+          if (resultArea) {
+            resultArea.style.animation = 'unlockFlash 0.6s ease-out';
+            setTimeout(() => { resultArea.style.animation = 'vortexGlow 2.5s ease-in-out infinite'; }, 600);
+          }
+        }, 400);
       }
+      
+      // Задержка для анимации перед выполнением
+      setTimeout(() => {
+        closeModal();
+        const result = performAlchemy(ingotId1, ingotId2);
+        if (result.success) {
+          alchemyMode = false;
+          alchemyFirstIngot = null;
+          if (result.isFirstDiscovery) {
+            showAlchemyDiscoveryAnimation(result.resultIngot, result.xpGained);
+          } else {
+            showToast(`Создано: ${result.resultIngot.name}! +${result.xpGained} XP`, '⚗️');
+          }
+          renderInventoryTab();
+        } else {
+          showToast(result.message, '⚠️');
+        }
+      }, 500);
     });
     
-    document.getElementById('cancelAlchemyBtn')?.addEventListener('click', () => {
-      closeModal();
-    });
-  }, 30);
+    document.getElementById('cancelAlchemyBtn')?.addEventListener('click', () => closeModal());
+  }, 50);
 }
 
 // ★ АНИМАЦИЯ ПЕРВОГО ОТКРЫТИЯ ★
 function showAlchemyDiscoveryAnimation(ingot, xpGained) {
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10001;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10001;display:flex;align-items:center;justify-content:center;flex-direction:column;';
   
   const icon = document.createElement('div');
   icon.textContent = ingot.icon;
-  icon.style.cssText = 'font-size:80px;animation:alchemyResultAppear 0.8s cubic-bezier(0.175,0.885,0.32,1.275);filter:drop-shadow(0 0 40px rgba(255,215,0,0.8));';
+  icon.style.cssText = 'font-size:80px;animation:resultExplode 0.8s cubic-bezier(0.175,0.885,0.32,1.275);filter:drop-shadow(0 0 40px rgba(255,215,0,0.8));';
   
   const name = document.createElement('div');
   name.textContent = ingot.name;
@@ -1631,13 +1703,15 @@ function showAlchemyDiscoveryAnimation(ingot, xpGained) {
   document.body.appendChild(overlay);
   
   // Частицы
-  for (let i = 0; i < 24; i++) {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  for (let i = 0; i < 30; i++) {
     const spark = document.createElement('div');
-    spark.style.cssText = `position:fixed;width:4px;height:4px;border-radius:50%;background:#FFD700;z-index:10002;left:50%;top:50%;box-shadow:0 0 10px #FFD700;animation:alchemySpark 1s ease-out forwards;animation-delay:${i * 0.03}s;`;
+    spark.style.cssText = `position:fixed;width:5px;height:5px;border-radius:50%;background:#FFD700;z-index:10002;left:${cx}px;top:${cy}px;box-shadow:0 0 14px #FFD700,0 0 28px #FF8C00;animation:particleBurst 1s cubic-bezier(0,0.6,0.4,1) forwards;animation-delay:${i * 0.02}s;`;
     const angle = Math.random() * Math.PI * 2;
     const dist = 60 + Math.random() * 120;
-    spark.style.setProperty('--sx', Math.cos(angle) * dist + 'px');
-    spark.style.setProperty('--sy', Math.sin(angle) * dist + 'px');
+    spark.style.setProperty('--px', Math.cos(angle) * dist + 'px');
+    spark.style.setProperty('--py', Math.sin(angle) * dist + 'px');
     document.body.appendChild(spark);
     setTimeout(() => spark.remove(), 1100);
   }
@@ -1646,7 +1720,7 @@ function showAlchemyDiscoveryAnimation(ingot, xpGained) {
     overlay.style.opacity = '0';
     overlay.style.transition = 'opacity 0.5s';
     setTimeout(() => overlay.remove(), 500);
-  }, 2000);
+  }, 2200);
 }
 
 // ========== КОЛЛЕКЦИЯ: ПОЛОЧКИ ==========
