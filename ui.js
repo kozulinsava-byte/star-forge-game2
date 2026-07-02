@@ -1,6 +1,6 @@
 // ========== UI МОДУЛЬ: ОТРИСОВКА ИНТЕРФЕЙСА ==========
-import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, LEVELS, STATUSES, GUILD_QUESTS } from './config.js';
-import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining } from './core.js';
+import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, ALCHEMY_RECIPES, LEVELS, STATUSES, GUILD_QUESTS } from './config.js';
+import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy } from './core.js';
 import { renderIngotScreen } from './ingot.js';
 
 // 🆕 Точка входа для мини-игр
@@ -53,6 +53,10 @@ let modalTimerInterval = null;
 
 // Состояние аккордеона
 let expandedGroups = {};
+
+// Состояние алхимии
+let alchemyMode = false;
+let alchemyFirstIngot = null;
 
 // ---------- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ----------
 function initTheme() {
@@ -171,14 +175,16 @@ function openInventoryShowcase(ingotId) {
     'expedition': 'Экспедиционный',
     'crafted': 'Крафтовый',
     'meteor': 'Метеоритный',
-    'special_meteor': 'Метеоритный'
+    'special_meteor': 'Метеоритный',
+    'alchemy': 'Алхимический'
   };
   
   const sourceColors = {
     'expedition': '#50C878',
     'crafted': '#FF8C00',
     'meteor': '#FF4444',
-    'special_meteor': '#FF4444'
+    'special_meteor': '#FF4444',
+    'alchemy': '#FFD700'
   };
 
   const rarityColor = rarityColors[ingot.rarityLevel] || '#A0A0A0';
@@ -227,14 +233,16 @@ function openCollectionShowcase(ingotId) {
     'expedition': 'Экспедиционный',
     'crafted': 'Крафтовый',
     'meteor': 'Метеоритный',
-    'special_meteor': 'Метеоритный'
+    'special_meteor': 'Метеоритный',
+    'alchemy': 'Алхимический'
   };
   
   const sourceColors = {
     'expedition': '#50C878',
     'crafted': '#FF8C00',
     'meteor': '#FF4444',
-    'special_meteor': '#FF4444'
+    'special_meteor': '#FF4444',
+    'alchemy': '#FFD700'
   };
 
   const rarityColor = rarityColors[ingot.rarityLevel] || '#A0A0A0';
@@ -438,7 +446,7 @@ function showAdminPanel() {
       closeModal(); 
     });
     
-    // 🆕 ПОЛНЫЙ СБРОС ПРОГРЕССА (исправлено: saveGame после resetIngotState)
+    // 🆕 ПОЛНЫЙ СБРОС ПРОГРЕССА
     document.getElementById('adminResetProgress')?.addEventListener('click', () => {
       const state = getPlayerState();
       
@@ -492,6 +500,9 @@ function showAdminPanel() {
       
       // Сброс слотов экипировки
       state.equippedArtifacts = [null, null, null];
+      
+      // Сброс открытий алхимии
+      state.discoveredAlchemyRecipes = [];
       
       // Сброс флага туториала
       import('./tutorial.js').then(t => {
@@ -1227,7 +1238,7 @@ function unlockExpedition(expId) {
   }
 }
 
-// ========== РЕНДЕРИНГ ВКЛАДКИ ИНВЕНТАРЯ ==========
+// ========== РЕНДЕРИНГ ВКЛАДКИ ИНВЕНТАРЯ (С АЛХИМИЕЙ) ==========
 export function renderInventoryTab() {
   const state = getPlayerState();
   let html = `
@@ -1266,15 +1277,70 @@ export function renderInventoryTab() {
       }
     }
   } else {
+    // Вкладка слитков
     const items = Object.entries(state.ingots).filter(([k, c]) => c > 0 && !CONFIG_ITEMS[k].isCollectible);
+    
+    // Кнопка Алхимии
+    const alchemyAvailable = state.player.level >= 3;
+    const alchemyBtnText = alchemyMode ? '❌ Отмена' : '⚗️ Сплавить';
+    const alchemyBtnStyle = alchemyMode ? 'background: rgba(255,68,68,0.15); border-color: rgba(255,68,68,0.4); color: #FF4444;' : '';
+    
+    if (alchemyAvailable) {
+      html += `
+        <div style="margin-bottom:14px;">
+          <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyBtnStyle}">
+            ${alchemyBtnText}
+          </button>
+          ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
+          ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй слиток.</div>` : ''}
+        </div>
+      `;
+    }
+    
     if (!items.length) {
       html += '<div class="empty-state">Нет слитков. Откройте жеоды.</div>';
     } else {
       html += '<div class="grid-container">';
       items.forEach(([k, c]) => {
         const ing = CONFIG_ITEMS[k];
+        
+        // Определяем, совместим ли слиток с выбранным
+        let isCompatible = true;
+        let cardClass = 'collection-card';
+        
+        if (alchemyMode) {
+          if (!alchemyFirstIngot) {
+            // Режим выбора первого слитка — все доступны
+            cardClass += ' alchemy-selectable';
+          } else if (k === alchemyFirstIngot) {
+            // Это выбранный слиток — подсвечен
+            cardClass += ' alchemy-selected';
+          } else {
+            // Проверяем совместимость
+            const ing1 = CONFIG_ITEMS[alchemyFirstIngot];
+            const ing2 = ing;
+            
+            // Ищем рецепт
+            let foundRecipe = false;
+            for (let recipeId in ALCHEMY_RECIPES) {
+              const recipe = ALCHEMY_RECIPES[recipeId];
+              if (recipe.ingredients.includes(alchemyFirstIngot) && recipe.ingredients.includes(k)) {
+                foundRecipe = true;
+                break;
+              }
+            }
+            
+            if (!foundRecipe) {
+              isCompatible = false;
+              cardClass += ' alchemy-incompatible';
+            } else {
+              cardClass += ' alchemy-compatible';
+            }
+          }
+        }
+        
         html += `
-          <div class="collection-card" data-ingot="${k}">
+          <div class="${cardClass}" data-ingot="${k}" data-compatible="${isCompatible}">
             <div class="card-icon" id="inv-ingot-${k}"></div>
             <div class="card-name">${ing.name}</div>
             <div class="card-count-badge">${c} шт.</div>
@@ -1293,17 +1359,170 @@ export function renderInventoryTab() {
         renderImageToElement(el, CONFIG_ITEMS[k].imagePath, CONFIG_ITEMS[k].icon, CONFIG_ITEMS[k].fallbackColor);
       }
     }
+    
+    // Обработчик кнопки Алхимии
+    const alchemyBtn = document.getElementById('toggleAlchemyBtn');
+    if (alchemyBtn) {
+      alchemyBtn.addEventListener('click', () => {
+        if (alchemyMode) {
+          // Выход из режима
+          alchemyMode = false;
+          alchemyFirstIngot = null;
+        } else {
+          // Вход в режим
+          alchemyMode = true;
+          alchemyFirstIngot = null;
+        }
+        renderInventoryTab();
+      });
+    }
+    
+    // Обработчики кликов по слиткам в режиме алхимии
+    if (alchemyMode) {
+      document.querySelectorAll('[data-ingot]').forEach(card => {
+        card.addEventListener('click', () => {
+          const ingotId = card.dataset.ingot;
+          const isCompatible = card.dataset.compatible === 'true';
+          
+          if (!alchemyFirstIngot) {
+            // Выбор первого слитка
+            alchemyFirstIngot = ingotId;
+            renderInventoryTab();
+          } else if (ingotId === alchemyFirstIngot) {
+            // Отмена выбора
+            alchemyFirstIngot = null;
+            renderInventoryTab();
+          } else if (isCompatible) {
+            // Открываем модалку подтверждения
+            showAlchemyConfirmModal(alchemyFirstIngot, ingotId);
+          } else {
+            // Несовместимый слиток
+            showToast('Сплав невозможен: слитки из разных локаций!', '⚠️');
+          }
+        });
+      });
+    } else {
+      // Обычный режим — показ showcase
+      document.querySelectorAll('[data-ingot]').forEach(card => {
+        card.addEventListener('click', () => {
+          openInventoryShowcase(card.dataset.ingot);
+        });
+      });
+    }
   }
 
   document.querySelectorAll('[data-subtab]').forEach((b) =>
     b.addEventListener('click', () => {
       inventorySubTab = b.dataset.subtab;
+      alchemyMode = false;
+      alchemyFirstIngot = null;
       renderInventoryTab();
     })
   );
   
   document.querySelectorAll('[data-geode]').forEach((c) => c.addEventListener('click', () => showGeodeModal(c.dataset.geode)));
-  document.querySelectorAll('[data-ingot]').forEach((c) => c.addEventListener('click', () => openInventoryShowcase(c.dataset.ingot)));
+}
+
+// ========== МОДАЛКА ПОДТВЕРЖДЕНИЯ АЛХИМИИ ==========
+function showAlchemyConfirmModal(ingotId1, ingotId2) {
+  const state = getPlayerState();
+  
+  // Ищем рецепт
+  let matchedRecipe = null;
+  for (let recipeId in ALCHEMY_RECIPES) {
+    const recipe = ALCHEMY_RECIPES[recipeId];
+    if (recipe.ingredients.includes(ingotId1) && recipe.ingredients.includes(ingotId2)) {
+      matchedRecipe = recipe;
+      break;
+    }
+  }
+  
+  if (!matchedRecipe) return;
+  
+  const ing1 = CONFIG_ITEMS[ingotId1];
+  const ing2 = CONFIG_ITEMS[ingotId2];
+  const resultIngot = CONFIG_ITEMS[matchedRecipe.resultIngotId];
+  
+  const isFirstDiscovery = !state.discoveredAlchemyRecipes || !state.discoveredAlchemyRecipes.includes(matchedRecipe.id);
+  const totalXP = matchedRecipe.xpReward + (isFirstDiscovery ? matchedRecipe.discoveryBonusXP : 0);
+  
+  const resultDisplay = isFirstDiscovery ? `<span style="font-size:28px;">❓</span>` : `<span style="font-size:28px;">${resultIngot.icon}</span>`;
+  
+  const html = `
+    <div class="modal-header">
+      <div class="modal-title">⚗️ Алхимический сплав</div>
+      <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
+    </div>
+    <div class="modal-content">
+      <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin:16px 0;">
+        <div style="text-align:center;">
+          <div style="font-size:36px;">${ing1.icon}</div>
+          <div style="font-size:10px; color:var(--text-secondary);">${ing1.name}</div>
+        </div>
+        <div style="font-size:20px; color:var(--accent-gold); font-weight:700;">+</div>
+        <div style="text-align:center;">
+          <div style="font-size:36px;">${ing2.icon}</div>
+          <div style="font-size:10px; color:var(--text-secondary);">${ing2.name}</div>
+        </div>
+        <div style="font-size:24px; color:var(--accent-gold); margin:0 8px;">→</div>
+        <div style="text-align:center;">
+          ${resultDisplay}
+          <div style="font-size:10px; color:${isFirstDiscovery ? 'var(--text-muted)' : 'var(--text-primary)'};">
+            ${isFirstDiscovery ? '???' : resultIngot.name}
+          </div>
+        </div>
+      </div>
+      
+      <div style="background:rgba(0,0,0,0.2); border-radius:16px; padding:14px; margin:12px 0;">
+        <div style="font-weight:700; font-size:14px; color:var(--accent-gold); margin-bottom:6px;">${matchedRecipe.name}</div>
+        <div style="font-size:11px; color:var(--text-secondary);">${matchedRecipe.description}</div>
+        <div style="font-size:11px; color:var(--accent-gold); margin-top:8px;">
+          Награда: +${totalXP} XP
+          ${isFirstDiscovery ? ' (включая бонус за первое открытие!)' : ''}
+        </div>
+        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">
+          Требуемый уровень: ${matchedRecipe.reqLevel}
+        </div>
+      </div>
+      
+      <button class="btn" id="confirmAlchemyBtn" style="background: linear-gradient(135deg, #FFD700, #FF8C00); color:#000; font-weight:700; margin-bottom:8px;">
+        ⚗️ СПЛАВИТЬ
+      </button>
+      <button class="btn" id="cancelAlchemyBtn" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color:var(--text-secondary);">
+        Отмена
+      </button>
+    </div>
+  `;
+  
+  openModal(html);
+  
+  setTimeout(() => {
+    document.getElementById('confirmAlchemyBtn')?.addEventListener('click', () => {
+      closeModal();
+      
+      const result = performAlchemy(ingotId1, ingotId2);
+      
+      if (result.success) {
+        // Выходим из режима алхимии
+        alchemyMode = false;
+        alchemyFirstIngot = null;
+        
+        if (result.isFirstDiscovery) {
+          showToast(`🎉 ПЕРВОЕ ОТКРЫТИЕ! ${result.resultIngot.name}! +${result.xpGained} XP`, '⚗️');
+        } else {
+          showToast(`Создано: ${result.resultIngot.name}! +${result.xpGained} XP`, '⚗️');
+        }
+        
+        renderInventoryTab();
+      } else {
+        showToast(result.message, '⚠️');
+      }
+    });
+    
+    document.getElementById('cancelAlchemyBtn')?.addEventListener('click', () => {
+      closeModal();
+    });
+  }, 30);
 }
 
 // ========== КОЛЛЕКЦИЯ: ПОЛОЧКИ ==========
@@ -1333,7 +1552,8 @@ export function renderCollectionTab() {
     const sourceNames = {
       'expedition': 'Экспедиция',
       'crafted': 'Крафт',
-      'meteor': 'Метеорит'
+      'meteor': 'Метеорит',
+      'alchemy': 'Алхимия'
     };
     
     function renderIngotCard(ing) {
@@ -1368,6 +1588,14 @@ export function renderCollectionTab() {
     html += '<div class="grid-container">';
     regularIngots.filter(i => i.sourceType === 'crafted').forEach(ing => { html += renderIngotCard(ing); });
     html += '</div>';
+    
+    const alchemyIngots = regularIngots.filter(i => i.sourceType === 'alchemy');
+    if (alchemyIngots.length > 0) {
+      html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:16px; font-weight:700; margin:20px 0 12px; color:#FFD700;">⚗️ Алхимические Сплавы</div>';
+      html += '<div class="grid-container">';
+      alchemyIngots.forEach(ing => { html += renderIngotCard(ing); });
+      html += '</div>';
+    }
     
     const meteorIngots = regularIngots.filter(i => i.sourceType === 'meteor');
     if (meteorIngots.length > 0) {
