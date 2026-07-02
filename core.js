@@ -1,6 +1,6 @@
 // ========== CORE МОДУЛЬ: ЛОГИКА ИГРЫ ==========
 import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, CRAFT_RECIPES, ALCHEMY_RECIPES, LEVELS, DEFAULT_STATE, GUILD_QUESTS } from './config.js';
-import { regenEnergy, checkLevelLock, getIngotSaveData, initIngotState, getBonusExpeditionSpeed, getBonusXP, getBonusDoubleDrop } from './ingot.js';
+import { regenEnergy, checkLevelLock, getIngotSaveData, initIngotState, getBonusExpeditionSpeed, getBonusXP, getBonusDoubleDrop, getBonusRecycledChance } from './ingot.js';
 
 // ========== ЗАГЛУШКИ UI ФУНКЦИЙ ==========
 let _showToast = null;
@@ -44,7 +44,7 @@ export let playerState = {
   questRefreshTime: null,
   completedQuests: [],
   questCooldownEnd: null,
-  unlockedExpeditions: ['mine'],
+  unlockedExpeditions: ['swamp'],
   discoveredAlchemyRecipes: []
 };
 
@@ -623,8 +623,8 @@ export function devGiveGeodes() {
 }
 
 export function devUnlockLocations() {
-  playerState.player.level = Math.max(playerState.player.level, 10);
-  if (!playerState.unlockedExpeditions) playerState.unlockedExpeditions = ['mine'];
+  playerState.player.level = Math.max(playerState.player.level, 6);
+  if (!playerState.unlockedExpeditions) playerState.unlockedExpeditions = ['swamp'];
   EXPEDITION_GROUPS.forEach(group => {
     group.expeditions.forEach(exp => {
       if (!playerState.unlockedExpeditions.includes(exp.id)) {
@@ -1274,7 +1274,7 @@ export function saveGame() {
       lastEnergyRegen: ingotSave.lastEnergyRegen,
       levelLocked: ingotSave.levelLocked,
       equippedArtifacts: playerState.equippedArtifacts || [null, null, null],
-      unlockedExpeditions: playerState.unlockedExpeditions || ['mine'],
+      unlockedExpeditions: playerState.unlockedExpeditions || ['swamp'],
       discoveredAlchemyRecipes: playerState.discoveredAlchemyRecipes || []
     },
     collectibleSerials,
@@ -1341,14 +1341,14 @@ function applySaveData(data) {
   }
   
   if (saved.collectedArtifacts && typeof saved.collectedArtifacts === 'object') {
-    if (Array.isArray(saved.collectedArtifacts.mine)) {
-      playerState.collectedArtifacts.mine = [...saved.collectedArtifacts.mine];
+    if (Array.isArray(saved.collectedArtifacts.swamp)) {
+      playerState.collectedArtifacts.swamp = [...saved.collectedArtifacts.swamp];
     }
-    if (Array.isArray(saved.collectedArtifacts.jungle)) {
-      playerState.collectedArtifacts.jungle = [...saved.collectedArtifacts.jungle];
+    if (Array.isArray(saved.collectedArtifacts.rotforest)) {
+      playerState.collectedArtifacts.rotforest = [...saved.collectedArtifacts.rotforest];
     }
-    if (Array.isArray(saved.collectedArtifacts.asteroid)) {
-      playerState.collectedArtifacts.asteroid = [...saved.collectedArtifacts.asteroid];
+    if (Array.isArray(saved.collectedArtifacts.rustbottom)) {
+      playerState.collectedArtifacts.rustbottom = [...saved.collectedArtifacts.rustbottom];
     }
     if (Array.isArray(saved.collectedArtifacts.meteor)) {
       playerState.collectedArtifacts.meteor = [...saved.collectedArtifacts.meteor];
@@ -1390,7 +1390,7 @@ function applySaveData(data) {
   if (Array.isArray(saved.unlockedExpeditions)) {
     playerState.unlockedExpeditions = [...saved.unlockedExpeditions];
   } else {
-    playerState.unlockedExpeditions = ['mine'];
+    playerState.unlockedExpeditions = ['swamp'];
   }
   
   if (Array.isArray(saved.discoveredAlchemyRecipes)) {
@@ -1425,18 +1425,18 @@ export const saveToLocalStorage = saveGame;
   const d = DEFAULT_STATE;
   
   playerState.expeditions = {
-    mine: { ...d.expeditions.mine },
-    jungle: { ...d.expeditions.jungle },
-    asteroid: { ...d.expeditions.asteroid }
+    swamp: { ...d.expeditions.swamp },
+    rotforest: { ...d.expeditions.rotforest },
+    rustbottom: { ...d.expeditions.rustbottom }
   };
   playerState.geodes = { ...d.geodes };
   for (let k in d.ingots) playerState.ingots[k] = d.ingots[k];
   for (let k in d.minedStats) playerState.minedStats[k] = d.minedStats[k];
   playerState.discoveredSpecialGeodes = { ...d.discoveredSpecialGeodes };
   playerState.collectedArtifacts = {
-    mine: [...d.collectedArtifacts.mine],
-    jungle: [...d.collectedArtifacts.jungle],
-    asteroid: [...d.collectedArtifacts.asteroid],
+    swamp: [...(d.collectedArtifacts.swamp || [])],
+    rotforest: [...(d.collectedArtifacts.rotforest || [])],
+    rustbottom: [...(d.collectedArtifacts.rustbottom || [])],
     meteor: [...(d.collectedArtifacts.meteor || [])]
   };
   playerState.player.level = d.player.level;
@@ -1453,7 +1453,7 @@ export const saveToLocalStorage = saveGame;
   playerState.completedQuests = [];
   playerState.questCooldownEnd = null;
   playerState.equippedArtifacts = [null, null, null];
-  playerState.unlockedExpeditions = ['mine'];
+  playerState.unlockedExpeditions = ['swamp'];
   playerState.discoveredAlchemyRecipes = [];
   
   console.log('[Core] DEFAULT_STATE применён синхронно при загрузке модуля');
@@ -1494,7 +1494,7 @@ export async function initializeState() {
 // ---------- ЭКСПЕДИЦИИ ----------
 function getRandomDropFromExpedition(expId) {
   const exp = CONFIG_EXPEDITIONS[expId];
-  if (!exp) return { geodeId: 'mine', isSpecial: false };
+  if (!exp) return { geodeId: 'swamp', isSpecial: false };
   
   const playerExp = playerState.expeditions[expId];
   let specialChance = exp.specialGeodeChance;
@@ -1628,7 +1628,6 @@ export function startExpedition(expId) {
 export function performAlchemy(ingotId1, ingotId2) {
   if (!playerState) return { success: false, message: 'Ошибка состояния игры.' };
   
-  // Ищем рецепт по двум ингредиентам
   let matchedRecipe = null;
   for (let recipeId in ALCHEMY_RECIPES) {
     const recipe = ALCHEMY_RECIPES[recipeId];
@@ -1643,12 +1642,10 @@ export function performAlchemy(ingotId1, ingotId2) {
     return { success: false, message: 'Рецепт не найден!' };
   }
   
-  // Проверка уровня
   if (playerState.player.level < matchedRecipe.reqLevel) {
     return { success: false, message: `Требуется ${matchedRecipe.reqLevel} уровень!` };
   }
   
-  // Проверка наличия слитков
   if ((playerState.ingots[ingotId1] || 0) < 1) {
     return { success: false, message: `Недостаточно ${CONFIG_ITEMS[ingotId1]?.name || ingotId1}!` };
   }
@@ -1656,22 +1653,18 @@ export function performAlchemy(ingotId1, ingotId2) {
     return { success: false, message: `Недостаточно ${CONFIG_ITEMS[ingotId2]?.name || ingotId2}!` };
   }
   
-  // Проверка на первое открытие
   if (!playerState.discoveredAlchemyRecipes) {
     playerState.discoveredAlchemyRecipes = [];
   }
   const isFirstDiscovery = !playerState.discoveredAlchemyRecipes.includes(matchedRecipe.id);
   
-  // Списываем ингредиенты
   playerState.ingots[ingotId1]--;
   playerState.ingots[ingotId2]--;
   
-  // Добавляем результат
   playerState.ingots[matchedRecipe.resultIngotId] = (playerState.ingots[matchedRecipe.resultIngotId] || 0) + 1;
   playerState.minedStats[matchedRecipe.resultIngotId] = (playerState.minedStats[matchedRecipe.resultIngotId] || 0) + 1;
   playerState.player.totalIngots++;
   
-  // Начисляем опыт
   let totalXP = matchedRecipe.xpReward;
   if (isFirstDiscovery) {
     playerState.discoveredAlchemyRecipes.push(matchedRecipe.id);
@@ -1787,11 +1780,11 @@ export async function updateLeaderboard() {
 
 function renderTestLeaderboard() {
   const testData = [
-    { rank: 1, name: '⛏️ Шахтёр_Бог', xp: 15000 }, { rank: 2, name: '💎 Алмазный_Лорд', xp: 12000 },
-    { rank: 3, name: '🌌 Космо_Старатель', xp: 8500 }, { rank: 4, name: 'Старатель', xp: playerState.player.xp, isPlayer: true },
-    { rank: 5, name: '🪨 Геолог_777', xp: 3200 }, { rank: 6, name: '🔥 Лавовый_Копатель', xp: 2100 },
-    { rank: 7, name: '❄️ Ледяной_Бур', xp: 900 }, { rank: 8, name: '🌟 Звёздный_Путник', xp: 450 },
-    { rank: 9, name: '🪐 Астероидный_Волк', xp: 200 }, { rank: 10, name: '⛏️ Новичок_2026', xp: 50 }
+    { rank: 1, name: '🫧 Болотный_Князь', xp: 15000 }, { rank: 2, name: '🦴 Гнилой_Лорд', xp: 12000 },
+    { rank: 3, name: '🔩 Ржавый_Старатель', xp: 8500 }, { rank: 4, name: 'Старатель', xp: playerState.player.xp, isPlayer: true },
+    { rank: 5, name: '🟤 Тинистый_777', xp: 3200 }, { rank: 6, name: '🪵 Древесный_Копатель', xp: 2100 },
+    { rank: 7, name: '🧶 Проволочный_Бур', xp: 900 }, { rank: 8, name: '🧩 Кафельный_Путник', xp: 450 },
+    { rank: 9, name: '🟢 Иловый_Волк', xp: 200 }, { rank: 10, name: '🫧 Новичок_2026', xp: 50 }
   ];
   
   testData.sort((a, b) => b.xp - a.xp);
@@ -1800,7 +1793,7 @@ function renderTestLeaderboard() {
   let html = `<div class="modal-header"><div class="modal-title">🏆 ТОП ИГРОКОВ</div><button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button></div><div class="modal-content" style="text-align:left; padding:10px;">`;
   testData.forEach((entry) => {
     const isPlayer = entry.isPlayer;
-    html += `<div style="display:flex; align-items:center; gap:12px; padding:12px; background:${isPlayer ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.03)'}; border-radius:16px; margin-bottom:8px;"><span style="font-size:20px; font-weight:700; width:30px;">${entry.rank}</span><span style="flex:1; font-weight:600;">${entry.name} ${isPlayer ? '👈' : ''}</span><span style="color:#FFD700; font-weight:700;">${entry.xp} XP</span></div>`;
+    html += `<div style="display:flex; align-items:center; gap:12px; padding:12px; background:${isPlayer ? 'rgba(139, 115, 85, 0.15)' : 'rgba(255,255,255,0.03)'}; border-radius:16px; margin-bottom:8px;"><span style="font-size:20px; font-weight:700; width:30px;">${entry.rank}</span><span style="flex:1; font-weight:600;">${entry.name} ${isPlayer ? '👈' : ''}</span><span style="color:#8B7355; font-weight:700;">${entry.xp} XP</span></div>`;
   });
   html += '</div>';
   
