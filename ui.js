@@ -438,7 +438,7 @@ function showAdminPanel() {
       closeModal(); 
     });
     
-    // 🆕 ПОЛНЫЙ СБРОС ПРОГРЕССА
+    // 🆕 ПОЛНЫЙ СБРОС ПРОГРЕССА (исправлено: saveGame после resetIngotState)
     document.getElementById('adminResetProgress')?.addEventListener('click', () => {
       const state = getPlayerState();
       
@@ -493,29 +493,27 @@ function showAdminPanel() {
       // Сброс слотов экипировки
       state.equippedArtifacts = [null, null, null];
       
-      // ★ КРИТИЧЕСКИ ВАЖНО: Принудительный сброс слитка-кликера
-      import('./ingot.js').then(ingot => {
-        ingot.resetIngotState();
-      });
-      
       // Сброс флага туториала
       import('./tutorial.js').then(t => {
         t.resetTutorialFlag();
       });
       
-      // ★ Полная очистка localStorage перед сохранением
-      localStorage.removeItem('starforge_v1');
-      
-      // Принудительное сохранение чистого состояния
-      saveGame();
-      
-      showToast('💀 Прогресс полностью сброшен!', '🗑️');
-      closeModal();
-      
-      // Перезагрузка страницы для чистой инициализации
-      setTimeout(() => {
-        location.reload();
-      }, 500);
+      // ★ ИСПРАВЛЕНИЕ: сначала сбрасываем ingotState, потом сохраняем
+      import('./ingot.js').then(ingot => {
+        ingot.resetIngotState();
+        
+        // Полная очистка localStorage и сохранение ПОСЛЕ сброса ingotState
+        localStorage.removeItem('starforge_v1');
+        saveGame();
+        
+        showToast('💀 Прогресс полностью сброшен!', '🗑️');
+        closeModal();
+        
+        // Перезагрузка страницы для чистой инициализации
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      });
     });
     
     document.getElementById('adminStartSmelt')?.addEventListener('click', () => {
