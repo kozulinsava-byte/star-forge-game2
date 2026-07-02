@@ -469,22 +469,19 @@ function getNextLevelXP(level) {
   return LEVELS[level] || LEVELS[LEVELS.length - 1];
 }
 
-// ========== ПЕРЕПЛАВКА (ИСПРАВЛЕНО: проверка требований СЛЕДУЮЩЕГО уровня) ==========
+// ========== ПЕРЕПЛАВКА ==========
 export function performUpgrade() {
   const state = getPlayerState();
   if (!ingotState.levelLocked) return { success: false, message: 'Опыт ещё не заполнен!' };
   
-  // ★ ИСПРАВЛЕНИЕ: проверяем требования СЛЕДУЮЩЕГО уровня (тот, на который переходим)
   const nextLevel = state.player.level + 1;
   const nextIngotData = INGOT_LEVELS[nextLevel];
   if (!nextIngotData) return { success: false, message: 'Максимальный уровень!' };
   
-  // Проверка стружки
   if (ingotState.shavings < nextIngotData.shavingsCost) {
     return { success: false, message: `Нужно ${nextIngotData.shavingsCost} стружки!` };
   }
   
-  // Проверка слитков
   if (nextIngotData.ingotCost) {
     for (let id in nextIngotData.ingotCost) {
       if ((state.ingots[id] || 0) < nextIngotData.ingotCost[id]) {
@@ -496,7 +493,6 @@ export function performUpgrade() {
   const currentIngotData = getCurrentIngotData();
   const oldIngot = { name: currentIngotData.name, icon: currentIngotData.icon, era: currentIngotData.era, level: state.player.level, image: currentIngotData.image };
   
-  // Списание ресурсов
   ingotState.shavings -= nextIngotData.shavingsCost;
   if (nextIngotData.ingotCost) {
     for (let id in nextIngotData.ingotCost) {
@@ -649,7 +645,7 @@ function renderEquipSlots() {
   return html;
 }
 
-// ========== ГЛАВНАЯ ОТРИСОВКА ==========
+// ========== ГЛАВНАЯ ОТРИСОВКА (ДОБАВЛЕНА АНИМАЦИЯ СЛИТКА) ==========
 export function renderIngotScreen(container) {
   stopUIUpdates();
   const state = getPlayerState();
@@ -693,6 +689,29 @@ export function renderIngotScreen(container) {
       @keyframes rushTimerPulse {
         0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
         50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      }
+      
+      /* ★ НОВАЯ АНИМАЦИЯ: Плавный перелив свечения (Light Sweep) ★ */
+      @keyframes ingotGlow {
+        0% { opacity: 0.15; transform: translate3d(-100%, -100%, 0) rotate(0deg); }
+        25% { opacity: 0.35; }
+        50% { opacity: 0.15; }
+        75% { opacity: 0.35; }
+        100% { opacity: 0.15; transform: translate3d(200%, 200%, 0) rotate(15deg); }
+      }
+      
+      /* ★ НОВАЯ АНИМАЦИЯ: Лёгкая пульсация тени ★ */
+      @keyframes ingotPulse {
+        0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 140, 0, 0.35)); }
+        50% { filter: drop-shadow(0 0 35px rgba(255, 160, 0, 0.55)); }
+      }
+      
+      /* ★ НОВАЯ АНИМАЦИЯ: Блик по поверхности ★ */
+      @keyframes ingotShine {
+        0% { left: -60%; opacity: 0; }
+        20% { opacity: 0.25; }
+        80% { opacity: 0.25; }
+        100% { left: 120%; opacity: 0; }
       }
       
       .ingot-screen {
@@ -765,6 +784,7 @@ export function renderIngotScreen(container) {
         animation: ingotFloat 2s ease-in-out infinite;
       }
       
+      /* ★ КОНТЕЙНЕР СЛИТКА С АНИМАЦИЯМИ ★ */
       .ingot-image-container {
         width: 160px;
         height: 160px;
@@ -772,11 +792,85 @@ export function renderIngotScreen(container) {
         user-select: none;
         -webkit-tap-highlight-color: transparent;
         position: relative;
-        filter: drop-shadow(0 0 25px rgba(255,140,0,0.4));
+        animation: ingotPulse 3s ease-in-out infinite;
         transition: filter 0.3s ease;
       }
+      
+      /* ★ СВЕТОВОЙ ПЕРЕЛИВ (Light Sweep) ★ */
+      .ingot-image-container::after {
+        content: '';
+        position: absolute;
+        top: -20%;
+        left: -60%;
+        width: 80%;
+        height: 150%;
+        background: linear-gradient(
+          105deg,
+          transparent 35%,
+          rgba(255, 255, 255, 0.08) 42%,
+          rgba(255, 215, 0, 0.2) 45%,
+          rgba(255, 255, 255, 0.08) 48%,
+          transparent 55%
+        );
+        border-radius: 20px;
+        z-index: 5;
+        pointer-events: none;
+        animation: ingotGlow 3.5s ease-in-out infinite;
+        will-change: transform, opacity;
+        transform: translate3d(-100%, -100%, 0) rotate(0deg);
+      }
+      
+      /* ★ БЛИК ПО ПОВЕРХНОСТИ ★ */
+      .ingot-image-container::before {
+        content: '';
+        position: absolute;
+        top: 8%;
+        left: -60%;
+        width: 50%;
+        height: 25%;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.06) 40%,
+          rgba(255, 255, 255, 0.2) 50%,
+          rgba(255, 255, 255, 0.06) 60%,
+          transparent 100%
+        );
+        border-radius: 50%;
+        z-index: 4;
+        pointer-events: none;
+        animation: ingotShine 4s ease-in-out infinite;
+        animation-delay: 1.5s;
+        will-change: left, opacity;
+      }
+      
       .forge-rush-active .ingot-image-container {
+        animation: ingotPulse 1s ease-in-out infinite;
         filter: drop-shadow(0 0 40px rgba(255, 60, 0, 0.9));
+      }
+      
+      .forge-rush-active .ingot-image-container::after {
+        background: linear-gradient(
+          105deg,
+          transparent 35%,
+          rgba(255, 100, 0, 0.1) 42%,
+          rgba(255, 60, 0, 0.35) 45%,
+          rgba(255, 100, 0, 0.1) 48%,
+          transparent 55%
+        );
+        animation-duration: 1.8s;
+      }
+      
+      .forge-rush-active .ingot-image-container::before {
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 100, 0, 0.08) 40%,
+          rgba(255, 180, 0, 0.3) 50%,
+          rgba(255, 100, 0, 0.08) 60%,
+          transparent 100%
+        );
+        animation-duration: 2s;
       }
       
       .ingot-image {
@@ -787,6 +881,8 @@ export function renderIngotScreen(container) {
         -webkit-backface-visibility: hidden;
         backface-visibility: hidden;
         transition: transform 0.08s ease-out;
+        position: relative;
+        z-index: 1;
       }
       .ingot-image.squish-active {
         transform: translate3d(0, 0, 0) scale(0.92, 1.08);
@@ -805,6 +901,8 @@ export function renderIngotScreen(container) {
         -webkit-backface-visibility: hidden;
         backface-visibility: hidden;
         transition: transform 0.08s ease-out;
+        position: relative;
+        z-index: 1;
       }
       .ingot-fallback.squish-active {
         transform: translate3d(0, 0, 0) scale(0.92, 1.08);
