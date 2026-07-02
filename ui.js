@@ -3,7 +3,6 @@ import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, ALC
 import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy } from './core.js';
 import { renderIngotScreen } from './ingot.js';
 
-// 🆕 Точка входа для мини-игр
 let _startQuenchGame = null;
 let _startStackGame = null;
 let _startUpgradeGame = null;
@@ -19,10 +18,8 @@ async function loadMiniGames() {
   }
 }
 
-// Загружаем мини-игры при старте
 loadMiniGames();
 
-// Регистрируем UI функции в core.js
 registerUIFunctions({
     showToast: showToast,
     getGeodeStageImage: getGeodeStageImage,
@@ -36,29 +33,21 @@ registerUIFunctions({
     updateMeteorShardsDisplay: updateMeteorShardsDisplay
 });
 
-// DOM-элементы
 export const mainContent = document.getElementById('mainContent');
 const showcaseOverlay = document.getElementById('showcaseOverlay');
 const showcaseContent = document.getElementById('showcaseContent');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalContent = document.getElementById('modalContent');
 
-// Текущие вкладки
 export let currentTab = 'expeditions';
 export let inventorySubTab = 'geodes';
 export let collectionSubTab = 'encyclopedia';
 
-// ID интервала для живого таймера в модалке
 let modalTimerInterval = null;
-
-// Состояние аккордеона
 let expandedGroups = {};
-
-// Состояние алхимии
 let alchemyMode = false;
 let alchemyFirstIngot = null;
 
-// ---------- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ----------
 function initTheme() {
   const savedTheme = localStorage.getItem('starforge_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', savedTheme);
@@ -69,19 +58,14 @@ function toggleTheme() {
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', newTheme);
   localStorage.setItem('starforge_theme', newTheme);
-  
   const btn = document.getElementById('themeProfileBtn');
-  if (btn) {
-    btn.innerHTML = newTheme === 'dark' ? '🌙 Сменить тему (Светлая)' : '☀️ Сменить тему (Тёмная)';
-  }
+  if (btn) btn.innerHTML = newTheme === 'dark' ? '🌙 Сменить тему (Светлая)' : '☀️ Сменить тему (Тёмная)';
 }
 
 initTheme();
 
-// ---------- УТИЛИТЫ РЕНДЕРИНГА (ЭМОДЗИ-ЗАГЛУШКИ) ----------
 export function renderImageToElement(el, src, fallbackIcon, fallbackColor) {
   if (!el) return;
-  
   el.innerHTML = '';
   const fb = document.createElement('span');
   fb.className = 'fallback-icon';
@@ -89,15 +73,8 @@ export function renderImageToElement(el, src, fallbackIcon, fallbackColor) {
   fb.style.color = fallbackColor || '#FFD700';
   fb.style.fontSize = el.classList.contains('card-icon') ? '40px' : 'inherit';
   el.appendChild(fb);
-  
   const img = new Image();
-  img.onload = () => {
-    el.innerHTML = '';
-    const i = document.createElement('img');
-    i.src = src;
-    i.alt = '';
-    el.appendChild(i);
-  };
+  img.onload = () => { el.innerHTML = ''; const i = document.createElement('img'); i.src = src; i.alt = ''; el.appendChild(i); };
   img.onerror = () => {};
   img.src = src;
 }
@@ -110,237 +87,99 @@ export function renderMysteryPlaceholder(el) {
 export function getGeodeStageImage(geodeId, taps) {
   const g = CONFIG_GEODES[geodeId];
   if (!g) return { imagePath: '', fallbackIcon: '🪨' };
-  
-  for (let s of g.stages) {
-    if (taps >= s.minTaps && taps <= s.maxTaps) {
-      return { imagePath: s.imagePath, fallbackIcon: s.fallbackIcon };
-    }
-  }
-  
+  for (let s of g.stages) { if (taps >= s.minTaps && taps <= s.maxTaps) return { imagePath: s.imagePath, fallbackIcon: s.fallbackIcon }; }
   return { imagePath: g.stages[0].imagePath, fallbackIcon: g.stages[0].fallbackIcon };
 }
 
 export function showToast(msg, emoji = '✨') {
   const c = document.getElementById('toastContainer');
   if (!c) return;
-  
   const t = document.createElement('div');
   t.className = 'toast';
   t.innerHTML = `<span>${emoji}</span> ${msg}`;
   c.appendChild(t);
-  
-  setTimeout(() => {
-    t.style.opacity = '0';
-    setTimeout(() => t.remove(), 300);
-  }, 2500);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
 }
 
-// ---------- REWARD POPUP ----------
 export function showRewardPopup(ingot) {
   const overlay = document.getElementById('rewardPopupOverlay');
   const iconEl = document.getElementById('rewardPopupIcon');
   const nameEl = document.getElementById('rewardPopupName');
   const closeBtn = document.getElementById('rewardPopupClose');
-  
   renderImageToElement(iconEl, ingot.imagePath, ingot.icon, ingot.fallbackColor);
   nameEl.textContent = ingot.name;
-  
   overlay.classList.add('active');
-  
-  const closeHandler = () => {
-    overlay.classList.remove('active');
-    closeBtn.removeEventListener('click', closeHandler);
-  };
+  const closeHandler = () => { overlay.classList.remove('active'); closeBtn.removeEventListener('click', closeHandler); };
   closeBtn.addEventListener('click', closeHandler);
 }
 
-// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ ИНВЕНТАРЯ) ----------
 function openInventoryShowcase(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
   if (!ingot) return;
-  
   const owned = state.ingots[ingotId] > 0;
   if (!owned) return;
-  
-  const rarityColors = {
-    'common': '#A0A0A0',
-    'rare': '#4A9CFF',
-    'epic': '#B44AFF',
-    'legendary': '#FFD700',
-    'collectible': '#FF64FF'
-  };
-  
-  const sourceNames = {
-    'expedition': 'Экспедиционный',
-    'crafted': 'Крафтовый',
-    'meteor': 'Метеоритный',
-    'special_meteor': 'Метеоритный',
-    'alchemy': 'Алхимический'
-  };
-  
-  const sourceColors = {
-    'expedition': '#50C878',
-    'crafted': '#FF8C00',
-    'meteor': '#FF4444',
-    'special_meteor': '#FF4444',
-    'alchemy': '#FFD700'
-  };
-
+  const rarityColors = { 'common': '#A0A0A0', 'rare': '#4A9CFF', 'epic': '#B44AFF', 'legendary': '#FFD700', 'collectible': '#FF64FF' };
+  const sourceNames = { 'expedition': 'Экспедиционный', 'crafted': 'Крафтовый', 'meteor': 'Метеоритный', 'special_meteor': 'Метеоритный', 'alchemy': 'Алхимический' };
+  const sourceColors = { 'expedition': '#50C878', 'crafted': '#FF8C00', 'meteor': '#FF4444', 'special_meteor': '#FF4444', 'alchemy': '#FFD700' };
   const rarityColor = rarityColors[ingot.rarityLevel] || '#A0A0A0';
   const sourceColor = sourceColors[ingot.sourceType] || '#A0A0A0';
   const sourceName = sourceNames[ingot.sourceType] || ingot.sourceType;
-  
-  let html = `
-    <div class="showcase-image" id="showcaseImage"></div>
-    <div class="showcase-info">
-      <div class="showcase-name">${ingot.name}</div>
-      <div style="display:flex; gap:8px; justify-content:center; margin:12px 0;">
-        <span style="background:${rarityColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${ingot.rarity}</span>
-        <span style="background:${sourceColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${sourceName}</span>
-      </div>
-      <div class="showcase-description">${ingot.description}</div>
-      <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
-    </div>
-  `;
-  
+  let html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info"><div class="showcase-name">${ingot.name}</div><div style="display:flex;gap:8px;justify-content:center;margin:12px 0;"><span style="background:${rarityColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${ingot.rarity}</span><span style="background:${sourceColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${sourceName}</span></div><div class="showcase-description">${ingot.description}</div><div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div></div>`;
   showcaseContent.innerHTML = html;
-  
-  const imgEl = document.getElementById('showcaseImage');
-  renderImageToElement(imgEl, ingot.imagePath, ingot.icon, ingot.fallbackColor);
+  renderImageToElement(document.getElementById('showcaseImage'), ingot.imagePath, ingot.icon, ingot.fallbackColor);
   showcaseContent.style.opacity = '1';
   showcaseOverlay.classList.add('active');
 }
 
-// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ КОЛЛЕКЦИИ) ----------
 function openCollectionShowcase(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
   if (!ingot) return;
-  
   const discovered = state.minedStats[ingotId] > 0;
   const isCollectible = ingot.isCollectible;
-  
-  const rarityColors = {
-    'common': '#A0A0A0',
-    'rare': '#4A9CFF',
-    'epic': '#B44AFF',
-    'legendary': '#FFD700',
-    'collectible': '#FF64FF'
-  };
-  
-  const sourceNames = {
-    'expedition': 'Экспедиционный',
-    'crafted': 'Крафтовый',
-    'meteor': 'Метеоритный',
-    'special_meteor': 'Метеоритный',
-    'alchemy': 'Алхимический'
-  };
-  
-  const sourceColors = {
-    'expedition': '#50C878',
-    'crafted': '#FF8C00',
-    'meteor': '#FF4444',
-    'special_meteor': '#FF4444',
-    'alchemy': '#FFD700'
-  };
-
+  const rarityColors = { 'common': '#A0A0A0', 'rare': '#4A9CFF', 'epic': '#B44AFF', 'legendary': '#FFD700', 'collectible': '#FF64FF' };
+  const sourceNames = { 'expedition': 'Экспедиционный', 'crafted': 'Крафтовый', 'meteor': 'Метеоритный', 'special_meteor': 'Метеоритный', 'alchemy': 'Алхимический' };
+  const sourceColors = { 'expedition': '#50C878', 'crafted': '#FF8C00', 'meteor': '#FF4444', 'special_meteor': '#FF4444', 'alchemy': '#FFD700' };
   const rarityColor = rarityColors[ingot.rarityLevel] || '#A0A0A0';
   const sourceColor = sourceColors[ingot.sourceType] || '#A0A0A0';
   const sourceName = sourceNames[ingot.sourceType] || ingot.sourceType;
-  
   let html = '';
-
   if (!discovered && !ingot.isCollectible) {
     const locationName = CONFIG_EXPEDITIONS[ingot.location]?.name || 'неизвестной локации';
-    html = `
-      <div class="showcase-image" id="showcaseImage"></div>
-      <div class="showcase-info">
-        <div class="showcase-name">Неизвестный материал</div>
-        <div class="showcase-rarity common">???</div>
-        <div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ИЗУЧЕН</span></div>
-        <div class="showcase-description">Месторождение: ${locationName}</div>
-        <div class="showcase-count">Ещё не найден</div>
-      </div>
-    `;
+    html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info"><div class="showcase-name">Неизвестный материал</div><div class="showcase-rarity common">???</div><div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ИЗУЧЕН</span></div><div class="showcase-description">Месторождение: ${locationName}</div><div class="showcase-count">Ещё не найден</div></div>`;
     showcaseContent.innerHTML = html;
     renderMysteryPlaceholder(document.getElementById('showcaseImage'));
     showcaseContent.style.opacity = '0.8';
-    
   } else if (!discovered && isCollectible) {
-    html = `
-      <div class="showcase-image" id="showcaseImage"></div>
-      <div class="showcase-info">
-        <div class="showcase-name">Неизвестный Артефакт</div>
-        <div class="showcase-rarity common">???</div>
-        <div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ОТКРЫТ</span></div>
-        <div class="showcase-description">Глубины космоса хранят это сокровище.</div>
-        <div class="showcase-count">Ещё не найден</div>
-      </div>
-    `;
+    html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info"><div class="showcase-name">Неизвестный Артефакт</div><div class="showcase-rarity common">???</div><div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ОТКРЫТ</span></div><div class="showcase-description">Глубины космоса хранят это сокровище.</div><div class="showcase-count">Ещё не найден</div></div>`;
     showcaseContent.innerHTML = html;
     renderMysteryPlaceholder(document.getElementById('showcaseImage'));
     showcaseContent.style.opacity = '0.8';
-    
   } else if (isCollectible) {
-    const effectText = ingot.effect_name ? `<div style="font-size:12px; color:#FFD700; margin-top:8px;">✨ Бонус: ${ingot.effect_name}</div>` : '';
-    html = `
-      <div class="showcase-image" id="showcaseImage"></div>
-      <div class="showcase-info" style="border: 2px solid #FFD700; box-shadow: 0 0 40px rgba(255,215,0,0.6), 0 0 80px rgba(180,0,255,0.4); background: linear-gradient(135deg, rgba(255,215,0,0.1) 0%, rgba(180,0,255,0.1) 100%); animation: legendaryGlow 3s ease-in-out infinite;">
-        <div class="showcase-name" style="font-size: 26px;">${ingot.name}</div>
-        <div style="display:flex; gap:8px; justify-content:center; margin:12px 0;">
-          <span style="background:${rarityColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${ingot.rarity}</span>
-          <span style="background:${sourceColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${sourceName}</span>
-        </div>
-        <div style="font-size: 18px; font-weight: 800; color: #FFD700; margin: 16px 0; text-transform: uppercase; letter-spacing: 2px;">СТАТУС: ДОБЫТО В КОЛЛЕКЦИЮ СЛАВЫ</div>
-        <div class="showcase-serial"><span class="showcase-serial-label">Серийный номер</span><span class="showcase-serial-value">#${getSerialForCollectible(ingotId)}</span></div>
-        <div class="showcase-description">${ingot.description}</div>
-        ${effectText}
-        <div style="font-size: 12px; color: var(--accent-gold); margin-top: 12px;">Применение: [👑 Легендарный трофей]</div>
-        <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
-      </div>
-    `;
+    const effectText = ingot.effect_name ? `<div style="font-size:12px;color:#FFD700;margin-top:8px;">✨ Бонус: ${ingot.effect_name}</div>` : '';
+    html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info" style="border:2px solid #FFD700;box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(180,0,255,0.4);background:linear-gradient(135deg,rgba(255,215,0,0.1) 0%,rgba(180,0,255,0.1) 100%);animation:legendaryGlow 3s ease-in-out infinite;"><div class="showcase-name" style="font-size:26px;">${ingot.name}</div><div style="display:flex;gap:8px;justify-content:center;margin:12px 0;"><span style="background:${rarityColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${ingot.rarity}</span><span style="background:${sourceColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${sourceName}</span></div><div style="font-size:18px;font-weight:800;color:#FFD700;margin:16px 0;text-transform:uppercase;letter-spacing:2px;">СТАТУС: ДОБЫТО В КОЛЛЕКЦИЮ СЛАВЫ</div><div class="showcase-serial"><span class="showcase-serial-label">Серийный номер</span><span class="showcase-serial-value">#${getSerialForCollectible(ingotId)}</span></div><div class="showcase-description">${ingot.description}</div>${effectText}<div style="font-size:12px;color:var(--accent-gold);margin-top:12px;">Применение: [👑 Легендарный трофей]</div><div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div></div>`;
     showcaseContent.innerHTML = html;
     renderImageToElement(document.getElementById('showcaseImage'), ingot.imagePath, ingot.icon, ingot.fallbackColor);
     showcaseContent.style.opacity = '1';
-    
     const styleEl = document.createElement('style');
-    styleEl.textContent = '@keyframes legendaryGlow { 0%,100%{box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(180,0,255,0.4);} 50%{box-shadow:0 0 60px rgba(255,215,0,0.9),0 0 120px rgba(180,0,255,0.7);} }';
+    styleEl.textContent = '@keyframes legendaryGlow{0%,100%{box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(180,0,255,0.4)}50%{box-shadow:0 0 60px rgba(255,215,0,0.9),0 0 120px rgba(180,0,255,0.7)}}';
     showcaseContent.appendChild(styleEl);
-    
   } else {
-    html = `
-      <div class="showcase-image" id="showcaseImage"></div>
-      <div class="showcase-info">
-        <div class="showcase-name">${ingot.name}</div>
-        <div style="display:flex; gap:8px; justify-content:center; margin:12px 0;">
-          <span style="background:${rarityColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${ingot.rarity}</span>
-          <span style="background:${sourceColor}; color:#fff; padding:5px 14px; border-radius:40px; font-weight:700; font-size:12px;">${sourceName}</span>
-        </div>
-        <div class="showcase-id"><span class="showcase-id-label">Добыто за всё время</span><span class="showcase-id-value">${state.minedStats[ingotId] || 0} ед.</span></div>
-        <div class="showcase-description">${ingot.description}</div>
-        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Применение: [⏳ В разработке для будущих ивентов]</div>
-        <div style="font-size: 12px; color: var(--accent-gold); margin-top: 4px;">Опыт при продаже: +${ingot.sellValue} EXP</div>
-        <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
-      </div>
-    `;
+    html = `<div class="showcase-image" id="showcaseImage"></div><div class="showcase-info"><div class="showcase-name">${ingot.name}</div><div style="display:flex;gap:8px;justify-content:center;margin:12px 0;"><span style="background:${rarityColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${ingot.rarity}</span><span style="background:${sourceColor};color:#fff;padding:5px 14px;border-radius:40px;font-weight:700;font-size:12px;">${sourceName}</span></div><div class="showcase-id"><span class="showcase-id-label">Добыто за всё время</span><span class="showcase-id-value">${state.minedStats[ingotId] || 0} ед.</span></div><div class="showcase-description">${ingot.description}</div><div style="font-size:12px;color:var(--text-secondary);margin-top:8px;">Применение: [⏳ В разработке для будущих ивентов]</div><div style="font-size:12px;color:var(--accent-gold);margin-top:4px;">Опыт при продаже: +${ingot.sellValue} EXP</div><div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div></div>`;
     showcaseContent.innerHTML = html;
     renderImageToElement(document.getElementById('showcaseImage'), ingot.imagePath, ingot.icon, ingot.fallbackColor);
     showcaseContent.style.opacity = '1';
   }
-  
   showcaseOverlay.classList.add('active');
 }
 
-export function closeShowcase() {
-  showcaseOverlay.classList.remove('active');
-}
+export function closeShowcase() { showcaseOverlay.classList.remove('active'); }
 
 // ---------- АДМИН-ПАНЕЛЬ ----------
 function showAdminPanel() {
   const state = getPlayerState();
   const activeEventId = eventsManager.getActiveEventId();
-  
   let html = `
     <div class="modal-header">
       <div class="modal-title">🛠️ Админ-панель</div>
@@ -1280,16 +1119,16 @@ export function renderInventoryTab() {
     // Вкладка слитков
     const items = Object.entries(state.ingots).filter(([k, c]) => c > 0 && !CONFIG_ITEMS[k].isCollectible);
     
-    // ★ КНОПКА АЛХИМИИ — всегда видна, заблокирована до 3 уровня
+    // ★ КНОПКА АЛХИМИИ — всегда видна, но заблокирована до 3 уровня
     const alchemyAvailable = state.player.level >= 3;
     
     html += `
       <div style="margin-bottom:14px;">
-        <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyMode ? 'background:rgba(255,68,68,0.15);border-color:rgba(255,68,68,0.4);color:#FF4444;' : ''}${!alchemyAvailable ? 'opacity:0.35;cursor:not-allowed;border-color:rgba(255,255,255,0.05);color:rgba(255,255,255,0.2);' : ''}" ${!alchemyAvailable ? 'disabled' : ''}>
-          ${!alchemyAvailable ? '🔒 Сплавить (ур.3)' : (alchemyMode ? '❌ Отмена' : '⚗️ Сплавить')}
+        <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyMode ? 'background: rgba(255,68,68,0.15); border-color: rgba(255,68,68,0.4); color: #FF4444;' : ''}${!alchemyAvailable ? 'opacity: 0.35; cursor: not-allowed; border-color: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2);' : ''}" ${!alchemyAvailable ? 'disabled' : ''}>
+          ${!alchemyAvailable ? '🔒 Сплавить (ур. 3)' : (alchemyMode ? '❌ Отмена' : '⚗️ Сплавить')}
         </button>
-        ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток</div>' : ''}
-        ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}</div>` : ''}
+        ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
+        ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй.</div>` : ''}
       </div>
     `;
     
@@ -1337,18 +1176,21 @@ export function renderInventoryTab() {
       html += '</div>';
     }
     
-    // ★ ФИЛЬТРАЦИЯ: CSS-классы для совместимости
-    const filterCSS = document.createElement('style');
-    filterCSS.id = 'alchemy-filter-styles';
-    filterCSS.textContent = `
+    mainContent.innerHTML = html;
+    
+    // ★ CSS ДЛЯ ФИЛЬТРАЦИИ
+    const filterStyle = document.createElement('style');
+    filterStyle.id = 'alchemy-filter-styles';
+    filterStyle.textContent = `
       .alchemy-selectable { border-color: rgba(255,215,0,0.3) !important; cursor: pointer !important; }
-      .alchemy-selected { border-color: rgba(255,215,0,0.8) !important; background: rgba(255,215,0,0.08) !important; box-shadow: 0 0 18px rgba(255,180,0,0.25) !important; }
+      .alchemy-selectable:active { border-color: rgba(255,215,0,0.7) !important; background: rgba(255,215,0,0.08) !important; }
+      .alchemy-selected { border-color: rgba(255,215,0,0.8) !important; background: rgba(255,215,0,0.1) !important; box-shadow: 0 0 18px rgba(255,180,0,0.25) !important; }
       .alchemy-compatible { border-color: rgba(80,200,120,0.35) !important; cursor: pointer !important; }
       .alchemy-incompatible { opacity: 0.28 !important; filter: grayscale(0.9) !important; cursor: pointer !important; }
     `;
-    if (!document.getElementById('alchemy-filter-styles')) document.head.appendChild(filterCSS);
-    
-    mainContent.innerHTML = html;
+    if (!document.getElementById('alchemy-filter-styles')) {
+      document.head.appendChild(filterStyle);
+    }
     
     for (let k in CONFIG_ITEMS) {
       if (CONFIG_ITEMS[k].isCollectible) continue;
@@ -1436,78 +1278,117 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   
   const html = `
     <style>
-      .alchemy-overlay-bg {
+      @keyframes alchemyFloatIn {
+        0% { opacity: 0; transform: scale(0.5); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      @keyframes alchemyMergeLeft {
+        0% { transform: translateX(0) scale(1); opacity: 1; }
+        50% { transform: translateX(30px) scale(0.4); opacity: 0.6; }
+        100% { transform: translateX(0) scale(0); opacity: 0; }
+      }
+      @keyframes alchemyMergeRight {
+        0% { transform: translateX(0) scale(1); opacity: 1; }
+        50% { transform: translateX(-30px) scale(0.4); opacity: 0.6; }
+        100% { transform: translateX(0) scale(0); opacity: 0; }
+      }
+      @keyframes alchemyCorePulse {
+        0% { transform: scale(1); box-shadow: 0 0 20px rgba(255,200,0,0.6); }
+        50% { transform: scale(2.5); box-shadow: 0 0 50px rgba(255,200,0,0.9), 0 0 80px rgba(255,100,0,0.4); }
+        100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,200,0,0.3); }
+      }
+      @keyframes alchemyFlashOverlay {
+        0% { opacity: 0; }
+        40% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+      @keyframes alchemyResultAppear {
+        0% { opacity: 0; transform: scale(0.3); }
+        60% { opacity: 1; transform: scale(1.1); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      
+      .alchemy-modal-wrapper {
+        position: relative;
+        overflow: hidden;
+      }
+      .alchemy-bg {
         background: radial-gradient(circle at 50% 35%, rgba(30,30,35,0.98) 0%, rgba(10,10,12,0.99) 100%);
-        border-radius: 40px;
+        border-radius: 32px;
+        padding: 8px 0 16px;
+        position: relative;
+      }
+      .alchemy-flash-layer {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.6) 0%, rgba(255,200,0,0.3) 40%, transparent 70%);
+        border-radius: 32px;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 5;
+      }
+      .alchemy-flash-layer.active {
+        animation: alchemyFlashOverlay 0.5s ease-out forwards;
       }
       .alchemy-stage {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0;
-        padding: 24px 0 8px;
+        padding: 20px 0 8px;
         position: relative;
         min-height: 80px;
+        z-index: 2;
       }
       .alchemy-ingot-slot {
         font-size: 42px;
-        transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1.2);
         filter: drop-shadow(0 0 14px rgba(255,180,0,0.4));
+        transition: none;
       }
-      .alchemy-ingot-slot.merging {
-        animation: alchemyMerge 0.7s cubic-bezier(0.25, 0.8, 0.25, 1.2) forwards;
+      .alchemy-ingot-slot.merging-left {
+        animation: alchemyMergeLeft 0.6s ease-in forwards;
       }
-      @keyframes alchemyMerge {
-        0% { transform: translateX(0) scale(1); opacity: 1; }
-        50% { transform: translateX(0) scale(0.5); opacity: 0.6; }
-        100% { transform: translateX(0) scale(0); opacity: 0; }
+      .alchemy-ingot-slot.merging-right {
+        animation: alchemyMergeRight 0.6s ease-in forwards;
       }
       .alchemy-core {
         width: 20px;
         height: 20px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(255,200,0,0.9) 0%, rgba(255,100,0,0.4) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(255,200,0,0.8) 0%, rgba(255,100,0,0.3) 50%, transparent 70%);
         margin: 0 16px;
-        transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+        transition: none;
       }
-      .alchemy-core.flash {
-        animation: alchemyFlash 0.5s cubic-bezier(0.25, 0.8, 0.25, 1.2);
-      }
-      @keyframes alchemyFlash {
-        0% { transform: scale(1); box-shadow: 0 0 20px rgba(255,200,0,0.8); }
-        50% { transform: scale(3); box-shadow: 0 0 60px rgba(255,200,0,1), 0 0 100px rgba(255,120,0,0.6); }
-        100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,200,0,0.4); }
+      .alchemy-core.pulsing {
+        animation: alchemyCorePulse 0.6s ease-in-out;
       }
       .alchemy-result-zone {
         width: 90px;
         height: 90px;
         margin: 8px auto 0;
         background: rgba(255,255,255,0.02);
-        border: 1px solid rgba(255,215,0,0.25);
+        border: 1px solid rgba(255,215,0,0.2);
         border-radius: 24px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 40px;
         position: relative;
+        z-index: 2;
         overflow: hidden;
       }
-      .alchemy-result-zone .result-icon {
-        animation: alchemyAppear 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-      }
-      @keyframes alchemyAppear {
-        0% { transform: scale(0) rotate(-20deg); opacity: 0; }
-        60% { transform: scale(1.2) rotate(3deg); opacity: 1; }
-        100% { transform: scale(1) rotate(0deg); opacity: 1; }
+      .alchemy-result-zone .result-icon-animated {
+        animation: alchemyResultAppear 0.5s ease-out forwards;
       }
       .alchemy-result-zone .result-mystery {
-        font-size: 30px;
-        color: rgba(255,255,255,0.12);
+        font-size: 28px;
+        color: rgba(255,255,255,0.1);
       }
       .alchemy-badge {
         display: inline-block;
         background: rgba(255,215,0,0.06);
-        border: 1px solid rgba(255,215,0,0.2);
+        border: 1px solid rgba(255,215,0,0.18);
         border-radius: 20px;
         padding: 5px 14px;
         font-size: 11px;
@@ -1526,14 +1407,14 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
         cursor: pointer;
         width: 100%;
         box-shadow: 0 4px 20px rgba(255,140,0,0.25);
-        margin-top: 8px;
+        margin-top: 10px;
       }
       .alchemy-btn:active { transform: scale(0.95); }
-      .alchemy-cancel {
+      .alchemy-cancel-btn {
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.06);
         color: var(--text-secondary);
-        padding: 12px;
+        padding: 10px;
         border-radius: 50px;
         cursor: pointer;
         width: 100%;
@@ -1545,22 +1426,27 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
       <div class="modal-title" style="font-size:17px;">⚗️ Алхимия</div>
       <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
     </div>
-    <div class="modal-content alchemy-overlay-bg">
-      <div class="alchemy-stage" id="alchemyStage">
-        <div class="alchemy-ingot-slot" id="alchemyLeft">${ing1.icon}</div>
-        <div class="alchemy-core" id="alchemyCore"></div>
-        <div class="alchemy-ingot-slot" id="alchemyRight">${ing2.icon}</div>
+    <div class="modal-content alchemy-modal-wrapper">
+      <div class="alchemy-bg">
+        <div class="alchemy-flash-layer" id="alchemyFlashLayer"></div>
+        <div class="alchemy-stage" id="alchemyStage">
+          <div class="alchemy-ingot-slot" id="alchemyLeft">${ing1.icon}</div>
+          <div class="alchemy-core" id="alchemyCore"></div>
+          <div class="alchemy-ingot-slot" id="alchemyRight">${ing2.icon}</div>
+        </div>
+        <div class="alchemy-result-zone" id="alchemyResultZone">
+          ${isFirstDiscovery ? '<div class="result-mystery">???</div>' : `<div class="result-icon-animated">${resultIngot.icon}</div>`}
+        </div>
+        <div style="text-align:center;">
+          ${isFirstDiscovery 
+            ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Неизвестный сплав</div>' 
+            : `<div style="font-size:12px;color:var(--text-primary);font-weight:600;">${resultIngot.name}</div>`}
+          <div class="alchemy-badge">⚡ +${totalXP} XP</div>
+          ${isFirstDiscovery ? '<div style="font-size:9px;color:#FFD700;margin-top:3px;">Первое открытие</div>' : ''}
+        </div>
+        <button class="alchemy-btn" id="confirmAlchemyBtn">Сплавить</button>
+        <button class="alchemy-cancel-btn" id="cancelAlchemyBtn">Отмена</button>
       </div>
-      <div class="alchemy-result-zone" id="alchemyResultZone">
-        ${isFirstDiscovery ? '<div class="result-mystery">???</div>' : `<div class="result-icon">${resultIngot.icon}</div>`}
-      </div>
-      <div style="text-align:center;">
-        ${isFirstDiscovery ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Неизвестный сплав</div>' : `<div style="font-size:12px;color:var(--text-primary);font-weight:600;">${resultIngot.name}</div>`}
-        <div class="alchemy-badge">⚡ +${totalXP} XP</div>
-        ${isFirstDiscovery ? '<div style="font-size:9px;color:#FFD700;margin-top:3px;">Первое открытие</div>' : ''}
-      </div>
-      <button class="alchemy-btn" id="confirmAlchemyBtn">Сплавить</button>
-      <button class="alchemy-cancel" id="cancelAlchemyBtn">Отмена</button>
     </div>
   `;
   
@@ -1571,31 +1457,36 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
       const leftEl = document.getElementById('alchemyLeft');
       const rightEl = document.getElementById('alchemyRight');
       const coreEl = document.getElementById('alchemyCore');
+      const flashLayer = document.getElementById('alchemyFlashLayer');
+      const resultZone = document.getElementById('alchemyResultZone');
       
-      if (leftEl) leftEl.classList.add('merging');
-      if (rightEl) rightEl.classList.add('merging');
-      if (coreEl) coreEl.classList.add('flash');
+      // Запуск анимации слияния
+      if (leftEl) leftEl.classList.add('merging-left');
+      if (rightEl) rightEl.classList.add('merging-right');
+      if (coreEl) coreEl.classList.add('pulsing');
       
+      // Вспышка
+      setTimeout(() => {
+        if (flashLayer) flashLayer.classList.add('active');
+      }, 300);
+      
+      // Завершение
       setTimeout(() => {
         closeModal();
-        
         const result = performAlchemy(ingotId1, ingotId2);
-        
         if (result.success) {
           alchemyMode = false;
           alchemyFirstIngot = null;
-          
           if (result.isFirstDiscovery) {
             showAlchemyDiscoveryAnimation(result.resultIngot, result.xpGained);
           } else {
             showToast(`Создано: ${result.resultIngot.name}! +${result.xpGained} XP`, '⚗️');
           }
-          
           renderInventoryTab();
         } else {
           showToast(result.message, '⚠️');
         }
-      }, 600);
+      }, 800);
     });
     
     document.getElementById('cancelAlchemyBtn')?.addEventListener('click', () => {
@@ -1611,19 +1502,19 @@ function showAlchemyDiscoveryAnimation(ingot, xpGained) {
   
   const icon = document.createElement('div');
   icon.textContent = ingot.icon;
-  icon.style.cssText = 'font-size:72px;animation:alchemyAppear 0.7s cubic-bezier(0.175,0.885,0.32,1.275) forwards;filter:drop-shadow(0 0 35px rgba(255,215,0,0.7));';
+  icon.style.cssText = 'font-size:72px;animation:alchemyResultAppear 0.6s ease-out forwards;filter:drop-shadow(0 0 35px rgba(255,215,0,0.7));';
   
   const name = document.createElement('div');
   name.textContent = ingot.name;
-  name.style.cssText = 'font-family:Unbounded,sans-serif;font-size:20px;font-weight:800;color:#FFD700;margin-top:14px;';
+  name.style.cssText = 'font-family:Unbounded,sans-serif;font-size:20px;font-weight:800;color:#FFD700;margin-top:14px;animation:alchemyFloatIn 0.5s ease-out forwards;animation-delay:0.2s;opacity:0;';
   
   const xp = document.createElement('div');
   xp.textContent = `+${xpGained} XP`;
-  xp.style.cssText = 'font-size:15px;color:#50C878;margin-top:6px;font-weight:700;';
+  xp.style.cssText = 'font-size:15px;color:#50C878;margin-top:6px;font-weight:700;animation:alchemyFloatIn 0.5s ease-out forwards;animation-delay:0.35s;opacity:0;';
   
   const label = document.createElement('div');
   label.textContent = 'НОВОЕ АЛХИМИЧЕСКОЕ ОТКРЫТИЕ';
-  label.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.4);margin-top:10px;letter-spacing:2px;';
+  label.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.4);margin-top:10px;letter-spacing:2px;animation:alchemyFloatIn 0.5s ease-out forwards;animation-delay:0.5s;opacity:0;';
   
   overlay.appendChild(icon);
   overlay.appendChild(name);
@@ -1631,22 +1522,9 @@ function showAlchemyDiscoveryAnimation(ingot, xpGained) {
   overlay.appendChild(label);
   document.body.appendChild(overlay);
   
-  const cx = window.innerWidth / 2;
-  const cy = window.innerHeight / 2;
-  for (let i = 0; i < 20; i++) {
-    const particle = document.createElement('div');
-    particle.style.cssText = `position:fixed;width:4px;height:4px;border-radius:50%;background:#FFD700;z-index:10002;left:${cx}px;top:${cy}px;box-shadow:0 0 10px #FFD700;animation:alchemyParticle 0.9s ease-out forwards;animation-delay:${i * 0.02}s;`;
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 50 + Math.random() * 90;
-    particle.style.setProperty('--sx', Math.cos(angle) * distance + 'px');
-    particle.style.setProperty('--sy', Math.sin(angle) * distance + 'px');
-    document.body.appendChild(particle);
-    setTimeout(() => particle.remove(), 1000);
-  }
-  
   setTimeout(() => {
     overlay.style.opacity = '0';
-    overlay.style.transition = 'opacity 0.4s';
+    overlay.style.transition = 'opacity 0.4s ease-out';
     setTimeout(() => overlay.remove(), 400);
   }, 2000);
 }
