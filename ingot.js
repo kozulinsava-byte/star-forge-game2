@@ -2,23 +2,23 @@
 import { CONFIG_ITEMS, EQUIP_SLOTS_CONFIG } from './config.js';
 import { getPlayerState, saveGame } from './core.js';
 
-// ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (15 УРОВНЕЙ) ==========
+// ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (15 УРОВНЕЙ) — ОБНОВЛЁННЫЕ РЕЦЕПТЫ С АЛХИМИЕЙ ==========
 const INGOT_LEVELS = {
   1: { level: 1, name: 'Ржавый Слиток', icon: '🪨', era: 'Эпоха Шахт', shavingsCost: 150, ingotCost: { copper: 3 }, tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
   2: { level: 2, name: 'Чугунный Слиток', icon: '⚫', era: 'Эпоха Шахт', shavingsCost: 500, ingotCost: { iron: 2, coal: 2 }, tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
   3: { level: 3, name: 'Медный Слиток', icon: '🟫', era: 'Эпоха Шахт', shavingsCost: 1500, ingotCost: { copper: 5, coal: 3 }, tapPower: 7, image: 'assets/king_ingot/ingot_3.png' },
-  4: { level: 4, name: 'Железный Слиток', icon: '⬜', era: 'Эпоха Шахт', shavingsCost: 4000, ingotCost: { iron: 5, coal: 4, copper: 3 }, tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
-  5: { level: 5, name: 'Бронзовый Слиток', icon: '🟤', era: 'Эпоха Джунглей', shavingsCost: 10000, ingotCost: { iron: 3, coal: 4, woodalloy: 1 }, tapPower: 30, image: 'assets/king_ingot/ingot_5.png' },
-  6: { level: 6, name: 'Стальной Слиток', icon: '🔩', era: 'Эпоха Джунглей', shavingsCost: 25000, ingotCost: { biocopper: 2, woodalloy: 2 }, tapPower: 60, image: 'assets/king_ingot/ingot_6.png' },
-  7: { level: 7, name: 'Изумрудный Слиток', icon: '💚', era: 'Эпоха Джунглей', shavingsCost: 60000, ingotCost: { biocopper: 3, oxidizedsilver: 2, woodalloy: 2 }, tapPower: 120, image: 'assets/king_ingot/ingot_7.png' },
-  8: { level: 8, name: 'Окисленный Слиток', icon: '🥈', era: 'Эпоха Джунглей', shavingsCost: 150000, ingotCost: { oxidizedsilver: 3, biocopper: 3, woodalloy: 3 }, tapPower: 250, image: 'assets/king_ingot/ingot_8.png' },
-  9: { level: 9, name: 'Био-Стальной Слиток', icon: '🧬', era: 'Эпоха Джунглей', shavingsCost: 350000, ingotCost: { biocopper: 5, oxidizedsilver: 4, woodalloy: 4 }, tapPower: 500, image: 'assets/king_ingot/ingot_9.png' },
-  10: { level: 10, name: 'Вольфрамовый Слиток', icon: '⭐', era: 'Пояс Астероидов', shavingsCost: 800000, ingotCost: { oxidizedsilver: 5, biocopper: 5, titanium: 2 }, tapPower: 1000, image: 'assets/king_ingot/ingot_10.png' },
-  11: { level: 11, name: 'Титановый Слиток', icon: '🔷', era: 'Пояс Астероидов', shavingsCost: 1800000, ingotCost: { titanium: 3, cobalt: 2, lunarsilver: 2 }, tapPower: 2200, image: 'assets/king_ingot/ingot_11.png' },
-  12: { level: 12, name: 'Кобальтовый Слиток', icon: '🔵', era: 'Пояс Астероидов', shavingsCost: 4000000, ingotCost: { titanium: 5, cobalt: 3, lunarsilver: 3 }, tapPower: 5000, image: 'assets/king_ingot/ingot_12.png' },
-  13: { level: 13, name: 'Иридиевый Слиток', icon: '💠', era: 'Далёкий Космос', shavingsCost: 10000000, ingotCost: { cobalt: 5, titanium: 4, lunarsilver: 4 }, tapPower: 12000, image: 'assets/king_ingot/ingot_13.png' },
-  14: { level: 14, name: 'Платиновый Слиток', icon: '💎', era: 'Далёкий Космос', shavingsCost: 25000000, ingotCost: { titanium: 6, cobalt: 5, lunarsilver: 5 }, tapPower: 30000, image: 'assets/king_ingot/ingot_14.png' },
-  15: { level: 15, name: 'Космониумный Слиток', icon: '🌈', era: 'Далёкий Космос', shavingsCost: 60000000, ingotCost: { titanium: 8, cobalt: 6, lunarsilver: 6 }, tapPower: 70000, image: 'assets/king_ingot/ingot_15.png' }
+  4: { level: 4, name: 'Железный Слиток', icon: '⬜', era: 'Эпоха Шахт', shavingsCost: 4000, ingotCost: { cement_steel: 1, iron: 3, coal: 2 }, tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
+  5: { level: 5, name: 'Бронзовый Слиток', icon: '🟤', era: 'Эпоха Джунглей', shavingsCost: 10000, ingotCost: { forged_bronze: 1, cement_steel: 1, woodalloy: 1 }, tapPower: 30, image: 'assets/king_ingot/ingot_5.png' },
+  6: { level: 6, name: 'Стальной Слиток', icon: '🔩', era: 'Эпоха Джунглей', shavingsCost: 25000, ingotCost: { cement_steel: 2, biocopper: 2, woodalloy: 1 }, tapPower: 60, image: 'assets/king_ingot/ingot_6.png' },
+  7: { level: 7, name: 'Изумрудный Слиток', icon: '💚', era: 'Эпоха Джунглей', shavingsCost: 60000, ingotCost: { graphite_copper: 2, biocopper: 3, oxidizedsilver: 2 }, tapPower: 120, image: 'assets/king_ingot/ingot_7.png' },
+  8: { level: 8, name: 'Окисленный Слиток', icon: '🥈', era: 'Эпоха Джунглей', shavingsCost: 150000, ingotCost: { forged_bronze: 2, graphite_copper: 2, oxidizedsilver: 3 }, tapPower: 250, image: 'assets/king_ingot/ingot_8.png' },
+  9: { level: 9, name: 'Био-Стальной Слиток', icon: '🧬', era: 'Эпоха Джунглей', shavingsCost: 350000, ingotCost: { cement_steel: 3, forged_bronze: 2, biocopper: 4 }, tapPower: 500, image: 'assets/king_ingot/ingot_9.png' },
+  10: { level: 10, name: 'Вольфрамовый Слиток', icon: '⭐', era: 'Пояс Астероидов', shavingsCost: 800000, ingotCost: { graphite_copper: 3, cement_steel: 3, titanium: 2 }, tapPower: 1000, image: 'assets/king_ingot/ingot_10.png' },
+  11: { level: 11, name: 'Титановый Слиток', icon: '🔷', era: 'Пояс Астероидов', shavingsCost: 1800000, ingotCost: { forged_bronze: 3, titanium: 3, cobalt: 2 }, tapPower: 2200, image: 'assets/king_ingot/ingot_11.png' },
+  12: { level: 12, name: 'Кобальтовый Слиток', icon: '🔵', era: 'Пояс Астероидов', shavingsCost: 4000000, ingotCost: { cement_steel: 4, titanium: 4, cobalt: 3 }, tapPower: 5000, image: 'assets/king_ingot/ingot_12.png' },
+  13: { level: 13, name: 'Иридиевый Слиток', icon: '💠', era: 'Далёкий Космос', shavingsCost: 10000000, ingotCost: { graphite_copper: 4, cobalt: 4, lunarsilver: 3 }, tapPower: 12000, image: 'assets/king_ingot/ingot_13.png' },
+  14: { level: 14, name: 'Платиновый Слиток', icon: '💎', era: 'Далёкий Космос', shavingsCost: 25000000, ingotCost: { forged_bronze: 4, graphite_copper: 4, titanium: 5 }, tapPower: 30000, image: 'assets/king_ingot/ingot_14.png' },
+  15: { level: 15, name: 'Космониумный Слиток', icon: '🌈', era: 'Далёкий Космос', shavingsCost: 60000000, ingotCost: { cement_steel: 5, forged_bronze: 5, titanium: 6 }, tapPower: 70000, image: 'assets/king_ingot/ingot_15.png' }
 };
 
 // ========== РЕЕСТР БОНУСОВ ==========
