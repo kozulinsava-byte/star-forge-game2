@@ -442,7 +442,7 @@ function showAdminPanel() {
     document.getElementById('adminResetProgress')?.addEventListener('click', () => {
       const state = getPlayerState();
       
-      // Сброс всего состояния
+      // Сброс уровня и опыта игрока
       state.player.level = 1;
       state.player.xp = 0;
       state.player.totalOpened = 0;
@@ -457,12 +457,12 @@ function showAdminPanel() {
         state.expeditions[k].specialChanceBoost = null;
       }
       
-      // Сброс жеод
+      // Сброс жеод до стартовых
       Object.keys(state.geodes).forEach(k => { state.geodes[k] = 0; });
       state.geodes['mine'] = 2;
       state.geodes['jungle'] = 1;
       
-      // Сброс слитков и статистики
+      // Полный сброс слитков и статистики
       Object.keys(state.ingots).forEach(k => { state.ingots[k] = 0; });
       Object.keys(state.minedStats).forEach(k => { state.minedStats[k] = 0; });
       
@@ -473,7 +473,7 @@ function showAdminPanel() {
       state.collectedArtifacts.asteroid = [];
       state.collectedArtifacts.meteor = [];
       
-      // Сброс эхо-кулдаунов и бонусов
+      // Сброс эхо-кулдаунов и бонусов экспедиций
       state.echoCooldowns = {};
       state.expeditionBonuses = {};
       
@@ -487,13 +487,13 @@ function showAdminPanel() {
       state.completedQuests = [];
       state.questCooldownEnd = null;
       
-      // Сброс разблокированных экспедиций
+      // Сброс разблокированных экспедиций до стартовых
       state.unlockedExpeditions = ['mine'];
       
       // Сброс слотов экипировки
       state.equippedArtifacts = [null, null, null];
       
-      // Сброс слитка-кликера (стружка, энергия, бонусы)
+      // ★ КРИТИЧЕСКИ ВАЖНО: Принудительный сброс слитка-кликера
       import('./ingot.js').then(ingot => {
         ingot.resetIngotState();
       });
@@ -503,8 +503,10 @@ function showAdminPanel() {
         t.resetTutorialFlag();
       });
       
-      // Очистка localStorage и сохранение чистого состояния
+      // ★ Полная очистка localStorage перед сохранением
       localStorage.removeItem('starforge_v1');
+      
+      // Принудительное сохранение чистого состояния
       saveGame();
       
       showToast('💀 Прогресс полностью сброшен!', '🗑️');
