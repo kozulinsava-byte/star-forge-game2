@@ -490,7 +490,10 @@ function showAdminPanel() {
       // Сброс разблокированных экспедиций
       state.unlockedExpeditions = ['mine'];
       
-      // Сброс слитка-кликера
+      // Сброс слотов экипировки
+      state.equippedArtifacts = [null, null, null];
+      
+      // Сброс слитка-кликера (стружка, энергия, бонусы)
       import('./ingot.js').then(ingot => {
         ingot.resetIngotState();
       });
@@ -898,7 +901,6 @@ export function renderExpeditionsTab() {
   const state = getPlayerState();
   let html = '<div class="section-title">⛏️ Экспедиции <button class="help-btn" data-help="expeditions">?</button></div>';
   
-  // Стили для аккордеона и анимации открытия
   html += `
     <style>
       .expedition-group {
@@ -1038,7 +1040,6 @@ export function renderExpeditionsTab() {
       const act = state.expeditions[exp.id] || { active: false };
       
       if (!isUnlocked) {
-        // Заблокированная экспедиция
         const canUnlock = state.player.level >= exp.unlockLevel;
         html += `
           <div class="expedition-card-locked" id="locked-${exp.id}">
@@ -1051,7 +1052,6 @@ export function renderExpeditionsTab() {
           </div>
         `;
       } else {
-        // Разблокированная экспедиция
         const isLockedByLevel = state.player.level < exp.requiredLevel;
         let timerHtml = '';
         
@@ -1088,7 +1088,6 @@ export function renderExpeditionsTab() {
   
   mainContent.innerHTML = html;
   
-  // Рендеринг иконок экспедиций
   EXPEDITION_GROUPS.forEach(group => {
     group.expeditions.forEach(exp => {
       const el = document.getElementById(`expedition-icon-${exp.id}`);
@@ -1098,7 +1097,6 @@ export function renderExpeditionsTab() {
     });
   });
   
-  // Обработчики аккордеона
   document.querySelectorAll('.expedition-group-header').forEach(header => {
     header.addEventListener('click', () => {
       const groupId = header.dataset.groupId;
@@ -1120,7 +1118,6 @@ export function renderExpeditionsTab() {
     });
   });
   
-  // Обработчики кликов по экспедициям
   document.querySelectorAll('[data-expedition-click]').forEach(el => {
     el.addEventListener('click', function (e) {
       const key = this.dataset.expeditionClick;
@@ -1141,7 +1138,6 @@ export function renderExpeditionsTab() {
     });
   });
   
-  // Обработчики кнопок «Открыть»
   EXPEDITION_GROUPS.forEach(group => {
     group.expeditions.forEach(exp => {
       if (!state.unlockedExpeditions.includes(exp.id)) {
@@ -1174,12 +1170,10 @@ function unlockExpedition(expId) {
     return;
   }
   
-  // Анимация открытия
   const lockedCard = document.getElementById(`locked-${expId}`);
   if (lockedCard) {
     lockedCard.classList.add('unlocking');
     
-    // Создаём частицы
     const app = document.getElementById('app');
     const cardRect = lockedCard.getBoundingClientRect();
     const appRect = app.getBoundingClientRect();
@@ -1212,7 +1206,6 @@ function unlockExpedition(expId) {
       setTimeout(() => particle.remove(), 900);
     }
     
-    // Добавляем стиль анимации если его нет
     if (!document.getElementById('unlockParticleStyle')) {
       const particleStyle = document.createElement('style');
       particleStyle.id = 'unlockParticleStyle';
@@ -1225,7 +1218,6 @@ function unlockExpedition(expId) {
       document.head.appendChild(particleStyle);
     }
     
-    // Ждём окончания анимации и обновляем состояние
     setTimeout(() => {
       state.unlockedExpeditions.push(expId);
       saveGame();
