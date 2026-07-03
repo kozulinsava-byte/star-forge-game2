@@ -116,6 +116,88 @@ export const CONFIG_ITEMS = {
     },
 
     // ============================================================
+    // СПЛАВЫ ТРЯСИНЫ (АЛХИМИЯ)
+    // ============================================================
+
+    // ========== СПЛАВЫ БОЛОТА ==========
+    silt_mass: {
+        id: 'silt_mass', name: 'Иловая масса', icon: '🟤',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'swamp',
+        glowClass: 'glow-recycled',
+        description: 'Вязкая смесь влажного песка и грязи. Густая, тяжёлая, при высыхании становится прочнее камня.',
+        imagePath: 'assets/ingots/silt_mass.png', fallbackColor: '#6B5A45', isCollectible: false, xpValue: 15, sellValue: 15
+    },
+    bog_clump: {
+        id: 'bog_clump', name: 'Топкий ком', icon: '🟢',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'swamp',
+        glowClass: 'glow-recycled',
+        description: 'Ком влажного песка и ила, спрессованный до твёрдости. Хороший строительный материал.',
+        imagePath: 'assets/ingots/bog_clump.png', fallbackColor: '#5A6B4A', isCollectible: false, xpValue: 15, sellValue: 15
+    },
+    swamp_mix: {
+        id: 'swamp_mix', name: 'Болотная смесь', icon: '🟤',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'swamp',
+        glowClass: 'glow-recycled',
+        description: 'Однородная смесь грязи и ила. При застывании образует прочный материал с болотным отливом.',
+        imagePath: 'assets/ingots/swamp_mix.png', fallbackColor: '#4A5A3A', isCollectible: false, xpValue: 15, sellValue: 15
+    },
+
+    // ========== СПЛАВЫ ГНИЛОГО ЛЕСА ==========
+    rot_mix: {
+        id: 'rot_mix', name: 'Трухлявая смесь', icon: '🪵',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'rotforest',
+        glowClass: 'glow-recycled',
+        description: 'Смесь корявого бруска и коры. Рыхлая снаружи, но неожиданно твёрдая внутри.',
+        imagePath: 'assets/ingots/rot_mix.png', fallbackColor: '#5A4A3A', isCollectible: false, xpValue: 18, sellValue: 18
+    },
+    rot_alloy: {
+        id: 'rot_alloy', name: 'Гнилой сплав', icon: '🦴',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'rotforest',
+        glowClass: 'glow-recycled',
+        description: 'Сплав корявого бруска и сгнившего сука. Труха и металл слились в единое целое.',
+        imagePath: 'assets/ingots/rot_alloy.png', fallbackColor: '#3A3A2A', isCollectible: false, xpValue: 18, sellValue: 18
+    },
+    root_clump: {
+        id: 'root_clump', name: 'Корневой ком', icon: '🧱',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'rotforest',
+        glowClass: 'glow-recycled',
+        description: 'Ком коры и гнилого сука. Пахнет лесом, но прочный как камень.',
+        imagePath: 'assets/ingots/root_clump.png', fallbackColor: '#4A3A2A', isCollectible: false, xpValue: 18, sellValue: 18
+    },
+
+    // ========== СПЛАВЫ РЖАВОГО ДНА ==========
+    rust_alloy: {
+        id: 'rust_alloy', name: 'Ржавый сплав', icon: '🔩',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'rustbottom',
+        glowClass: 'glow-recycled',
+        description: 'Сплав металлолома и проволоки. Ржавый снаружи, но с медным блеском внутри.',
+        imagePath: 'assets/ingots/rust_alloy.png', fallbackColor: '#8B5A3A', isCollectible: false, xpValue: 20, sellValue: 20
+    },
+    scrap_mix: {
+        id: 'scrap_mix', name: 'Битый сплав', icon: '🧩',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'rustbottom',
+        glowClass: 'glow-recycled',
+        description: 'Сплав металлолома и битого кафеля. Осколки керамики придают прочность ржавому металлу.',
+        imagePath: 'assets/ingots/scrap_mix.png', fallbackColor: '#7A6A5A', isCollectible: false, xpValue: 20, sellValue: 20
+    },
+    scrap_ingot: {
+        id: 'scrap_ingot', name: 'Металлоломный слиток', icon: '🧶',
+        rarity: 'Вторичный', rarityClass: 'recycled', rarityLevel: 'recycled',
+        sourceType: 'alchemy', location: 'rustbottom',
+        glowClass: 'glow-recycled',
+        description: 'Слиток из проволоки и кафеля. Медная основа с керамическими вкраплениями.',
+        imagePath: 'assets/ingots/scrap_ingot.png', fallbackColor: '#9A7A5A', isCollectible: false, xpValue: 20, sellValue: 20
+    },
+
+    // ============================================================
     // МЕТЕОРИТНЫЕ СЛИТКИ (для Метеоритного Шторма)
     // ============================================================
     rheolite: {
@@ -243,7 +325,6 @@ export const CRAFT_RECIPES = {
 // ============================================================
 // КРАФТОВЫЕ СЛИТКИ ПЛАВИЛЬНИ
 // ============================================================
-// Добавляем крафтовые слитки в общий список
 CONFIG_ITEMS.black_mirror = {
     id: 'black_mirror', name: 'Чёрное Зеркало', icon: '🌑',
     rarity: 'Крафтовый', rarityClass: 'epic', rarityLevel: 'epic',
@@ -499,9 +580,123 @@ EXPEDITION_GROUPS.forEach(group => {
 });
 
 // ============================================================
-// АЛХИМИЯ (появится в следующих этапах)
+// АЛХИМИЯ: РЕЦЕПТЫ СПЛАВОВ ТРЯСИНЫ
 // ============================================================
-export const ALCHEMY_RECIPES = {};
+export const ALCHEMY_RECIPES = {
+    // ========== БОЛОТО ==========
+    silt_mass: {
+        id: 'silt_mass',
+        name: 'Иловая масса',
+        icon: '🟤',
+        description: 'Смесь влажного песка и грязи.',
+        ingredients: ['wet_sand', 'mud_ingot'],
+        resultIngotId: 'silt_mass',
+        location: 'swamp',
+        reqLevel: 3,
+        xpReward: 25,
+        discoveryBonusXP: 50
+    },
+    bog_clump: {
+        id: 'bog_clump',
+        name: 'Топкий ком',
+        icon: '🟢',
+        description: 'Ком влажного песка и ила.',
+        ingredients: ['wet_sand', 'silt_clump'],
+        resultIngotId: 'bog_clump',
+        location: 'swamp',
+        reqLevel: 3,
+        xpReward: 25,
+        discoveryBonusXP: 50
+    },
+    swamp_mix: {
+        id: 'swamp_mix',
+        name: 'Болотная смесь',
+        icon: '🟤',
+        description: 'Однородная смесь грязи и ила.',
+        ingredients: ['mud_ingot', 'silt_clump'],
+        resultIngotId: 'swamp_mix',
+        location: 'swamp',
+        reqLevel: 3,
+        xpReward: 25,
+        discoveryBonusXP: 50
+    },
+
+    // ========== ГНИЛОЙ ЛЕС ==========
+    rot_mix: {
+        id: 'rot_mix',
+        name: 'Трухлявая смесь',
+        icon: '🪵',
+        description: 'Смесь корявого бруска и коры.',
+        ingredients: ['warped_bar', 'bark_ingot'],
+        resultIngotId: 'rot_mix',
+        location: 'rotforest',
+        reqLevel: 3,
+        xpReward: 30,
+        discoveryBonusXP: 60
+    },
+    rot_alloy: {
+        id: 'rot_alloy',
+        name: 'Гнилой сплав',
+        icon: '🦴',
+        description: 'Сплав корявого бруска и сгнившего сука.',
+        ingredients: ['warped_bar', 'rotted_bough'],
+        resultIngotId: 'rot_alloy',
+        location: 'rotforest',
+        reqLevel: 3,
+        xpReward: 30,
+        discoveryBonusXP: 60
+    },
+    root_clump: {
+        id: 'root_clump',
+        name: 'Корневой ком',
+        icon: '🧱',
+        description: 'Ком коры и гнилого сука.',
+        ingredients: ['bark_ingot', 'rotted_bough'],
+        resultIngotId: 'root_clump',
+        location: 'rotforest',
+        reqLevel: 3,
+        xpReward: 30,
+        discoveryBonusXP: 60
+    },
+
+    // ========== РЖАВОЕ ДНО ==========
+    rust_alloy: {
+        id: 'rust_alloy',
+        name: 'Ржавый сплав',
+        icon: '🔩',
+        description: 'Сплав металлолома и проволоки.',
+        ingredients: ['rusty_scrap', 'wire_clump'],
+        resultIngotId: 'rust_alloy',
+        location: 'rustbottom',
+        reqLevel: 3,
+        xpReward: 35,
+        discoveryBonusXP: 70
+    },
+    scrap_mix: {
+        id: 'scrap_mix',
+        name: 'Битый сплав',
+        icon: '🧩',
+        description: 'Сплав металлолома и битого кафеля.',
+        ingredients: ['rusty_scrap', 'broken_tile'],
+        resultIngotId: 'scrap_mix',
+        location: 'rustbottom',
+        reqLevel: 3,
+        xpReward: 35,
+        discoveryBonusXP: 70
+    },
+    scrap_ingot: {
+        id: 'scrap_ingot',
+        name: 'Металлоломный слиток',
+        icon: '🧶',
+        description: 'Слиток из проволоки и кафеля.',
+        ingredients: ['wire_clump', 'broken_tile'],
+        resultIngotId: 'scrap_ingot',
+        location: 'rustbottom',
+        reqLevel: 3,
+        xpReward: 35,
+        discoveryBonusXP: 70
+    }
+};
 
 // ============================================================
 // ЗАКАЗЫ ГИЛЬДИИ
