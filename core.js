@@ -1800,7 +1800,7 @@ function renderTestLeaderboard() {
   import('./ui.js').then(ui => ui.openModal(html));
 }
 
-// ---------- КОНВЕЙЕР ----------
+// ---------- КОНВЕЙЕР (СЛУЧАЙНЫЙ ПАТТЕРН + БЫСТРОЕ ОТКРЫТИЕ) ----------
 const conveyorOverlay = document.getElementById('conveyorOverlay');
 const conveyorTrack = document.getElementById('conveyorTrack');
 const conveyorTitle = document.getElementById('conveyorTitle');
@@ -1811,24 +1811,128 @@ const VISIBLE_ITEMS = 3;
 
 function cleanupConveyor() { if (conveyorState.timeoutId) { clearTimeout(conveyorState.timeoutId); conveyorState.timeoutId = null; } conveyorOverlay.classList.remove('active'); conveyorState.isOpen = false; }
 
+// ========== ГЕНЕРАТОР СЛУЧАЙНОГО ПАТТЕРНА КОНВЕЙЕРА ==========
+function generateRandomPattern(items, resultIngot) {
+  // Случайная длина конвейера: от 20 до 40 слотов
+  const totalLength = 20 + Math.floor(Math.random() * 21);
+  const trackItems = [];
+  
+  // Заполняем случайным порядком
+  for (let i = 0; i < totalLength; i++) {
+    trackItems.push(items[Math.floor(Math.random() * items.length)]);
+  }
+  
+  // Случайная позиция для результата: где-то между 65% и 85% длины
+  const targetSlot = Math.floor(totalLength * (0.65 + Math.random() * 0.2));
+  trackItems[targetSlot] = resultIngot;
+  
+  return { trackItems, targetSlot, totalLength };
+}
+
+// ========== БЫСТРОЕ ОТКРЫТИЕ (SKIP) ==========
+function skipConveyor() {
+  if (!conveyorState.isOpen || !playerState) return;
+  
+  // Очищаем таймер анимации
+  if (conveyorState.timeoutId) {
+    clearTimeout(conveyorState.timeoutId);
+    conveyorState.timeoutId = null;
+  }
+  
+  // Мгновенно завершаем
+  const resultIngot = conveyorState.resultIngot;
+  const g = CONFIG_GEODES[conveyorState.geodeId];
+  let xpGained = g.xpValue + (resultIngot?.xpValue || 0);
+  let isFirstDiscovery = false;
+  
+  if (playerState.minedStats[resultIngot.id] === 0) {
+    isFirstDiscovery = true;
+    xpGained = Math.floor(xpGained * 3);
+    if (_showToast) _showToast(`🎉 ПЕРВОЕ ОТКРЫТИЕ! +${xpGained} XP`, '🌟');
+  }
+  
+  playerState.ingots[resultIngot.id] = (playerState.ingots[resultIngot.id] || 0) + 1;
+  playerState.minedStats[resultIngot.id] = (playerState.minedStats[resultIngot.id] || 0) + 1;
+  playerState.player.totalIngots++;
+  addXP(xpGained);
+  saveGame();
+  cleanupConveyor();
+  isOpeningGeode = false;
+  
+  setTimeout(() => {
+    if (_showRewardPopup) _showRewardPopup(resultIngot);
+    if (_renderCurrentTab) _renderCurrentTab();
+  }, 100);
+}
+
 export function initRoulette(geodeId) {
   if (!playerState) return;
   const g = CONFIG_GEODES[geodeId]; if (!g || g.isSpecial) return;
+  
   const rand = Math.random(); let cum = 0; let droppedId = g.lootTable[0].ingotId;
   for (let e of g.lootTable) { cum += e.chance; if (rand < cum) { droppedId = e.ingotId; break; } }
-  const resultIngot = CONFIG_ITEMS[droppedId]; const items = g.lootTable.map(e => CONFIG_ITEMS[e.ingotId]);
-  const totalLength = 30; const trackItems = [];
-  for (let i = 0; i < totalLength; i++) { trackItems.push(items[i % items.length]); }
-  const targetSlot = 19; trackItems[targetSlot] = resultIngot;
-  conveyorState.geodeId = geodeId; conveyorState.isOpen = true; conveyorState.resultIngot = resultIngot; conveyorState.items = items; conveyorState.trackItems = trackItems;
+  
+  const resultIngot = CONFIG_ITEMS[droppedId];
+  const items = g.lootTable.map(e => CONFIG_ITEMS[e.ingotId]);
+  
+  // Генерируем случайный паттерн
+  const { trackItems, targetSlot, totalLength } = generateRandomPattern(items, resultIngot);
+  
+  conveyorState.geodeId = geodeId;
+  conveyorState.isOpen = true;
+  conveyorState.resultIngot = resultIngot;
+  conveyorState.items = items;
+  conveyorState.trackItems = trackItems;
+  
   conveyorTrack.innerHTML = '';
-  trackItems.forEach((item, index) => { const itemEl = document.createElement('div'); itemEl.className = 'conveyor-item'; itemEl.innerHTML = `<div class="conveyor-item-icon" id="conv-${index}"></div><div class="conveyor-item-name">${item.name}</div>`; conveyorTrack.appendChild(itemEl); });
-  trackItems.forEach((item, index) => { const el = document.getElementById(`conv-${index}`); if (el) { if (_renderImageToElement) _renderImageToElement(el, item.imagePath, item.icon, item.fallbackColor); } });
-  conveyorTitle.textContent = `Анализ ${g.name}...`; conveyorOverlay.classList.add('active');
+  trackItems.forEach((item, index) => {
+    const itemEl = document.createElement('div');
+    itemEl.className = 'conveyor-item';
+    itemEl.innerHTML = `<div class="conveyor-item-icon" id="conv-${index}"></div><div class="conveyor-item-name">${item.name}</div>`;
+    conveyorTrack.appendChild(itemEl);
+  });
+  
+  trackItems.forEach((item, index) => {
+    const el = document.getElementById(`conv-${index}`);
+    if (el && _renderImageToElement) {
+      _renderImageToElement(el, item.imagePath, item.icon, item.fallbackColor);
+    }
+  });
+  
+  // Добавляем кнопку быстрого открытия
+  conveyorTitle.innerHTML = `
+    ${g.name}
+    <button id="skipConveyorBtn" style="display:block; margin: 8px auto 0; background: rgba(255,215,0,0.12); border: 1px solid rgba(255,215,0,0.25); color: var(--accent-gold); padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+      ⏩ Быстрое открытие
+    </button>
+  `;
+  
+  conveyorOverlay.classList.add('active');
+  
+  // Привязываем кнопку skip
+  setTimeout(() => {
+    const skipBtn = document.getElementById('skipConveyorBtn');
+    if (skipBtn) {
+      skipBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        skipConveyor();
+      });
+    }
+  }, 50);
+  
   const stopPosition = -(targetSlot * ITEM_WIDTH) + (VISIBLE_ITEMS * ITEM_WIDTH / 2) - ITEM_WIDTH / 2;
-  conveyorTrack.style.transition = 'none'; conveyorTrack.style.transform = 'translateX(0)'; conveyorTrack.offsetHeight;
-  setTimeout(() => { conveyorTrack.style.transition = 'transform 4.5s cubic-bezier(0.2, 0, 0.1, 1)'; conveyorTrack.style.transform = `translateX(${stopPosition}px)`; }, 50);
-  conveyorState.timeoutId = setTimeout(() => { stopRoulette(); }, 4550);
+  conveyorTrack.style.transition = 'none';
+  conveyorTrack.style.transform = 'translateX(0)';
+  conveyorTrack.offsetHeight;
+  
+  setTimeout(() => {
+    conveyorTrack.style.transition = 'transform 4.5s cubic-bezier(0.2, 0, 0.1, 1)';
+    conveyorTrack.style.transform = `translateX(${stopPosition}px)`;
+  }, 50);
+  
+  conveyorState.timeoutId = setTimeout(() => {
+    stopRoulette();
+  }, 4550);
 }
 
 function stopRoulette() {
