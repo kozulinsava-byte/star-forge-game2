@@ -59,6 +59,7 @@ const EFFECT_HANDLERS = {
           const energyBar = document.getElementById('ingotEnergyBar');
           if (energyBar) energyBar.style.width = (ingotState.tapEnergy / ingotState.maxTapEnergy * 100) + '%';
           updateBottomProgressBars();
+          checkUpgradeAvailability();
           debouncedSave();
         }
       }, power * 1000);
@@ -445,6 +446,63 @@ function updateBottomProgressBars() {
   });
 }
 
+// ========== НАБЛЮДАТЕЛЬ ЗА ДОСТУПНОСТЬЮ АПГРЕЙДА ==========
+function checkUpgradeAvailability() {
+  const state = getPlayerState();
+  if (!ingotState.levelLocked) return;
+  
+  const upgradeData = INGOT_LEVELS[state.player.level];
+  if (!upgradeData) return;
+  
+  const hasShavings = ingotState.shavings >= upgradeData.shavingsCost;
+  let hasIngots = true;
+  if (upgradeData.ingotCost) {
+    for (let id in upgradeData.ingotCost) {
+      if ((state.ingots[id] || 0) < upgradeData.ingotCost[id]) {
+        hasIngots = false;
+        break;
+      }
+    }
+  }
+  
+  const canUpgrade = hasShavings && hasIngots;
+  
+  // Ищем кнопку или контейнер с прогрессом
+  const upgradeBtn = document.getElementById('performUpgradeBtn');
+  const ingotBottom = document.querySelector('.ingot-bottom');
+  
+  if (canUpgrade && upgradeBtn) {
+    // Кнопка уже есть, всё ок
+    return;
+  }
+  
+  if (canUpgrade && !upgradeBtn && ingotBottom) {
+    // Ресурсов достаточно, но кнопки нет — перерисовываем нижнюю часть
+    const state = getPlayerState();
+    const upgradeData = INGOT_LEVELS[state.player.level];
+    const nextXP = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3300, 4000, 4800, 5700, 6700, 7800, 9000, 10300, 11700, 13200, 15000][state.player.level] || 15000;
+    
+    let html = `<button class="ingot-upgrade-btn" id="performUpgradeBtn">⚡ ПЕРЕПЛАВИТЬ СЛИТОК</button>`;
+    ingotBottom.innerHTML = html;
+    
+    const newBtn = document.getElementById('performUpgradeBtn');
+    if (newBtn) {
+      newBtn.addEventListener('click', () => {
+        const result = performUpgrade();
+        if (!result.success) {
+          import('./ui.js').then(ui => ui.showToast(result.message, '⚠️'));
+          return;
+        }
+        const flash = document.createElement('div');
+        flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:9999;pointer-events:none;animation:screenFlash 0.6s ease-out forwards;';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 600);
+        setTimeout(() => { showEvolutionModal(result.oldIngot, result.newIngot); }, 300);
+      });
+    }
+  }
+}
+
 // ========== ТАП ==========
 export function tapIngot() {
   if (ingotState.tapEnergy <= 0) return { success: false, message: 'Нет энергии!' };
@@ -460,6 +518,7 @@ export function tapIngot() {
   const energyBar = document.getElementById('ingotEnergyBar');
   if (energyBar) energyBar.style.width = (ingotState.tapEnergy / ingotState.maxTapEnergy * 100) + '%';
   updateBottomProgressBars();
+  checkUpgradeAvailability();
   const baseRushChance = 1;
   const bonusRushChance = ingotState._bonusRushChance || 0;
   const totalRushChance = baseRushChance + bonusRushChance;
