@@ -3,15 +3,27 @@ import { CONFIG_ITEMS, EQUIP_SLOTS_CONFIG } from './config.js';
 import { getPlayerState, saveGame } from './core.js';
 
 // ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (8 УРОВНЕЙ) — ЭПОХА «ТРЯСИНА» ==========
+// Ключ = текущий уровень игрока. Данные = требования для перехода на следующий уровень.
 const INGOT_LEVELS = {
   1: { level: 1, name: 'Грязевой сгусток', icon: '🟤', era: 'Трясина', shavingsCost: 150, ingotCost: { wet_sand: 2, mud_ingot: 1 }, tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
   2: { level: 2, name: 'Болотный самородок', icon: '🟢', era: 'Трясина', shavingsCost: 500, ingotCost: { mud_ingot: 2, silt_clump: 1 }, tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
-  3: { level: 3, name: 'Иловый слиток', icon: '🪵', era: 'Трясина', shavingsCost: 1500, ingotCost: { silt_clump: 1, warped_bar: 2 }, tapPower: 7, image: 'assets/king_ingot/ingot_3.png' },
-  4: { level: 4, name: 'Трухлявый слиток', icon: '🦴', era: 'Трясина', shavingsCost: 4000, ingotCost: { warped_bar: 1, rot_mix: 1 }, tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
+  3: { level: 3, name: 'Иловый слиток', icon: '🪵', era: 'Трясина', shavingsCost: 1500, ingotCost: { silt_clump: 1, silt_mass: 1 }, tapPower: 7, image: 'assets/king_ingot/ingot_3.png' },
+  4: { level: 4, name: 'Трухлявый слиток', icon: '🦴', era: 'Трясина', shavingsCost: 4000, ingotCost: { warped_bar: 2, rot_mix: 1 }, tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
   5: { level: 5, name: 'Окисленный слиток', icon: '🔩', era: 'Трясина', shavingsCost: 10000, ingotCost: { rotted_bough: 1, rot_alloy: 1 }, tapPower: 30, image: 'assets/king_ingot/ingot_5.png' },
   6: { level: 6, name: 'Мусорный слиток', icon: '🧶', era: 'Трясина', shavingsCost: 25000, ingotCost: { rusty_scrap: 2, rust_alloy: 1 }, tapPower: 60, image: 'assets/king_ingot/ingot_6.png' },
-  7: { level: 7, name: 'Погребённый слиток', icon: '🧩', era: 'Трясина', shavingsCost: 60000, ingotCost: { broken_tile: 2, scrap_ingot: 1 }, tapPower: 120, image: 'assets/king_ingot/ingot_7.png' },
-  8: { level: 8, name: 'Слиток Трясины', icon: '💚', era: 'Трясина', shavingsCost: 150000, ingotCost: { scrap_mix: 1, rust_alloy: 1, scrap_ingot: 1 }, tapPower: 250, image: 'assets/king_ingot/ingot_8.png' }
+  7: { level: 7, name: 'Погребённый слиток', icon: '🧩', era: 'Трясина', shavingsCost: 60000, ingotCost: { broken_tile: 2, scrap_ingot: 1 }, tapPower: 120, image: 'assets/king_ingot/ingot_7.png' }
+};
+
+// Данные для отображения текущего уровня (имя, иконка, эра, tapPower)
+const INGOT_DISPLAY = {
+  1: { name: 'Грязевой сгусток', icon: '🟤', era: 'Трясина', tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
+  2: { name: 'Болотный самородок', icon: '🟢', era: 'Трясина', tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
+  3: { name: 'Иловый слиток', icon: '🪵', era: 'Трясина', tapPower: 7, image: 'assets/king_ingot/ingot_3.png' },
+  4: { name: 'Трухлявый слиток', icon: '🦴', era: 'Трясина', tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
+  5: { name: 'Окисленный слиток', icon: '🔩', era: 'Трясина', tapPower: 30, image: 'assets/king_ingot/ingot_5.png' },
+  6: { name: 'Мусорный слиток', icon: '🧶', era: 'Трясина', tapPower: 60, image: 'assets/king_ingot/ingot_6.png' },
+  7: { name: 'Погребённый слиток', icon: '🧩', era: 'Трясина', tapPower: 120, image: 'assets/king_ingot/ingot_7.png' },
+  8: { name: 'Слиток Трясины', icon: '💚', era: 'Трясина', tapPower: 250, image: 'assets/king_ingot/ingot_8.png' }
 };
 
 // ========== РЕЕСТР БОНУСОВ ==========
@@ -183,7 +195,7 @@ export function isForgeRushActive() { return forgeRushState.active; }
 
 export function getCurrentIngotData() {
   const state = getPlayerState();
-  return INGOT_LEVELS[state.player.level] || INGOT_LEVELS[1];
+  return INGOT_DISPLAY[state.player.level] || INGOT_DISPLAY[1];
 }
 
 export function getIngotDataForLevel(level) {
@@ -477,17 +489,17 @@ export function performUpgrade() {
   const state = getPlayerState();
   if (!ingotState.levelLocked) return { success: false, message: 'Опыт ещё не заполнен!' };
   
-  const nextLevel = state.player.level + 1;
-  const nextIngotData = INGOT_LEVELS[nextLevel];
-  if (!nextIngotData) return { success: false, message: 'Максимальный уровень!' };
+  const currentLevel = state.player.level;
+  const upgradeData = INGOT_LEVELS[currentLevel];
+  if (!upgradeData) return { success: false, message: 'Максимальный уровень!' };
   
-  if (ingotState.shavings < nextIngotData.shavingsCost) {
-    return { success: false, message: `Нужно ${nextIngotData.shavingsCost} стружки!` };
+  if (ingotState.shavings < upgradeData.shavingsCost) {
+    return { success: false, message: `Нужно ${upgradeData.shavingsCost} стружки!` };
   }
   
-  if (nextIngotData.ingotCost) {
-    for (let id in nextIngotData.ingotCost) {
-      if ((state.ingots[id] || 0) < nextIngotData.ingotCost[id]) {
+  if (upgradeData.ingotCost) {
+    for (let id in upgradeData.ingotCost) {
+      if ((state.ingots[id] || 0) < upgradeData.ingotCost[id]) {
         return { success: false, message: `Недостаточно ${CONFIG_ITEMS[id]?.name || id}!` };
       }
     }
@@ -496,10 +508,10 @@ export function performUpgrade() {
   const currentIngotData = getCurrentIngotData();
   const oldIngot = { name: currentIngotData.name, icon: currentIngotData.icon, era: currentIngotData.era, level: state.player.level, image: currentIngotData.image };
   
-  ingotState.shavings -= nextIngotData.shavingsCost;
-  if (nextIngotData.ingotCost) {
-    for (let id in nextIngotData.ingotCost) {
-      state.ingots[id] -= nextIngotData.ingotCost[id];
+  ingotState.shavings -= upgradeData.shavingsCost;
+  if (upgradeData.ingotCost) {
+    for (let id in upgradeData.ingotCost) {
+      state.ingots[id] -= upgradeData.ingotCost[id];
     }
   }
   
@@ -509,7 +521,7 @@ export function performUpgrade() {
   forceSaveNow();
   recalcAllBonuses();
   
-  const newData = INGOT_LEVELS[state.player.level];
+  const newData = getCurrentIngotData();
   return { success: true, oldIngot, newIngot: { name: newData.name, icon: newData.icon, era: newData.era, level: state.player.level, image: newData.image } };
 }
 
@@ -653,7 +665,7 @@ export function renderIngotScreen(container) {
   stopUIUpdates();
   const state = getPlayerState();
   const ingotData = getCurrentIngotData();
-  const nextIngot = getIngotDataForLevel(state.player.level + 1);
+  const nextIngot = getIngotDataForLevel(state.player.level);
   const energy = ingotState.tapEnergy;
   const maxEnergy = ingotState.maxTapEnergy;
   const shavings = ingotState.shavings;
@@ -1141,7 +1153,7 @@ export function renderIngotScreen(container) {
     if (canUpgrade) {
       html += `<button class="ingot-upgrade-btn" id="performUpgradeBtn">⚡ ПЕРЕПЛАВИТЬ СЛИТОК</button>`;
     } else {
-      html += `<div class="ingot-goal-title">ЦЕЛЬ: ЭВОЛЮЦИЯ ДО <strong>${nextIngot.name}</strong> (Ур. ${state.player.level + 1})</div>`;
+      html += `<div class="ingot-goal-title">ЦЕЛЬ: ЭВОЛЮЦИЯ ДО <strong>${INGOT_DISPLAY[state.player.level + 1]?.name || '???'}</strong> (Ур. ${state.player.level + 1})</div>`;
       html += `<div class="ingot-progress-list">`;
       html += buildProgressRowLive('✨', 'Стружка', shavings, nextIngot.shavingsCost, 'shavings', 'liveShavingsBar', 'liveShavingsLabel', null);
       if (nextIngot.ingotCost) {
@@ -1154,7 +1166,7 @@ export function renderIngotScreen(container) {
       html += `</div>`;
     }
   } else {
-    html += `<div class="ingot-goal-title">ЦЕЛЬ: ЭВОЛЮЦИЯ ДО <strong>${nextIngot.name}</strong> (Ур. ${state.player.level + 1})</div>`;
+    html += `<div class="ingot-goal-title">ЦЕЛЬ: ЭВОЛЮЦИЯ ДО <strong>${INGOT_DISPLAY[state.player.level + 1]?.name || '???'}</strong> (Ур. ${state.player.level + 1})</div>`;
     html += `<div class="ingot-progress-list">`;
     html += buildProgressRowLive('✨', 'Стружка', shavings, nextIngot.shavingsCost, 'shavings', 'liveShavingsBar', 'liveShavingsLabel', null);
     if (nextIngot.ingotCost) {
