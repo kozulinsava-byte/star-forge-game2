@@ -6,8 +6,8 @@ import { getPlayerState, saveGame } from './core.js';
 const INGOT_LEVELS = {
   1: { level: 1, name: 'Грязевой сгусток', icon: '🟤', era: 'Трясина', shavingsCost: 150, ingotCost: { wet_sand: 2, mud_ingot: 1 }, tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
   2: { level: 2, name: 'Болотный самородок', icon: '🟢', era: 'Трясина', shavingsCost: 500, ingotCost: { mud_ingot: 2, silt_clump: 1 }, tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
-  3: { level: 3, name: 'Иловый слиток', icon: '🪵', era: 'Трясина', shavingsCost: 1500, ingotCost: { silt_clump: 1, silt_mass: 1 }, tapPower: 7, image: 'assets/king_ingot/ingot_3.png' },
-  4: { level: 4, name: 'Трухлявый слиток', icon: '🦴', era: 'Трясина', shavingsCost: 4000, ingotCost: { warped_bar: 2, rot_mix: 1 }, tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
+  3: { level: 3, name: 'Иловый слиток', icon: '🪵', era: 'Трясина', shavingsCost: 1500, ingotCost: { silt_clump: 1, warped_bar: 2 }, tapPower: 7, image: 'assets/king_ingot/ingot_3.png' },
+  4: { level: 4, name: 'Трухлявый слиток', icon: '🦴', era: 'Трясина', shavingsCost: 4000, ingotCost: { warped_bar: 1, rot_mix: 1 }, tapPower: 15, image: 'assets/king_ingot/ingot_4.png' },
   5: { level: 5, name: 'Окисленный слиток', icon: '🔩', era: 'Трясина', shavingsCost: 10000, ingotCost: { rotted_bough: 1, rot_alloy: 1 }, tapPower: 30, image: 'assets/king_ingot/ingot_5.png' },
   6: { level: 6, name: 'Мусорный слиток', icon: '🧶', era: 'Трясина', shavingsCost: 25000, ingotCost: { rusty_scrap: 2, rust_alloy: 1 }, tapPower: 60, image: 'assets/king_ingot/ingot_6.png' },
   7: { level: 7, name: 'Погребённый слиток', icon: '🧩', era: 'Трясина', shavingsCost: 60000, ingotCost: { broken_tile: 2, scrap_ingot: 1 }, tapPower: 120, image: 'assets/king_ingot/ingot_7.png' },
