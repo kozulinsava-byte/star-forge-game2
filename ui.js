@@ -1,9 +1,9 @@
 // ========== UI МОДУЛЬ: ОТРИСОВКА ИНТЕРФЕЙСА ==========
 import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, ALCHEMY_RECIPES, LEVELS, STATUSES, GUILD_QUESTS } from './config.js';
-import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy } from './core.js';
+import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy, isIngotSourceKnown, isIngotUsageKnown, isRecipeDiscovered, getDiscoveredKnowledge } from './core.js';
 import { renderIngotScreen, getBonusRecycledChance, getBonusExpeditionSpeed, getActiveBonuses } from './ingot.js';
 
-// 🆕 Точка входа для мини-игр
+// Точка входа для мини-игр
 let _startQuenchGame = null;
 let _startStackGame = null;
 let _startUpgradeGame = null;
@@ -19,10 +19,8 @@ async function loadMiniGames() {
   }
 }
 
-// Загружаем мини-игры при старте
 loadMiniGames();
 
-// Регистрируем UI функции в core.js
 registerUIFunctions({
     showToast: showToast,
     getGeodeStageImage: getGeodeStageImage,
@@ -36,25 +34,18 @@ registerUIFunctions({
     updateMeteorShardsDisplay: updateMeteorShardsDisplay
 });
 
-// DOM-элементы
 export const mainContent = document.getElementById('mainContent');
 const showcaseOverlay = document.getElementById('showcaseOverlay');
 const showcaseContent = document.getElementById('showcaseContent');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalContent = document.getElementById('modalContent');
 
-// Текущие вкладки
 export let currentTab = 'expeditions';
 export let inventorySubTab = 'geodes';
 export let collectionSubTab = 'encyclopedia';
 
-// ID интервала для живого таймера в модалке
 let modalTimerInterval = null;
-
-// Состояние аккордеона
 let expandedGroups = {};
-
-// Состояние алхимии
 let alchemyMode = false;
 let alchemyFirstIngot = null;
 
@@ -164,6 +155,8 @@ function openInventoryShowcase(ingotId) {
   if (!owned) return;
   
   const rarityColors = {
+    'junk': '#6b6b6b',
+    'recycled': '#8b7355',
     'common': '#A0A0A0',
     'rare': '#4A9CFF',
     'epic': '#B44AFF',
@@ -201,6 +194,7 @@ function openInventoryShowcase(ingotId) {
       </div>
       <div class="showcase-description">${ingot.description}</div>
       <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
+      <button class="btn" id="showcaseDetailsBtn" style="margin-top:12px;" data-ingot="${ingotId}">📋 Подробнее</button>
     </div>
   `;
   
@@ -210,6 +204,15 @@ function openInventoryShowcase(ingotId) {
   renderImageToElement(imgEl, ingot.imagePath, ingot.icon, ingot.fallbackColor);
   showcaseContent.style.opacity = '1';
   showcaseOverlay.classList.add('active');
+  
+  setTimeout(() => {
+    const detailsBtn = document.getElementById('showcaseDetailsBtn');
+    if (detailsBtn) {
+      detailsBtn.addEventListener('click', () => {
+        showItemDetails(ingotId);
+      });
+    }
+  }, 10);
 }
 
 // ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ КОЛЛЕКЦИИ) ----------
@@ -222,6 +225,8 @@ function openCollectionShowcase(ingotId) {
   const isCollectible = ingot.isCollectible;
   
   const rarityColors = {
+    'junk': '#6b6b6b',
+    'recycled': '#8b7355',
     'common': '#A0A0A0',
     'rare': '#4A9CFF',
     'epic': '#B44AFF',
@@ -298,6 +303,7 @@ function openCollectionShowcase(ingotId) {
         ${effectText}
         <div style="font-size: 12px; color: var(--accent-gold); margin-top: 12px;">Применение: [👑 Легендарный трофей]</div>
         <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
+        <button class="btn" id="showcaseDetailsBtn" style="margin-top:12px;" data-ingot="${ingotId}">📋 Подробнее</button>
       </div>
     `;
     showcaseContent.innerHTML = html;
@@ -322,6 +328,7 @@ function openCollectionShowcase(ingotId) {
         <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Применение: [⏳ В разработке для будущих ивентов]</div>
         <div style="font-size: 12px; color: var(--accent-gold); margin-top: 4px;">Опыт при продаже: +${ingot.sellValue} EXP</div>
         <div class="showcase-count">В наличии: ${state.ingots[ingotId]} шт.</div>
+        <button class="btn" id="showcaseDetailsBtn" style="margin-top:12px;" data-ingot="${ingotId}">📋 Подробнее</button>
       </div>
     `;
     showcaseContent.innerHTML = html;
@@ -330,10 +337,222 @@ function openCollectionShowcase(ingotId) {
   }
   
   showcaseOverlay.classList.add('active');
+  
+  setTimeout(() => {
+    const detailsBtn = document.getElementById('showcaseDetailsBtn');
+    if (detailsBtn) {
+      detailsBtn.addEventListener('click', () => {
+        showItemDetails(ingotId);
+      });
+    }
+  }, 10);
 }
 
 export function closeShowcase() {
   showcaseOverlay.classList.remove('active');
+}
+
+// ========== ★ ЭКРАН «ПОДРОБНЕЕ» (ЖУРНАЛ ИССЛЕДОВАТЕЛЯ) ★ ==========
+function showItemDetails(ingotId) {
+  const state = getPlayerState();
+  const ingot = CONFIG_ITEMS[ingotId];
+  if (!ingot) return;
+  
+  const discovered = state.minedStats[ingotId] > 0;
+  
+  // ===== ЗОНА 1: КАК ПОЛУЧИТЬ =====
+  let sourceHtml = '';
+  
+  if (!discovered && !ingot.isCollectible) {
+    // Предмет не найден — показываем только локацию (она известна из конфига)
+    const locName = CONFIG_EXPEDITIONS[ingot.location]?.name || '???';
+    sourceHtml = `
+      <div style="display:flex; align-items:center; gap:8px; padding:8px;">
+        <span style="font-size:24px;">❓</span>
+        <span style="color:var(--text-muted);">Добывается в: ${locName}</span>
+      </div>
+    `;
+  } else if (ingot.sourceType === 'expedition') {
+    const locName = CONFIG_EXPEDITIONS[ingot.location]?.name || 'Неизвестная локация';
+    const locIcon = CONFIG_EXPEDITIONS[ingot.location]?.fallbackIcon || '❓';
+    sourceHtml = `
+      <div style="display:flex; align-items:center; gap:8px; padding:8px;">
+        <span style="font-size:24px;">${locIcon}</span>
+        <span style="color:#FFD700; font-weight:600;">${locName}</span>
+        <span style="color:var(--text-muted);">→</span>
+        <span style="font-size:24px;">${ingot.icon}</span>
+        <span style="color:var(--text-primary);">${ingot.name}</span>
+      </div>
+    `;
+  } else if (ingot.sourceType === 'alchemy') {
+    // Находим рецепт
+    let recipeHtml = '';
+    for (let recipeId in ALCHEMY_RECIPES) {
+      const recipe = ALCHEMY_RECIPES[recipeId];
+      if (recipe.resultIngotId === ingotId) {
+        const ing1Known = state.minedStats[recipe.ingredients[0]] > 0;
+        const ing2Known = state.minedStats[recipe.ingredients[1]] > 0;
+        const ing1 = CONFIG_ITEMS[recipe.ingredients[0]];
+        const ing2 = CONFIG_ITEMS[recipe.ingredients[1]];
+        
+        recipeHtml = `
+          <div style="display:flex; align-items:center; gap:6px; padding:8px; flex-wrap:wrap; justify-content:center;">
+            ${ing1Known ? `<span style="font-size:22px;">${ing1.icon}</span><span style="color:var(--text-primary); font-size:11px;">${ing1.name}</span>` : `<span style="font-size:22px; opacity:0.4;">❓</span><span style="color:var(--text-muted); font-size:11px;">???</span>`}
+            <span style="color:var(--text-muted);">+</span>
+            ${ing2Known ? `<span style="font-size:22px;">${ing2.icon}</span><span style="color:var(--text-primary); font-size:11px;">${ing2.name}</span>` : `<span style="font-size:22px; opacity:0.4;">❓</span><span style="color:var(--text-muted); font-size:11px;">???</span>`}
+            <span style="color:var(--text-muted);">=</span>
+            <span style="font-size:22px;">${ingot.icon}</span>
+            <span style="color:#FFD700; font-size:11px;">${ingot.name}</span>
+          </div>
+        `;
+        break;
+      }
+    }
+    sourceHtml = recipeHtml || '<div style="color:var(--text-muted); padding:8px;">Рецепт неизвестен</div>';
+  } else if (ingot.sourceType === 'crafted') {
+    const recipe = CRAFT_RECIPES[ingotId];
+    if (recipe) {
+      let craftHtml = '<div style="display:flex; align-items:center; gap:6px; padding:8px; flex-wrap:wrap; justify-content:center;">';
+      let first = true;
+      for (let ingKey in recipe.ingredients) {
+        if (!first) craftHtml += '<span style="color:var(--text-muted);">+</span>';
+        const ingKeyIngot = CONFIG_ITEMS[ingKey];
+        craftHtml += `<span style="font-size:22px;">${ingKeyIngot.icon}</span><span style="color:var(--text-primary); font-size:11px;">${ingKeyIngot.name}</span>`;
+        first = false;
+      }
+      craftHtml += '<span style="color:var(--text-muted);">=</span>';
+      craftHtml += `<span style="font-size:22px;">${ingot.icon}</span><span style="color:#FFD700; font-size:11px;">${ingot.name}</span>`;
+      craftHtml += '<div style="font-size:9px; color:var(--accent-orange); margin-top:4px;">(Великая Переплавка)</div>';
+      craftHtml += '</div>';
+      sourceHtml = craftHtml;
+    } else {
+      sourceHtml = '<div style="color:var(--text-muted); padding:8px;">Рецепт неизвестен</div>';
+    }
+  } else if (ingot.sourceType === 'meteor' || ingot.sourceType === 'special_meteor') {
+    sourceHtml = `
+      <div style="display:flex; align-items:center; gap:8px; padding:8px;">
+        <span style="font-size:24px;">☄️</span>
+        <span style="color:#FFD700; font-weight:600;">Метеоритный Шторм</span>
+        <span style="color:var(--text-muted);">→</span>
+        <span style="font-size:24px;">${ingot.icon}</span>
+        <span style="color:var(--text-primary);">${ingot.name}</span>
+      </div>
+    `;
+  }
+  
+  // ===== ЗОНА 2: ГДЕ ПРИМЕНЯЕТСЯ =====
+  let usageHtml = '';
+  const usedInRecipes = [];
+  
+  for (let recipeId in ALCHEMY_RECIPES) {
+    const recipe = ALCHEMY_RECIPES[recipeId];
+    if (recipe.ingredients.includes(ingotId)) {
+      const otherIngId = recipe.ingredients.find(id => id !== ingotId);
+      const otherIng = CONFIG_ITEMS[otherIngId];
+      const resultIng = CONFIG_ITEMS[recipe.resultIngotId];
+      const otherKnown = state.minedStats[otherIngId] > 0;
+      const resultKnown = state.minedStats[recipe.resultIngotId] > 0;
+      
+      usedInRecipes.push({
+        otherIngId,
+        otherIng,
+        otherKnown,
+        resultIng,
+        resultKnown,
+        recipeId
+      });
+    }
+  }
+  
+  if (usedInRecipes.length > 0) {
+    usedInRecipes.forEach(rec => {
+      usageHtml += `
+        <div style="display:flex; align-items:center; gap:6px; padding:6px; flex-wrap:wrap; justify-content:center;">
+          <span style="font-size:22px;">${ingot.icon}</span>
+          <span style="color:var(--text-muted);">+</span>
+          ${rec.otherKnown ? `<span style="font-size:22px;">${rec.otherIng.icon}</span><span style="color:var(--text-primary); font-size:11px;">${rec.otherIng.name}</span>` : `<span style="font-size:22px; opacity:0.4;">❓</span><span style="color:var(--text-muted); font-size:11px;">???</span>`}
+          <span style="color:var(--text-muted);">=</span>
+          ${rec.resultKnown ? `<span style="font-size:22px;">${rec.resultIng.icon}</span><span style="color:#FFD700; font-size:11px;">${rec.resultIng.name}</span>` : `<span style="font-size:22px; opacity:0.4;">❓</span><span style="color:var(--text-muted); font-size:11px;">???</span>`}
+        </div>
+      `;
+    });
+  } else {
+    usageHtml = '<div style="color:var(--text-muted); padding:8px; text-align:center;">Пока не используется в крафтах</div>';
+  }
+  
+  // ===== ИНДИКАТОР ЗНАНИЙ =====
+  const sourceKnown = discovered || isIngotSourceKnown(ingotId);
+  const usageKnown = isIngotUsageKnown(ingotId) || usedInRecipes.length > 0;
+  
+  const knowledgeDots = `
+    <div style="display:flex; gap:6px; justify-content:center; margin-bottom:12px;">
+      <div style="width:8px; height:8px; border-radius:50%; background:${discovered ? '#FFD700' : '#444'};" title="${discovered ? 'Предмет найден' : 'Предмет не найден'}"></div>
+      <div style="width:8px; height:8px; border-radius:50%; background:${sourceKnown ? '#FFD700' : '#444'};" title="${sourceKnown ? 'Источник известен' : 'Источник неизвестен'}"></div>
+      <div style="width:8px; height:8px; border-radius:50%; background:${usageKnown ? '#FFD700' : '#444'};" title="${usageKnown ? 'Применение известно' : 'Применение неизвестно'}"></div>
+    </div>
+  `;
+  
+  // ===== СОБИРАЕМ МОДАЛКУ =====
+  const html = `
+    <style>
+      .details-section {
+        background: rgba(0,0,0,0.2);
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 12px;
+        border: 1px solid rgba(255,255,255,0.06);
+      }
+      .details-section-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--accent-gold);
+        margin-bottom: 8px;
+        text-align: center;
+        letter-spacing: 1px;
+      }
+      .mystery-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: rgba(255,255,255,0.03);
+        border: 1px dashed rgba(255,255,255,0.1);
+        border-radius: 8px;
+        color: rgba(255,255,255,0.2);
+        font-size: 16px;
+      }
+    </style>
+    <div class="modal-header">
+      <div class="modal-title">📋 ${ingot.name}</div>
+      <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
+    </div>
+    <div class="modal-content" style="text-align:left;">
+      <div style="display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:16px;">
+        <span style="font-size:40px;">${discovered ? ingot.icon : '❓'}</span>
+        <div>
+          <div style="font-weight:700; font-size:16px; color:var(--text-primary);">${discovered ? ingot.name : 'Неизвестный материал'}</div>
+          <div style="font-size:11px; color:var(--text-secondary);">${discovered ? ingot.rarity : '???'}</div>
+        </div>
+      </div>
+      
+      ${knowledgeDots}
+      
+      <div class="details-section">
+        <div class="details-section-title">🔍 Как получить</div>
+        ${sourceHtml}
+      </div>
+      
+      <div class="details-section">
+        <div class="details-section-title">⚒️ Где применяется</div>
+        ${usageHtml}
+      </div>
+      
+      ${discovered ? `<div class="modal-description" style="text-align:center;">${ingot.description}</div>` : ''}
+    </div>
+  `;
+  
+  openModal(html);
 }
 
 // ---------- АДМИН-ПАНЕЛЬ ----------
@@ -446,18 +665,15 @@ function showAdminPanel() {
       closeModal(); 
     });
     
-    // 🆕 ПОЛНЫЙ СБРОС ПРОГРЕССА
     document.getElementById('adminResetProgress')?.addEventListener('click', () => {
       const state = getPlayerState();
       
-      // Сброс уровня и опыта игрока
       state.player.level = 1;
       state.player.xp = 0;
       state.player.totalOpened = 0;
       state.player.totalIngots = 0;
       state.player.totalArtifacts = 0;
       
-      // Сброс экспедиций
       for (let k in state.expeditions) {
         state.expeditions[k].active = false;
         state.expeditions[k].endTime = null;
@@ -465,61 +681,41 @@ function showAdminPanel() {
         state.expeditions[k].specialChanceBoost = null;
       }
       
-      // Сброс жеод до стартовых
       Object.keys(state.geodes).forEach(k => { state.geodes[k] = 0; });
       state.geodes['swamp'] = 3;
       
-      // Полный сброс слитков и статистики
       Object.keys(state.ingots).forEach(k => { state.ingots[k] = 0; });
       Object.keys(state.minedStats).forEach(k => { state.minedStats[k] = 0; });
       
-      // Сброс особых жеод и артефактов
       Object.keys(state.discoveredSpecialGeodes).forEach(k => { state.discoveredSpecialGeodes[k] = false; });
       state.collectedArtifacts.swamp = [];
       state.collectedArtifacts.rotforest = [];
       state.collectedArtifacts.rustbottom = [];
       state.collectedArtifacts.meteor = [];
       
-      // Сброс эхо-кулдаунов и бонусов экспедиций
       state.echoCooldowns = {};
       state.expeditionBonuses = {};
-      
-      // Сброс метеоритных осколков
       state.meteorShards = 0;
       state.meteorCooldownEnd = null;
-      
-      // Сброс квестов
       state.activeQuests = [];
       state.questRefreshTime = null;
       state.completedQuests = [];
       state.questCooldownEnd = null;
-      
-      // Сброс разблокированных экспедиций до стартовых
       state.unlockedExpeditions = ['swamp'];
-      
-      // Сброс слотов экипировки
       state.equippedArtifacts = [null, null, null];
-      
-      // Сброс открытий алхимии
       state.discoveredAlchemyRecipes = [];
+      state.discoveredKnowledge = {};
       
-      // Сброс флага туториала
       import('./tutorial.js').then(t => {
         t.resetTutorialFlag();
       });
       
-      // ★ ИСПРАВЛЕНИЕ: сначала сбрасываем ingotState, потом сохраняем
       import('./ingot.js').then(ingot => {
         ingot.resetIngotState();
-        
-        // Полная очистка localStorage и сохранение ПОСЛЕ сброса ingotState
         localStorage.removeItem('starforge_v1');
         saveGame();
-        
         showToast('💀 Прогресс полностью сброшен!', '🗑️');
         closeModal();
-        
-        // Перезагрузка страницы для чистой инициализации
         setTimeout(() => {
           location.reload();
         }, 500);
@@ -610,7 +806,6 @@ function getAdjustedChances(geodeId) {
   const bonusRecycled = getBonusRecycledChance();
   if (bonusRecycled <= 0) return null;
   
-  // Копируем базовые шансы
   const adjusted = g.lootTable.map(entry => {
     const ingot = CONFIG_ITEMS[entry.ingotId];
     return {
@@ -621,16 +816,12 @@ function getAdjustedChances(geodeId) {
     };
   });
   
-  // Находим все слоты с редкостью 'recycled' (Вторичный)
   const recycledSlots = adjusted.filter(s => s.rarity === 'recycled');
-  // Находим слоты с редкостью 'junk' (Хлам)
   const junkSlots = adjusted.filter(s => s.rarity === 'junk');
   
   if (recycledSlots.length === 0 || junkSlots.length === 0) return null;
   
-  // Бонус распределяется поровну между всеми recycled-слотами
   const bonusPerRecycled = (bonusRecycled / 100) / recycledSlots.length;
-  // Штраф распределяется поровну между всеми junk-слотами
   const penaltyTotal = bonusRecycled / 100;
   const penaltyPerJunk = penaltyTotal / junkSlots.length;
   
@@ -830,7 +1021,6 @@ export function showExpeditionInfoModal(expId) {
   const special = CONFIG_GEODES[exp.specialGeodeId];
   const discovered = state.discoveredSpecialGeodes[expId];
 
-  // ★ РАСЧЁТ БОНУСОВ ДЛЯ ОТОБРАЖЕНИЯ
   const bonusSpeed = getBonusExpeditionSpeed();
   const baseTimer = exp.timer;
   const adjustedTimer = bonusSpeed > 0 ? Math.floor(baseTimer * (1 - bonusSpeed / 100)) : baseTimer;
@@ -880,9 +1070,6 @@ export function showExpeditionInfoModal(expId) {
     actionBtn = `<div id="modalExpeditionAction"><button class="btn" id="modalStartExpedition" data-expedition="${expId}">⛏️ ОТПРАВИТЬСЯ</button></div>`;
   }
 
-  // ★ ФОРМИРУЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ С БОНУСОМ
-  const baseTimerDisplay = `${baseTimer} сек`;
-  const bonusTimerDisplay = bonusSpeed > 0 ? `${adjustedTimer} сек` : baseTimerDisplay;
   const timerBonusHTML = bonusSpeed > 0 
     ? `${baseTimer} сек <span style="color:#50C878; font-size:11px;">(-${bonusSpeed}%)</span> → ${adjustedTimer} сек`
     : `${baseTimer} сек`;
@@ -1498,7 +1685,7 @@ export function renderInventoryTab() {
   document.querySelectorAll('[data-geode]').forEach((c) => c.addEventListener('click', () => showGeodeModal(c.dataset.geode)));
 }
 
-// ========== ★ МОДАЛКА АЛХИМИИ ★ ==========
+// ========== ★ МОДАЛКА АЛХИМИИ С ТУМАНОМ ВОЙНЫ ★ ==========
 function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const state = getPlayerState();
   
@@ -1517,6 +1704,13 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const resultIngot = CONFIG_ITEMS[matchedRecipe.resultIngotId];
   const isFirstDiscovery = !state.discoveredAlchemyRecipes || !state.discoveredAlchemyRecipes.includes(matchedRecipe.id);
   const totalXP = matchedRecipe.xpReward + (isFirstDiscovery ? matchedRecipe.discoveryBonusXP : 0);
+  
+  // ★ ОПРЕДЕЛЯЕМ ВИДИМОСТЬ ИНГРЕДИЕНТОВ В РЕЦЕПТЕ
+  const ing1Known = state.minedStats[ingotId1] > 0;
+  const ing2Known = state.minedStats[ingotId2] > 0;
+  
+  const ing1Display = ing1Known ? ing1.icon : '<span style="opacity:0.4; font-size:42px;">❓</span>';
+  const ing2Display = ing2Known ? ing2.icon : '<span style="opacity:0.4; font-size:42px;">❓</span>';
   
   const html = `
     <style>
@@ -1664,9 +1858,9 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
       <div class="alch-bg">
         <div class="alch-flash-layer" id="alchFlashLayer"></div>
         <div class="alch-stage" id="alchStage">
-          <div class="alch-ingot-slot" id="alchLeft">${ing1.icon}</div>
+          <div class="alch-ingot-slot" id="alchLeft">${ing1Display}</div>
           <div class="alch-core" id="alchCore"></div>
-          <div class="alch-ingot-slot" id="alchRight">${ing2.icon}</div>
+          <div class="alch-ingot-slot" id="alchRight">${ing2Display}</div>
         </div>
         <div class="alch-result-zone" id="alchResultZone">
           ${isFirstDiscovery ? '<div class="result-mystery">???</div>' : `<div class="result-icon-animated">${resultIngot.icon}</div>`}
@@ -1727,7 +1921,6 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
 
 // ========== ★ ТРИУМФАЛЬНОЕ ОТКРЫТИЕ ★ ==========
 function playDiscoveryAnimation(ingot, xpGained) {
-  // Инжект стилей
   if (!document.getElementById('discovery-anim-styles')) {
     const style = document.createElement('style');
     style.id = 'discovery-anim-styles';
@@ -1850,11 +2043,9 @@ function playDiscoveryAnimation(ingot, xpGained) {
     document.head.appendChild(style);
   }
   
-  // Overlay
   const overlay = document.createElement('div');
   overlay.className = 'disc-overlay';
   
-  // Кокон
   const cocoon = document.createElement('div');
   cocoon.className = 'disc-cocoon';
   cocoon.id = 'discCocoon';
@@ -1864,7 +2055,6 @@ function playDiscoveryAnimation(ingot, xpGained) {
   cocoon.appendChild(core);
   overlay.appendChild(cocoon);
   
-  // Результат (скрыт изначально)
   const resultWrapper = document.createElement('div');
   resultWrapper.className = 'disc-result-wrapper';
   resultWrapper.id = 'discResultWrapper';
@@ -1898,7 +2088,6 @@ function playDiscoveryAnimation(ingot, xpGained) {
   
   document.body.appendChild(overlay);
   
-  // Анимация: кокон пульсирует → разрывается → появляется результат
   setTimeout(() => {
     cocoon.classList.add('breaking');
     createExplosionParticles();
@@ -1909,7 +2098,6 @@ function playDiscoveryAnimation(ingot, xpGained) {
     }, 700);
   }, 1500);
   
-  // Кнопка «Продолжить» — закрывает оверлей
   continueBtn.addEventListener('click', () => {
     overlay.style.opacity = '0';
     overlay.style.transition = 'opacity 0.4s ease-out';
@@ -1951,7 +2139,6 @@ function createExplosionParticles() {
     setTimeout(() => particle.remove(), 1100);
   }
   
-  // Вспышка
   const flash = document.createElement('div');
   flash.style.cssText = `
     position: fixed;
@@ -1966,7 +2153,7 @@ function createExplosionParticles() {
   setTimeout(() => flash.remove(), 600);
 }
 
-// ========== КОЛЛЕКЦИЯ: ПОЛОЧКИ ==========
+// ========== КОЛЛЕКЦИЯ: ПОЛОЧКИ С ИНДИКАТОРАМИ ЗНАНИЙ ==========
 export function renderCollectionTab() {
   const state = getPlayerState();
   const totalRegular = Object.values(CONFIG_ITEMS).filter((i) => !i.isCollectible).length;
@@ -2010,12 +2197,26 @@ export function renderCollectionTab() {
         `;
       }
       
+      // ★ ИНДИКАТОР ЗНАНИЙ (ТРИ ТОЧКИ)
+      const sourceKnown = discovered || isIngotSourceKnown(ing.id);
+      const usageKnown = isIngotUsageKnown(ing.id);
+      
+      const knowledgeDots = `
+        <div style="display:flex; gap:4px; justify-content:center; margin-top:4px;">
+          <div style="width:5px; height:5px; border-radius:50%; background:${discovered ? '#FFD700' : '#444'};"></div>
+          <div style="width:5px; height:5px; border-radius:50%; background:${sourceKnown ? '#FFD700' : '#444'};"></div>
+          <div style="width:5px; height:5px; border-radius:50%; background:${usageKnown ? '#FFD700' : '#444'};"></div>
+        </div>
+      `;
+      
       return `
         <div class="${cardClass}" data-ingot="${ing.id}">
           <div class="card-icon" id="enc-${ing.id}"></div>
           <div class="card-name">${discovered ? ing.name : 'Неизвестный материал'}</div>
           ${tagsHtml}
+          ${knowledgeDots}
           <div class="card-count-badge">${discovered ? `Добыто: ${state.minedStats[ing.id]}` : '???'}</div>
+          ${discovered ? `<button class="small-btn collection-details-btn" data-ingot="${ing.id}" style="font-size:9px; padding:3px 8px; margin-top:4px;">📋 Подробнее</button>` : ''}
         </div>
       `;
     }
@@ -2059,6 +2260,14 @@ export function renderCollectionTab() {
       }
     });
     
+    // ★ ОБРАБОТЧИКИ КНОПОК «ПОДРОБНЕЕ» В КОЛЛЕКЦИИ
+    document.querySelectorAll('.collection-details-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showItemDetails(btn.dataset.ingot);
+      });
+    });
+    
   } else {
     const coll = Object.values(CONFIG_ITEMS).filter((i) => i.isCollectible);
     html += '<div class="grid-container">';
@@ -2071,6 +2280,7 @@ export function renderCollectionTab() {
           <div class="card-name">${owned ? ing.name : '???'}</div>
           ${owned ? effectLine : ''}
           <div class="card-count-badge">${owned ? '★ Найдено' : 'Неизвестно'}</div>
+          ${owned ? `<button class="small-btn collection-details-btn" data-ingot="${ing.id}" style="font-size:9px; padding:3px 8px; margin-top:4px;">📋 Подробнее</button>` : ''}
         </div>
       `;
     });
@@ -2087,6 +2297,14 @@ export function renderCollectionTab() {
           renderMysteryPlaceholder(el);
         }
       }
+    });
+    
+    // ★ ОБРАБОТЧИКИ КНОПОК «ПОДРОБНЕЕ» В ЗАЛЕ СЛАВЫ
+    document.querySelectorAll('.collection-details-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showItemDetails(btn.dataset.ingot);
+      });
     });
   }
 
