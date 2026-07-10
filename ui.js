@@ -69,7 +69,7 @@ function toggleTheme() {
 
 initTheme();
 
-// ---------- УТИЛИТЫ РЕНДЕРИНГА (ЭМОДЗИ-ЗАГЛУШКИ) ----------
+// ---------- УТИЛИТЫ РЕНДЕРИНГА ----------
 export function renderImageToElement(el, src, fallbackIcon, fallbackColor) {
   if (!el) return;
   
@@ -145,7 +145,7 @@ export function showRewardPopup(ingot) {
   closeBtn.addEventListener('click', closeHandler);
 }
 
-// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ ИНВЕНТАРЯ) ----------
+// ---------- SHOWCASE ИНВЕНТАРЯ ----------
 function openInventoryShowcase(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
@@ -209,13 +209,14 @@ function openInventoryShowcase(ingotId) {
     const detailsBtn = document.getElementById('showcaseDetailsBtn');
     if (detailsBtn) {
       detailsBtn.addEventListener('click', () => {
+        closeShowcase();
         showItemDetails(ingotId);
       });
     }
   }, 10);
 }
 
-// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ КОЛЛЕКЦИИ) ----------
+// ---------- SHOWCASE КОЛЛЕКЦИИ ----------
 function openCollectionShowcase(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
@@ -266,6 +267,7 @@ function openCollectionShowcase(ingotId) {
         <div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ИЗУЧЕН</span></div>
         <div class="showcase-description">Месторождение: ${locationName}</div>
         <div class="showcase-count">Ещё не найден</div>
+        <button class="btn" id="showcaseDetailsBtn" style="margin-top:12px;" data-ingot="${ingotId}">📋 Подробнее</button>
       </div>
     `;
     showcaseContent.innerHTML = html;
@@ -281,6 +283,7 @@ function openCollectionShowcase(ingotId) {
         <div class="showcase-id"><span class="showcase-id-label">Статус</span><span class="showcase-id-value" style="color:var(--text-muted);">НЕ ОТКРЫТ</span></div>
         <div class="showcase-description">Глубины космоса хранят это сокровище.</div>
         <div class="showcase-count">Ещё не найден</div>
+        <button class="btn" id="showcaseDetailsBtn" style="margin-top:12px;" data-ingot="${ingotId}">📋 Подробнее</button>
       </div>
     `;
     showcaseContent.innerHTML = html;
@@ -342,6 +345,7 @@ function openCollectionShowcase(ingotId) {
     const detailsBtn = document.getElementById('showcaseDetailsBtn');
     if (detailsBtn) {
       detailsBtn.addEventListener('click', () => {
+        closeShowcase();
         showItemDetails(ingotId);
       });
     }
@@ -352,7 +356,7 @@ export function closeShowcase() {
   showcaseOverlay.classList.remove('active');
 }
 
-// ========== ★ ЭКРАН «ПОДРОБНЕЕ» (ЖУРНАЛ ИССЛЕДОВАТЕЛЯ) ★ ==========
+// ========== ★ ЖУРНАЛ ИССЛЕДОВАТЕЛЯ — ЭКРАН «ПОДРОБНЕЕ» ★ ==========
 function showItemDetails(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
@@ -360,28 +364,40 @@ function showItemDetails(ingotId) {
   
   const discovered = state.minedStats[ingotId] > 0;
   
-  // ===== ЗОНА 1: КАК ПОЛУЧИТЬ =====
+  // ===== ИНДИКАТОР ЗНАНИЙ =====
+  const sourceKnown = discovered || isIngotSourceKnown(ingotId);
+  const usageKnown = isIngotUsageKnown(ingotId);
+  
+  const knowledgeDots = `
+    <div style="display:flex; gap:8px; justify-content:center; margin-bottom:16px;">
+      <div style="width:10px; height:10px; border-radius:50%; background:${discovered ? '#FFD700' : '#333'}; box-shadow:${discovered ? '0 0 8px rgba(255,215,0,0.5)' : 'none'};" title="${discovered ? 'Предмет найден' : 'Предмет не найден'}"></div>
+      <div style="width:10px; height:10px; border-radius:50%; background:${sourceKnown ? '#FFD700' : '#333'}; box-shadow:${sourceKnown ? '0 0 8px rgba(255,215,0,0.5)' : 'none'};" title="${sourceKnown ? 'Источник известен' : 'Источник неизвестен'}"></div>
+      <div style="width:10px; height:10px; border-radius:50%; background:${usageKnown ? '#FFD700' : '#333'}; box-shadow:${usageKnown ? '0 0 8px rgba(255,215,0,0.5)' : 'none'};" title="${usageKnown ? 'Применение известно' : 'Применение неизвестно'}"></div>
+    </div>
+  `;
+  
+  // ===== ЗОНА 1: КАК ПОЛУЧИТЬ (СОЗВЕЗДИЕ ИСТОЧНИКА) =====
   let sourceHtml = '';
   
-  if (!discovered && !ingot.isCollectible) {
-    // Предмет не найден — показываем только локацию (она известна из конфига)
-    const locName = CONFIG_EXPEDITIONS[ingot.location]?.name || '???';
-    sourceHtml = `
-      <div style="display:flex; align-items:center; gap:8px; padding:8px;">
-        <span style="font-size:24px;">❓</span>
-        <span style="color:var(--text-muted);">Добывается в: ${locName}</span>
-      </div>
-    `;
-  } else if (ingot.sourceType === 'expedition') {
+  if (ingot.sourceType === 'expedition') {
     const locName = CONFIG_EXPEDITIONS[ingot.location]?.name || 'Неизвестная локация';
     const locIcon = CONFIG_EXPEDITIONS[ingot.location]?.fallbackIcon || '❓';
+    const locUnlocked = state.unlockedExpeditions.includes(ingot.location);
+    
     sourceHtml = `
-      <div style="display:flex; align-items:center; gap:8px; padding:8px;">
-        <span style="font-size:24px;">${locIcon}</span>
-        <span style="color:#FFD700; font-weight:600;">${locName}</span>
-        <span style="color:var(--text-muted);">→</span>
-        <span style="font-size:24px;">${ingot.icon}</span>
-        <span style="color:var(--text-primary);">${ingot.name}</span>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0; padding:16px 0;">
+        <div class="journal-node journal-node-location" data-tooltip="${locName}">
+          <span style="font-size:32px;">${locIcon}</span>
+        </div>
+        <div class="journal-connector"></div>
+        <div class="journal-node ${discovered ? 'journal-node-known' : 'journal-node-unknown'}">
+          ${discovered 
+            ? `<span style="font-size:36px;">${ingot.icon}</span>`
+            : `<span style="font-size:36px; opacity:0.4;">❓</span>`
+          }
+        </div>
+        <div style="font-size:11px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:4px;">${discovered ? ingot.name : '???'}</div>
+        ${!discovered && locUnlocked ? `<div style="font-size:9px; color:var(--accent-gold); margin-top:2px;">Отправьте экспедицию</div>` : ''}
       </div>
     `;
   } else if (ingot.sourceType === 'alchemy') {
@@ -396,51 +412,75 @@ function showItemDetails(ingotId) {
         const ing2 = CONFIG_ITEMS[recipe.ingredients[1]];
         
         recipeHtml = `
-          <div style="display:flex; align-items:center; gap:6px; padding:8px; flex-wrap:wrap; justify-content:center;">
-            ${ing1Known ? `<span style="font-size:22px;">${ing1.icon}</span><span style="color:var(--text-primary); font-size:11px;">${ing1.name}</span>` : `<span style="font-size:22px; opacity:0.4;">❓</span><span style="color:var(--text-muted); font-size:11px;">???</span>`}
-            <span style="color:var(--text-muted);">+</span>
-            ${ing2Known ? `<span style="font-size:22px;">${ing2.icon}</span><span style="color:var(--text-primary); font-size:11px;">${ing2.name}</span>` : `<span style="font-size:22px; opacity:0.4;">❓</span><span style="color:var(--text-muted); font-size:11px;">???</span>`}
-            <span style="color:var(--text-muted);">=</span>
-            <span style="font-size:22px;">${ingot.icon}</span>
-            <span style="color:#FFD700; font-size:11px;">${ingot.name}</span>
+          <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:16px 0; flex-wrap:wrap;">
+            <div class="journal-node ${ing1Known ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${ing1Known ? ing1.name : '???'}">
+              ${ing1Known ? `<span style="font-size:28px;">${ing1.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+            </div>
+            <div style="font-size:18px; color:var(--text-muted); margin:0 8px;">+</div>
+            <div class="journal-node ${ing2Known ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${ing2Known ? ing2.name : '???'}">
+              ${ing2Known ? `<span style="font-size:28px;">${ing2.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+            </div>
+            <div style="font-size:18px; color:var(--accent-gold); margin:0 8px;">→</div>
+            <div class="journal-node journal-node-result">
+              <span style="font-size:36px;">${ingot.icon}</span>
+            </div>
           </div>
+          <div style="text-align:center; font-size:11px; color:var(--text-primary); margin-top:4px;">${ingot.name}</div>
+          <div style="text-align:center; font-size:9px; color:var(--accent-gold); margin-top:2px;">Алхимический сплав</div>
         `;
         break;
       }
     }
-    sourceHtml = recipeHtml || '<div style="color:var(--text-muted); padding:8px;">Рецепт неизвестен</div>';
+    sourceHtml = recipeHtml || '<div style="color:var(--text-muted); padding:16px; text-align:center;">Рецепт неизвестен</div>';
   } else if (ingot.sourceType === 'crafted') {
     const recipe = CRAFT_RECIPES[ingotId];
     if (recipe) {
-      let craftHtml = '<div style="display:flex; align-items:center; gap:6px; padding:8px; flex-wrap:wrap; justify-content:center;">';
+      let craftHtml = '<div style="display:flex; align-items:center; justify-content:center; gap:0; padding:16px 0; flex-wrap:wrap;">';
       let first = true;
       for (let ingKey in recipe.ingredients) {
-        if (!first) craftHtml += '<span style="color:var(--text-muted);">+</span>';
+        if (!first) craftHtml += '<div style="font-size:18px; color:var(--text-muted); margin:0 8px;">+</div>';
         const ingKeyIngot = CONFIG_ITEMS[ingKey];
-        craftHtml += `<span style="font-size:22px;">${ingKeyIngot.icon}</span><span style="color:var(--text-primary); font-size:11px;">${ingKeyIngot.name}</span>`;
+        const ingKeyKnown = state.minedStats[ingKey] > 0;
+        craftHtml += `
+          <div class="journal-node ${ingKeyKnown ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${ingKeyKnown ? ingKeyIngot.name : '???'}">
+            ${ingKeyKnown ? `<span style="font-size:28px;">${ingKeyIngot.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+          </div>
+        `;
         first = false;
       }
-      craftHtml += '<span style="color:var(--text-muted);">=</span>';
-      craftHtml += `<span style="font-size:22px;">${ingot.icon}</span><span style="color:#FFD700; font-size:11px;">${ingot.name}</span>`;
-      craftHtml += '<div style="font-size:9px; color:var(--accent-orange); margin-top:4px;">(Великая Переплавка)</div>';
+      craftHtml += '<div style="font-size:18px; color:var(--accent-gold); margin:0 8px;">→</div>';
+      craftHtml += `
+        <div class="journal-node journal-node-result">
+          <span style="font-size:36px;">${ingot.icon}</span>
+        </div>
+      `;
       craftHtml += '</div>';
+      craftHtml += `<div style="text-align:center; font-size:11px; color:var(--text-primary); margin-top:4px;">${ingot.name}</div>`;
+      craftHtml += '<div style="text-align:center; font-size:9px; color:var(--accent-orange); margin-top:2px;">Великая Переплавка</div>';
       sourceHtml = craftHtml;
     } else {
-      sourceHtml = '<div style="color:var(--text-muted); padding:8px;">Рецепт неизвестен</div>';
+      sourceHtml = '<div style="color:var(--text-muted); padding:16px; text-align:center;">Рецепт неизвестен</div>';
     }
   } else if (ingot.sourceType === 'meteor' || ingot.sourceType === 'special_meteor') {
     sourceHtml = `
-      <div style="display:flex; align-items:center; gap:8px; padding:8px;">
-        <span style="font-size:24px;">☄️</span>
-        <span style="color:#FFD700; font-weight:600;">Метеоритный Шторм</span>
-        <span style="color:var(--text-muted);">→</span>
-        <span style="font-size:24px;">${ingot.icon}</span>
-        <span style="color:var(--text-primary);">${ingot.name}</span>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0; padding:16px 0;">
+        <div class="journal-node journal-node-location" data-tooltip="Метеоритный Шторм">
+          <span style="font-size:32px;">☄️</span>
+        </div>
+        <div class="journal-connector"></div>
+        <div class="journal-node ${discovered ? 'journal-node-known' : 'journal-node-unknown'}">
+          ${discovered 
+            ? `<span style="font-size:36px;">${ingot.icon}</span>`
+            : `<span style="font-size:36px; opacity:0.4;">❓</span>`
+          }
+        </div>
+        <div style="font-size:11px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:4px;">${discovered ? ingot.name : '???'}</div>
+        <div style="font-size:9px; color:var(--accent-purple); margin-top:2px;">Метеоритный Шторм</div>
       </div>
     `;
   }
   
-  // ===== ЗОНА 2: ГДЕ ПРИМЕНЯЕТСЯ =====
+  // ===== ЗОНА 2: ГДЕ ПРИМЕНЯЕТСЯ (СОЗВЕЗДИЕ РЕЦЕПТОВ) =====
   let usageHtml = '';
   const usedInRecipes = [];
   
@@ -467,92 +507,214 @@ function showItemDetails(ingotId) {
   if (usedInRecipes.length > 0) {
     usedInRecipes.forEach(rec => {
       usageHtml += `
-        <div style="display:flex; align-items:center; gap:6px; padding:6px; flex-wrap:wrap; justify-content:center;">
-          <span style="font-size:22px;">${ingot.icon}</span>
-          <span style="color:var(--text-muted);">+</span>
-          ${rec.otherKnown ? `<span style="font-size:22px;">${rec.otherIng.icon}</span><span style="color:var(--text-primary); font-size:11px;">${rec.otherIng.name}</span>` : `<span style="font-size:22px; opacity:0.4;">❓</span><span style="color:var(--text-muted); font-size:11px;">???</span>`}
-          <span style="color:var(--text-muted);">=</span>
-          ${rec.resultKnown ? `<span style="font-size:22px;">${rec.resultIng.icon}</span><span style="color:#FFD700; font-size:11px;">${rec.resultIng.name}</span>` : `<span style="font-size:22px; opacity:0.4;">❓</span><span style="color:var(--text-muted); font-size:11px;">???</span>`}
+        <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:8px 0; flex-wrap:wrap;">
+          <div class="journal-node journal-node-known" data-tooltip="${ingot.name}">
+            <span style="font-size:28px;">${ingot.icon}</span>
+          </div>
+          <div style="font-size:18px; color:var(--text-muted); margin:0 8px;">+</div>
+          <div class="journal-node ${rec.otherKnown ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${rec.otherKnown ? rec.otherIng.name : '???'}">
+            ${rec.otherKnown ? `<span style="font-size:28px;">${rec.otherIng.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+          </div>
+          <div style="font-size:18px; color:var(--accent-gold); margin:0 8px;">→</div>
+          <div class="journal-node ${rec.resultKnown ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${rec.resultKnown ? rec.resultIng.name : '???'}">
+            ${rec.resultKnown ? `<span style="font-size:28px;">${rec.resultIng.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+          </div>
         </div>
+        ${rec.resultKnown ? `<div style="text-align:center; font-size:9px; color:var(--text-secondary);">${rec.resultIng.name}</div>` : ''}
       `;
     });
   } else {
-    usageHtml = '<div style="color:var(--text-muted); padding:8px; text-align:center;">Пока не используется в крафтах</div>';
+    usageHtml = '<div style="color:var(--text-muted); padding:16px; text-align:center; font-size:12px;">Пока не используется в известных рецептах</div>';
   }
-  
-  // ===== ИНДИКАТОР ЗНАНИЙ =====
-  const sourceKnown = discovered || isIngotSourceKnown(ingotId);
-  const usageKnown = isIngotUsageKnown(ingotId) || usedInRecipes.length > 0;
-  
-  const knowledgeDots = `
-    <div style="display:flex; gap:6px; justify-content:center; margin-bottom:12px;">
-      <div style="width:8px; height:8px; border-radius:50%; background:${discovered ? '#FFD700' : '#444'};" title="${discovered ? 'Предмет найден' : 'Предмет не найден'}"></div>
-      <div style="width:8px; height:8px; border-radius:50%; background:${sourceKnown ? '#FFD700' : '#444'};" title="${sourceKnown ? 'Источник известен' : 'Источник неизвестен'}"></div>
-      <div style="width:8px; height:8px; border-radius:50%; background:${usageKnown ? '#FFD700' : '#444'};" title="${usageKnown ? 'Применение известно' : 'Применение неизвестно'}"></div>
-    </div>
-  `;
   
   // ===== СОБИРАЕМ МОДАЛКУ =====
   const html = `
     <style>
-      .details-section {
-        background: rgba(0,0,0,0.2);
-        border-radius: 16px;
-        padding: 12px;
-        margin-bottom: 12px;
-        border: 1px solid rgba(255,255,255,0.06);
+      .journal-scroll {
+        max-height: 65vh;
+        overflow-y: auto;
+        padding: 4px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,215,0,0.2) transparent;
       }
-      .details-section-title {
-        font-size: 12px;
+      .journal-scroll::-webkit-scrollbar { width: 3px; }
+      .journal-scroll::-webkit-scrollbar-track { background: transparent; }
+      .journal-scroll::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.2); border-radius: 10px; }
+      
+      .journal-section {
+        background: rgba(0,0,0,0.25);
+        border-radius: 20px;
+        padding: 16px 12px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(255,255,255,0.04);
+        position: relative;
+        overflow: hidden;
+      }
+      .journal-section::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: radial-gradient(circle at 50% 0%, rgba(139,115,85,0.06) 0%, transparent 70%);
+        pointer-events: none;
+      }
+      .journal-section-title {
+        font-size: 11px;
         font-weight: 700;
         color: var(--accent-gold);
         margin-bottom: 8px;
         text-align: center;
-        letter-spacing: 1px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        position: relative;
       }
-      .mystery-icon {
+      
+      .journal-node {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
-        background: rgba(255,255,255,0.03);
-        border: 1px dashed rgba(255,255,255,0.1);
-        border-radius: 8px;
-        color: rgba(255,255,255,0.2);
-        font-size: 16px;
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        position: relative;
+        z-index: 1;
       }
+      .journal-node:active { transform: scale(1.1); }
+      
+      .journal-node-known {
+        background: rgba(139,115,85,0.15);
+        border: 2px solid rgba(139,115,85,0.4);
+        box-shadow: 0 0 18px rgba(139,115,85,0.2);
+      }
+      .journal-node-unknown {
+        background: rgba(255,255,255,0.02);
+        border: 2px dashed rgba(255,255,255,0.08);
+        cursor: default;
+      }
+      .journal-node-unknown:active { transform: none; }
+      .journal-node-location {
+        background: rgba(80,200,120,0.1);
+        border: 2px solid rgba(80,200,120,0.3);
+        box-shadow: 0 0 18px rgba(80,200,120,0.15);
+        width: 60px;
+        height: 60px;
+        border-radius: 20px;
+      }
+      .journal-node-result {
+        background: rgba(255,215,0,0.1);
+        border: 2px solid rgba(255,215,0,0.5);
+        box-shadow: 0 0 24px rgba(255,215,0,0.25);
+        width: 60px;
+        height: 60px;
+        border-radius: 20px;
+      }
+      
+      .journal-connector {
+        width: 3px;
+        height: 24px;
+        background: linear-gradient(to bottom, rgba(255,215,0,0.5), rgba(255,215,0,0.1));
+        border-radius: 2px;
+        margin: 4px 0;
+      }
+      
+      .journal-tooltip {
+        position: fixed;
+        background: rgba(18,18,22,0.97);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255,215,0,0.4);
+        border-radius: 12px;
+        padding: 8px 14px;
+        font-size: 11px;
+        color: #FFD700;
+        font-weight: 600;
+        pointer-events: none;
+        z-index: 10001;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        white-space: nowrap;
+      }
+      .journal-tooltip.show { opacity: 1; }
     </style>
     <div class="modal-header">
-      <div class="modal-title">📋 ${ingot.name}</div>
+      <div class="modal-title" style="display:flex; align-items:center; gap:10px; justify-content:center;">
+        <span style="font-size:28px;">${discovered ? ingot.icon : '❓'}</span>
+        <span>${discovered ? ingot.name : 'Неизвестный материал'}</span>
+      </div>
       <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
     </div>
-    <div class="modal-content" style="text-align:left;">
-      <div style="display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:16px;">
-        <span style="font-size:40px;">${discovered ? ingot.icon : '❓'}</span>
-        <div>
-          <div style="font-weight:700; font-size:16px; color:var(--text-primary);">${discovered ? ingot.name : 'Неизвестный материал'}</div>
-          <div style="font-size:11px; color:var(--text-secondary);">${discovered ? ingot.rarity : '???'}</div>
-        </div>
-      </div>
-      
+    <div class="modal-content">
       ${knowledgeDots}
-      
-      <div class="details-section">
-        <div class="details-section-title">🔍 Как получить</div>
-        ${sourceHtml}
+      <div class="journal-scroll">
+        <div class="journal-section">
+          <div class="journal-section-title">🔍 Источник</div>
+          ${sourceHtml}
+        </div>
+        
+        <div class="journal-section">
+          <div class="journal-section-title">⚒️ Применение в сплавах</div>
+          ${usageHtml}
+        </div>
+        
+        ${discovered ? `
+          <div style="text-align:center; padding:8px; color:var(--text-secondary); font-size:11px; line-height:1.5;">
+            ${ingot.description}
+          </div>
+        ` : `
+          <div style="text-align:center; padding:8px; color:var(--text-muted); font-size:11px;">
+            Отправьте экспедицию в указанную локацию чтобы найти этот материал
+          </div>
+        `}
       </div>
-      
-      <div class="details-section">
-        <div class="details-section-title">⚒️ Где применяется</div>
-        ${usageHtml}
-      </div>
-      
-      ${discovered ? `<div class="modal-description" style="text-align:center;">${ingot.description}</div>` : ''}
     </div>
   `;
   
   openModal(html);
+  
+  // ★ ИНИЦИАЛИЗИРУЕМ ТУЛТИПЫ ПОСЛЕ ОТКРЫТИЯ МОДАЛКИ
+  setTimeout(() => {
+    initJournalTooltips();
+  }, 50);
+}
+
+// ========== ★ СИСТЕМА ТУЛТИПОВ ДЛЯ ЖУРНАЛА ★ ==========
+let activeTooltip = null;
+
+function initJournalTooltips() {
+  // Удаляем старый тултип если есть
+  if (activeTooltip) {
+    activeTooltip.remove();
+    activeTooltip = null;
+  }
+  
+  const tooltip = document.createElement('div');
+  tooltip.className = 'journal-tooltip';
+  tooltip.id = 'journalTooltip';
+  document.body.appendChild(tooltip);
+  
+  document.querySelectorAll('.journal-node[data-tooltip]').forEach(node => {
+    // Пропускаем неизвестные ноды
+    if (node.classList.contains('journal-node-unknown')) return;
+    
+    node.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const text = node.dataset.tooltip;
+      if (!text || text === '???') return;
+      
+      const rect = node.getBoundingClientRect();
+      tooltip.textContent = text;
+      tooltip.style.left = (rect.left + rect.width / 2 - tooltip.offsetWidth / 2) + 'px';
+      tooltip.style.top = (rect.top - 40) + 'px';
+      tooltip.classList.add('show');
+      
+      clearTimeout(tooltip._timeout);
+      tooltip._timeout = setTimeout(() => {
+        tooltip.classList.remove('show');
+      }, 1500);
+    });
+  });
 }
 
 // ---------- АДМИН-ПАНЕЛЬ ----------
@@ -793,6 +955,10 @@ export function closeModal() {
     clearInterval(modalTimerInterval);
     modalTimerInterval = null;
   }
+  
+  // Убираем тултип журнала
+  const tooltip = document.getElementById('journalTooltip');
+  if (tooltip) tooltip.remove();
   
   modalOverlay.classList.remove('active');
   modalContent.innerHTML = '';
@@ -1545,10 +1711,8 @@ export function renderInventoryTab() {
       }
     }
   } else {
-    // Вкладка слитков
     const items = Object.entries(state.ingots).filter(([k, c]) => c > 0 && !CONFIG_ITEMS[k].isCollectible);
     
-    // ★ КНОПКА АЛХИМИИ — всегда видна, но заблокирована до 3 уровня
     const alchemyAvailable = state.player.level >= 3;
     
     html += `
@@ -1607,7 +1771,6 @@ export function renderInventoryTab() {
     
     mainContent.innerHTML = html;
     
-    // ★ CSS ДЛЯ ФИЛЬТРАЦИИ
     const filterStyle = document.createElement('style');
     filterStyle.id = 'alchemy-filter-styles';
     filterStyle.textContent = `
@@ -1629,7 +1792,6 @@ export function renderInventoryTab() {
       }
     }
     
-    // Обработчик кнопки Алхимии
     const alchemyBtn = document.getElementById('toggleAlchemyBtn');
     if (alchemyBtn && alchemyAvailable) {
       alchemyBtn.addEventListener('click', () => {
@@ -1644,7 +1806,6 @@ export function renderInventoryTab() {
       });
     }
     
-    // Обработчики кликов по слиткам
     if (alchemyMode) {
       document.querySelectorAll('[data-ingot]').forEach(card => {
         card.addEventListener('click', () => {
@@ -1705,7 +1866,6 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const isFirstDiscovery = !state.discoveredAlchemyRecipes || !state.discoveredAlchemyRecipes.includes(matchedRecipe.id);
   const totalXP = matchedRecipe.xpReward + (isFirstDiscovery ? matchedRecipe.discoveryBonusXP : 0);
   
-  // ★ ОПРЕДЕЛЯЕМ ВИДИМОСТЬ ИНГРЕДИЕНТОВ В РЕЦЕПТЕ
   const ing1Known = state.minedStats[ingotId1] > 0;
   const ing2Known = state.minedStats[ingotId2] > 0;
   
@@ -2216,7 +2376,6 @@ export function renderCollectionTab() {
           ${tagsHtml}
           ${knowledgeDots}
           <div class="card-count-badge">${discovered ? `Добыто: ${state.minedStats[ing.id]}` : '???'}</div>
-          ${discovered ? `<button class="small-btn collection-details-btn" data-ingot="${ing.id}" style="font-size:9px; padding:3px 8px; margin-top:4px;">📋 Подробнее</button>` : ''}
         </div>
       `;
     }
@@ -2260,14 +2419,6 @@ export function renderCollectionTab() {
       }
     });
     
-    // ★ ОБРАБОТЧИКИ КНОПОК «ПОДРОБНЕЕ» В КОЛЛЕКЦИИ
-    document.querySelectorAll('.collection-details-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showItemDetails(btn.dataset.ingot);
-      });
-    });
-    
   } else {
     const coll = Object.values(CONFIG_ITEMS).filter((i) => i.isCollectible);
     html += '<div class="grid-container">';
@@ -2280,7 +2431,6 @@ export function renderCollectionTab() {
           <div class="card-name">${owned ? ing.name : '???'}</div>
           ${owned ? effectLine : ''}
           <div class="card-count-badge">${owned ? '★ Найдено' : 'Неизвестно'}</div>
-          ${owned ? `<button class="small-btn collection-details-btn" data-ingot="${ing.id}" style="font-size:9px; padding:3px 8px; margin-top:4px;">📋 Подробнее</button>` : ''}
         </div>
       `;
     });
@@ -2297,14 +2447,6 @@ export function renderCollectionTab() {
           renderMysteryPlaceholder(el);
         }
       }
-    });
-    
-    // ★ ОБРАБОТЧИКИ КНОПОК «ПОДРОБНЕЕ» В ЗАЛЕ СЛАВЫ
-    document.querySelectorAll('.collection-details-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showItemDetails(btn.dataset.ingot);
-      });
     });
   }
 
@@ -2332,7 +2474,6 @@ export function renderGamesTab() {
   
   let html = '<div class="section-title">🎮 Игры <button class="help-btn" data-help="events">?</button></div>';
   
-  // ===== ЗОНА 1: ГЛОБАЛЬНОЕ СОБЫТИЕ =====
   html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:10px 0 8px; color:var(--accent-gold);">🌐 Глобальное событие</div>';
   
   if (!activeEvent || !activeEventId) {
@@ -2390,7 +2531,6 @@ export function renderGamesTab() {
     `;
   }
   
-  // ===== ЗОНА 2: ЗАКАЗЫ ГИЛЬДИИ =====
   html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:20px 0 8px; color:var(--accent-gold);">📜 Заказы Гильдии</div>';
   
   const activeQuests = state.activeQuests || [];
@@ -2451,7 +2591,6 @@ export function renderGamesTab() {
     }
   }
   
-  // ===== ЗОНА 3: МИНИ-ИГРЫ =====
   html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:20px 0 8px; color:var(--accent-gold);">🎰 Мини-игры</div>';
   
   const miniGames = [
@@ -2487,7 +2626,6 @@ export function renderGamesTab() {
   
   mainContent.innerHTML = html;
   
-  // Обработчики
   const enterForgeBtn = document.getElementById('enterForgeBtn');
   if (enterForgeBtn) enterForgeBtn.addEventListener('click', () => openForge());
   
