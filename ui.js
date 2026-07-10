@@ -1,7 +1,7 @@
 // ========== UI МОДУЛЬ: ОТРИСОВКА ИНТЕРФЕЙСА ==========
 import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, ALCHEMY_RECIPES, LEVELS, STATUSES, GUILD_QUESTS } from './config.js';
 import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy } from './core.js';
-import { renderIngotScreen, getBonusRecycledChance } from './ingot.js';
+import { renderIngotScreen, getBonusRecycledChance, getBonusExpeditionSpeed, getActiveBonuses } from './ingot.js';
 
 // 🆕 Точка входа для мини-игр
 let _startQuenchGame = null;
@@ -640,6 +640,14 @@ function getAdjustedChances(geodeId) {
   return adjusted;
 }
 
+// ========== УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ БОНУСОВ ==========
+function getBonusDisplayHTML(baseValue, bonusPercent, suffix = '%', isInverted = false) {
+  if (!bonusPercent || bonusPercent === 0) return '';
+  const color = bonusPercent > 0 ? '#50C878' : '#FF4444';
+  const sign = bonusPercent > 0 ? '+' : '';
+  return ` <span style="color:${color}; font-size:11px;">(${sign}${bonusPercent}${suffix})</span>`;
+}
+
 // ---------- МОДАЛКА ЖЕОДЫ С ШАНСАМИ ----------
 export function showGeodeModal(geodeId) {
   const state = getPlayerState();
@@ -805,6 +813,7 @@ function showScoutChoiceModal(expId) {
   });
 }
 
+// ========== МОДАЛКА ЭКСПЕДИЦИИ С LIVE-БОНУСАМИ ==========
 export function showExpeditionInfoModal(expId) {
   const state = getPlayerState();
   const exp = CONFIG_EXPEDITIONS[expId];
@@ -821,13 +830,20 @@ export function showExpeditionInfoModal(expId) {
   const special = CONFIG_GEODES[exp.specialGeodeId];
   const discovered = state.discoveredSpecialGeodes[expId];
 
+  // ★ РАСЧЁТ БОНУСОВ ДЛЯ ОТОБРАЖЕНИЯ
+  const bonusSpeed = getBonusExpeditionSpeed();
+  const baseTimer = exp.timer;
+  const adjustedTimer = bonusSpeed > 0 ? Math.floor(baseTimer * (1 - bonusSpeed / 100)) : baseTimer;
+  
+  const baseSpecialChance = Math.round(exp.specialGeodeChance * 100);
+  
   let specialText = '';
   if (completed) {
     specialText = '✅ Все артефакты собраны';
   } else if (discovered) {
-    specialText = `Особая находка: ${special.name} (${Math.round(exp.specialGeodeChance * 100)}%)`;
+    specialText = `Особая находка: ${special.name} (${baseSpecialChance}%)`;
   } else {
-    specialText = `Особая находка: ??? (${Math.round(exp.specialGeodeChance * 100)}%)`;
+    specialText = `Особая находка: ??? (${baseSpecialChance}%)`;
   }
 
   let timerHtml = '';
@@ -864,6 +880,13 @@ export function showExpeditionInfoModal(expId) {
     actionBtn = `<div id="modalExpeditionAction"><button class="btn" id="modalStartExpedition" data-expedition="${expId}">⛏️ ОТПРАВИТЬСЯ</button></div>`;
   }
 
+  // ★ ФОРМИРУЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ С БОНУСОМ
+  const baseTimerDisplay = `${baseTimer} сек`;
+  const bonusTimerDisplay = bonusSpeed > 0 ? `${adjustedTimer} сек` : baseTimerDisplay;
+  const timerBonusHTML = bonusSpeed > 0 
+    ? `${baseTimer} сек <span style="color:#50C878; font-size:11px;">(-${bonusSpeed}%)</span> → ${adjustedTimer} сек`
+    : `${baseTimer} сек`;
+
   let html = `
     <div class="modal-header">
       <div class="modal-title">${exp.name}</div>
@@ -875,7 +898,7 @@ export function showExpeditionInfoModal(expId) {
       <div style="background:rgba(0,0,0,0.2); border-radius:24px; padding:18px; margin-bottom:24px;">
         <div style="display:flex; justify-content:space-between;">
           <span>⏱️ Время</span>
-          <span style="color:var(--accent-gold);">${exp.timer} сек</span>
+          <span style="color:var(--accent-gold);">${timerBonusHTML}</span>
         </div>
         <div style="margin-top:12px; color:${completed ? '#50C878' : 'var(--accent-gold)'};">${specialText}</div>
       </div>
@@ -2164,7 +2187,7 @@ export function renderGamesTab() {
       <div class="card" style="text-align:center; padding:20px;">
         <div style="font-size:40px; margin-bottom:8px;">⏳</div>
         <div style="color:var(--text-secondary); font-size:14px;">Новая партия заказов прибудет через</div>
-        <div style="font-family:'Unbounded',sans-serif; font-size:24px; font-weight:800; color:var(--accent-gold); margin-top:4px;">${cdMin}:${cdSec.toString().padStart(2, '0')}</div>
+        <div style="font-family:'Unbounded',sans-serif; font-size:24px; font-weight:800; color:var(--accent-gold); margin-top:4px;" id="questCooldownTimer">${cdMin}:${cdSec.toString().padStart(2, '0')}</div>
       </div>
     `;
   } else if (activeQuests.length === 0) {
