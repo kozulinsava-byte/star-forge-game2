@@ -369,10 +369,10 @@ function showItemDetails(ingotId) {
   const usageKnown = isIngotUsageKnown(ingotId);
   
   const knowledgeDots = `
-    <div style="display:flex; gap:8px; justify-content:center; margin-bottom:16px;">
-      <div style="width:10px; height:10px; border-radius:50%; background:${discovered ? '#FFD700' : '#333'}; box-shadow:${discovered ? '0 0 8px rgba(255,215,0,0.5)' : 'none'};" title="${discovered ? 'Предмет найден' : 'Предмет не найден'}"></div>
-      <div style="width:10px; height:10px; border-radius:50%; background:${sourceKnown ? '#FFD700' : '#333'}; box-shadow:${sourceKnown ? '0 0 8px rgba(255,215,0,0.5)' : 'none'};" title="${sourceKnown ? 'Источник известен' : 'Источник неизвестен'}"></div>
-      <div style="width:10px; height:10px; border-radius:50%; background:${usageKnown ? '#FFD700' : '#333'}; box-shadow:${usageKnown ? '0 0 8px rgba(255,215,0,0.5)' : 'none'};" title="${usageKnown ? 'Применение известно' : 'Применение неизвестно'}"></div>
+    <div style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;">
+      <div class="knowledge-dot ${discovered ? 'active' : ''}" title="${discovered ? 'Предмет найден' : 'Предмет не найден'}"></div>
+      <div class="knowledge-dot ${sourceKnown ? 'active' : ''}" title="${sourceKnown ? 'Источник известен' : 'Источник неизвестен'}"></div>
+      <div class="knowledge-dot ${usageKnown ? 'active' : ''}" title="${usageKnown ? 'Применение известно' : 'Применение неизвестно'}"></div>
     </div>
   `;
   
@@ -385,23 +385,22 @@ function showItemDetails(ingotId) {
     const locUnlocked = state.unlockedExpeditions.includes(ingot.location);
     
     sourceHtml = `
-      <div style="display:flex; flex-direction:column; align-items:center; gap:0; padding:16px 0;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0; padding:20px 0;">
         <div class="journal-node journal-node-location" data-tooltip="${locName}">
-          <span style="font-size:32px;">${locIcon}</span>
+          <span style="font-size:34px;">${locIcon}</span>
         </div>
         <div class="journal-connector"></div>
         <div class="journal-node ${discovered ? 'journal-node-known' : 'journal-node-unknown'}">
           ${discovered 
-            ? `<span style="font-size:36px;">${ingot.icon}</span>`
-            : `<span style="font-size:36px; opacity:0.4;">❓</span>`
+            ? `<span style="font-size:38px;">${ingot.icon}</span>`
+            : `<span style="font-size:38px; opacity:0.4;">❓</span>`
           }
         </div>
-        <div style="font-size:11px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:4px;">${discovered ? ingot.name : '???'}</div>
-        ${!discovered && locUnlocked ? `<div style="font-size:9px; color:var(--accent-gold); margin-top:2px;">Отправьте экспедицию</div>` : ''}
+        <div style="font-size:12px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:6px; font-weight:${discovered ? '600' : '400'};">${discovered ? ingot.name : '???'}</div>
+        ${!discovered && locUnlocked ? `<div style="font-size:10px; color:var(--accent-gold); margin-top:4px; letter-spacing:1px;">ОТПРАВЬТЕ ЭКСПЕДИЦИЮ</div>` : ''}
       </div>
     `;
   } else if (ingot.sourceType === 'alchemy') {
-    // Находим рецепт
     let recipeHtml = '';
     for (let recipeId in ALCHEMY_RECIPES) {
       const recipe = ALCHEMY_RECIPES[recipeId];
@@ -412,75 +411,75 @@ function showItemDetails(ingotId) {
         const ing2 = CONFIG_ITEMS[recipe.ingredients[1]];
         
         recipeHtml = `
-          <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:16px 0; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:20px 0; flex-wrap:wrap;">
             <div class="journal-node ${ing1Known ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${ing1Known ? ing1.name : '???'}">
-              ${ing1Known ? `<span style="font-size:28px;">${ing1.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+              ${ing1Known ? `<span style="font-size:30px;">${ing1.icon}</span>` : `<span style="font-size:30px; opacity:0.3;">❓</span>`}
             </div>
-            <div style="font-size:18px; color:var(--text-muted); margin:0 8px;">+</div>
+            <div style="font-size:20px; color:var(--text-muted); margin:0 10px; font-weight:300;">+</div>
             <div class="journal-node ${ing2Known ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${ing2Known ? ing2.name : '???'}">
-              ${ing2Known ? `<span style="font-size:28px;">${ing2.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+              ${ing2Known ? `<span style="font-size:30px;">${ing2.icon}</span>` : `<span style="font-size:30px; opacity:0.3;">❓</span>`}
             </div>
-            <div style="font-size:18px; color:var(--accent-gold); margin:0 8px;">→</div>
+            <div style="font-size:20px; color:var(--accent-gold); margin:0 10px;">→</div>
             <div class="journal-node journal-node-result">
-              <span style="font-size:36px;">${ingot.icon}</span>
+              <span style="font-size:38px;">${ingot.icon}</span>
             </div>
           </div>
-          <div style="text-align:center; font-size:11px; color:var(--text-primary); margin-top:4px;">${ingot.name}</div>
-          <div style="text-align:center; font-size:9px; color:var(--accent-gold); margin-top:2px;">Алхимический сплав</div>
+          <div style="text-align:center; font-size:12px; color:var(--text-primary); margin-top:4px; font-weight:600;">${ingot.name}</div>
+          <div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:4px; letter-spacing:1px;">АЛХИМИЧЕСКИЙ СПЛАВ</div>
         `;
         break;
       }
     }
-    sourceHtml = recipeHtml || '<div style="color:var(--text-muted); padding:16px; text-align:center;">Рецепт неизвестен</div>';
+    sourceHtml = recipeHtml || '<div style="color:var(--text-muted); padding:20px; text-align:center;">Рецепт неизвестен</div>';
   } else if (ingot.sourceType === 'crafted') {
     const recipe = CRAFT_RECIPES[ingotId];
     if (recipe) {
-      let craftHtml = '<div style="display:flex; align-items:center; justify-content:center; gap:0; padding:16px 0; flex-wrap:wrap;">';
+      let craftHtml = '<div style="display:flex; align-items:center; justify-content:center; gap:0; padding:20px 0; flex-wrap:wrap;">';
       let first = true;
       for (let ingKey in recipe.ingredients) {
-        if (!first) craftHtml += '<div style="font-size:18px; color:var(--text-muted); margin:0 8px;">+</div>';
+        if (!first) craftHtml += '<div style="font-size:20px; color:var(--text-muted); margin:0 10px; font-weight:300;">+</div>';
         const ingKeyIngot = CONFIG_ITEMS[ingKey];
         const ingKeyKnown = state.minedStats[ingKey] > 0;
         craftHtml += `
           <div class="journal-node ${ingKeyKnown ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${ingKeyKnown ? ingKeyIngot.name : '???'}">
-            ${ingKeyKnown ? `<span style="font-size:28px;">${ingKeyIngot.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+            ${ingKeyKnown ? `<span style="font-size:30px;">${ingKeyIngot.icon}</span>` : `<span style="font-size:30px; opacity:0.3;">❓</span>`}
           </div>
         `;
         first = false;
       }
-      craftHtml += '<div style="font-size:18px; color:var(--accent-gold); margin:0 8px;">→</div>';
+      craftHtml += '<div style="font-size:20px; color:var(--accent-gold); margin:0 10px;">→</div>';
       craftHtml += `
         <div class="journal-node journal-node-result">
-          <span style="font-size:36px;">${ingot.icon}</span>
+          <span style="font-size:38px;">${ingot.icon}</span>
         </div>
       `;
       craftHtml += '</div>';
-      craftHtml += `<div style="text-align:center; font-size:11px; color:var(--text-primary); margin-top:4px;">${ingot.name}</div>`;
-      craftHtml += '<div style="text-align:center; font-size:9px; color:var(--accent-orange); margin-top:2px;">Великая Переплавка</div>';
+      craftHtml += `<div style="text-align:center; font-size:12px; color:var(--text-primary); margin-top:4px; font-weight:600;">${ingot.name}</div>`;
+      craftHtml += '<div style="text-align:center; font-size:10px; color:var(--accent-orange); margin-top:4px; letter-spacing:1px;">ВЕЛИКАЯ ПЕРЕПЛАВКА</div>';
       sourceHtml = craftHtml;
     } else {
-      sourceHtml = '<div style="color:var(--text-muted); padding:16px; text-align:center;">Рецепт неизвестен</div>';
+      sourceHtml = '<div style="color:var(--text-muted); padding:20px; text-align:center;">Рецепт неизвестен</div>';
     }
   } else if (ingot.sourceType === 'meteor' || ingot.sourceType === 'special_meteor') {
     sourceHtml = `
-      <div style="display:flex; flex-direction:column; align-items:center; gap:0; padding:16px 0;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0; padding:20px 0;">
         <div class="journal-node journal-node-location" data-tooltip="Метеоритный Шторм">
-          <span style="font-size:32px;">☄️</span>
+          <span style="font-size:34px;">☄️</span>
         </div>
         <div class="journal-connector"></div>
         <div class="journal-node ${discovered ? 'journal-node-known' : 'journal-node-unknown'}">
           ${discovered 
-            ? `<span style="font-size:36px;">${ingot.icon}</span>`
-            : `<span style="font-size:36px; opacity:0.4;">❓</span>`
+            ? `<span style="font-size:38px;">${ingot.icon}</span>`
+            : `<span style="font-size:38px; opacity:0.4;">❓</span>`
           }
         </div>
-        <div style="font-size:11px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:4px;">${discovered ? ingot.name : '???'}</div>
-        <div style="font-size:9px; color:var(--accent-purple); margin-top:2px;">Метеоритный Шторм</div>
+        <div style="font-size:12px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:6px; font-weight:${discovered ? '600' : '400'};">${discovered ? ingot.name : '???'}</div>
+        <div style="font-size:10px; color:var(--accent-purple); margin-top:4px; letter-spacing:1px;">МЕТЕОРИТНЫЙ ШТОРМ</div>
       </div>
     `;
   }
   
-  // ===== ЗОНА 2: ГДЕ ПРИМЕНЯЕТСЯ (СОЗВЕЗДИЕ РЕЦЕПТОВ) =====
+  // ===== ЗОНА 2: ГДЕ ПРИМЕНЯЕТСЯ (СОЗВЕЗДИЕ РЕЦЕПТОВ) — БЕЗ СПОЙЛЕРОВ =====
   let usageHtml = '';
   const usedInRecipes = [];
   
@@ -491,6 +490,7 @@ function showItemDetails(ingotId) {
       const otherIng = CONFIG_ITEMS[otherIngId];
       const resultIng = CONFIG_ITEMS[recipe.resultIngotId];
       const otherKnown = state.minedStats[otherIngId] > 0;
+      // ★ БАГ-ФИКС: результат известен только если игрок уже находил этот сплав
       const resultKnown = state.minedStats[recipe.resultIngotId] > 0;
       
       usedInRecipes.push({
@@ -507,33 +507,68 @@ function showItemDetails(ingotId) {
   if (usedInRecipes.length > 0) {
     usedInRecipes.forEach(rec => {
       usageHtml += `
-        <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:8px 0; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:10px 0; flex-wrap:wrap;">
           <div class="journal-node journal-node-known" data-tooltip="${ingot.name}">
-            <span style="font-size:28px;">${ingot.icon}</span>
+            <span style="font-size:30px;">${ingot.icon}</span>
           </div>
-          <div style="font-size:18px; color:var(--text-muted); margin:0 8px;">+</div>
+          <div style="font-size:20px; color:var(--text-muted); margin:0 10px; font-weight:300;">+</div>
           <div class="journal-node ${rec.otherKnown ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${rec.otherKnown ? rec.otherIng.name : '???'}">
-            ${rec.otherKnown ? `<span style="font-size:28px;">${rec.otherIng.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+            ${rec.otherKnown ? `<span style="font-size:30px;">${rec.otherIng.icon}</span>` : `<span style="font-size:30px; opacity:0.3;">❓</span>`}
           </div>
-          <div style="font-size:18px; color:var(--accent-gold); margin:0 8px;">→</div>
-          <div class="journal-node ${rec.resultKnown ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${rec.resultKnown ? rec.resultIng.name : '???'}">
-            ${rec.resultKnown ? `<span style="font-size:28px;">${rec.resultIng.icon}</span>` : `<span style="font-size:28px; opacity:0.3;">❓</span>`}
+          <div style="font-size:20px; color:var(--accent-gold); margin:0 10px;">→</div>
+          <div class="journal-node ${rec.resultKnown ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${rec.resultKnown ? rec.resultIng.name : 'Неизвестный сплав'}">
+            ${rec.resultKnown ? `<span style="font-size:30px;">${rec.resultIng.icon}</span>` : `<span style="font-size:30px; opacity:0.3;">❓</span>`}
           </div>
         </div>
-        ${rec.resultKnown ? `<div style="text-align:center; font-size:9px; color:var(--text-secondary);">${rec.resultIng.name}</div>` : ''}
+        ${rec.resultKnown ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">${rec.resultIng.name}</div>` : `<div style="text-align:center; font-size:10px; color:var(--text-muted); margin-top:2px;">Неизвестный сплав</div>`}
       `;
     });
   } else {
-    usageHtml = '<div style="color:var(--text-muted); padding:16px; text-align:center; font-size:12px;">Пока не используется в известных рецептах</div>';
+    usageHtml = '<div style="color:var(--text-muted); padding:20px; text-align:center; font-size:13px;">Пока не используется в известных рецептах</div>';
   }
   
   // ===== СОБИРАЕМ МОДАЛКУ =====
   const html = `
     <style>
+      @keyframes knowledgeGlow {
+        0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.3); }
+        50% { box-shadow: 0 0 14px rgba(255,215,0,0.7); }
+      }
+      @keyframes nodeGlowKnown {
+        0%, 100% { box-shadow: 0 0 12px rgba(139,115,85,0.2); }
+        50% { box-shadow: 0 0 24px rgba(139,115,85,0.5); }
+      }
+      @keyframes nodeGlowResult {
+        0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.2); }
+        50% { box-shadow: 0 0 32px rgba(255,215,0,0.6); }
+      }
+      @keyframes nodeGlowLocation {
+        0%, 100% { box-shadow: 0 0 12px rgba(80,200,120,0.15); }
+        50% { box-shadow: 0 0 24px rgba(80,200,120,0.4); }
+      }
+      @keyframes connectorPulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+      }
+      
+      .knowledge-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #2a2a2a;
+        transition: all 0.4s ease;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
+      }
+      .knowledge-dot.active {
+        background: #FFD700;
+        box-shadow: 0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(255,215,0,0.3);
+        animation: knowledgeGlow 2.5s ease-in-out infinite;
+      }
+      
       .journal-scroll {
-        max-height: 65vh;
+        max-height: 60vh;
         overflow-y: auto;
-        padding: 4px;
+        padding: 6px;
         scrollbar-width: thin;
         scrollbar-color: rgba(255,215,0,0.2) transparent;
       }
@@ -542,106 +577,114 @@ function showItemDetails(ingotId) {
       .journal-scroll::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.2); border-radius: 10px; }
       
       .journal-section {
-        background: rgba(0,0,0,0.25);
-        border-radius: 20px;
-        padding: 16px 12px;
-        margin-bottom: 14px;
-        border: 1px solid rgba(255,255,255,0.04);
+        background: linear-gradient(135deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.2) 100%);
+        border-radius: 24px;
+        padding: 20px 14px;
+        margin-bottom: 16px;
+        border: 1px solid rgba(255,255,255,0.05);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
       }
       .journal-section::before {
         content: '';
         position: absolute;
         top: 0; left: 0;
         width: 100%; height: 100%;
-        background: radial-gradient(circle at 50% 0%, rgba(139,115,85,0.06) 0%, transparent 70%);
+        background: radial-gradient(ellipse at 50% 0%, rgba(139,115,85,0.08) 0%, transparent 70%);
         pointer-events: none;
       }
       .journal-section-title {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         color: var(--accent-gold);
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         text-align: center;
-        letter-spacing: 2px;
+        letter-spacing: 3px;
         text-transform: uppercase;
         position: relative;
+        text-shadow: 0 0 20px rgba(255,215,0,0.3);
       }
       
       .journal-node {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
         cursor: pointer;
-        transition: all 0.25s ease;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1.2);
         position: relative;
         z-index: 1;
       }
-      .journal-node:active { transform: scale(1.1); }
+      .journal-node:active { transform: scale(1.12); }
       
       .journal-node-known {
-        background: rgba(139,115,85,0.15);
-        border: 2px solid rgba(139,115,85,0.4);
-        box-shadow: 0 0 18px rgba(139,115,85,0.2);
+        background: linear-gradient(135deg, rgba(139,115,85,0.2) 0%, rgba(139,115,85,0.1) 100%);
+        border: 2px solid rgba(139,115,85,0.5);
+        box-shadow: 0 0 18px rgba(139,115,85,0.25);
+        animation: nodeGlowKnown 3s ease-in-out infinite;
       }
       .journal-node-unknown {
         background: rgba(255,255,255,0.02);
         border: 2px dashed rgba(255,255,255,0.08);
         cursor: default;
+        box-shadow: none;
       }
       .journal-node-unknown:active { transform: none; }
       .journal-node-location {
-        background: rgba(80,200,120,0.1);
-        border: 2px solid rgba(80,200,120,0.3);
-        box-shadow: 0 0 18px rgba(80,200,120,0.15);
-        width: 60px;
-        height: 60px;
-        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(80,200,120,0.15) 0%, rgba(80,200,120,0.05) 100%);
+        border: 2px solid rgba(80,200,120,0.4);
+        box-shadow: 0 0 20px rgba(80,200,120,0.2);
+        width: 64px;
+        height: 64px;
+        border-radius: 22px;
+        animation: nodeGlowLocation 3.5s ease-in-out infinite;
       }
       .journal-node-result {
-        background: rgba(255,215,0,0.1);
-        border: 2px solid rgba(255,215,0,0.5);
-        box-shadow: 0 0 24px rgba(255,215,0,0.25);
-        width: 60px;
-        height: 60px;
-        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.05) 100%);
+        border: 2px solid rgba(255,215,0,0.6);
+        box-shadow: 0 0 28px rgba(255,215,0,0.3);
+        width: 64px;
+        height: 64px;
+        border-radius: 22px;
+        animation: nodeGlowResult 2.8s ease-in-out infinite;
       }
       
       .journal-connector {
         width: 3px;
-        height: 24px;
-        background: linear-gradient(to bottom, rgba(255,215,0,0.5), rgba(255,215,0,0.1));
+        height: 28px;
+        background: linear-gradient(to bottom, rgba(255,215,0,0.6), rgba(255,215,0,0.05));
         border-radius: 2px;
-        margin: 4px 0;
+        margin: 6px 0;
+        animation: connectorPulse 2s ease-in-out infinite;
       }
       
       .journal-tooltip {
         position: fixed;
-        background: rgba(18,18,22,0.97);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255,215,0,0.4);
-        border-radius: 12px;
-        padding: 8px 14px;
-        font-size: 11px;
+        background: rgba(18,18,22,0.98);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,215,0,0.5);
+        border-radius: 14px;
+        padding: 10px 16px;
+        font-size: 12px;
         color: #FFD700;
         font-weight: 600;
         pointer-events: none;
         z-index: 10001;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.7), 0 0 20px rgba(255,215,0,0.15);
         opacity: 0;
-        transition: opacity 0.15s ease;
+        transition: opacity 0.2s ease;
         white-space: nowrap;
+        letter-spacing: 0.5px;
       }
       .journal-tooltip.show { opacity: 1; }
     </style>
     <div class="modal-header">
-      <div class="modal-title" style="display:flex; align-items:center; gap:10px; justify-content:center;">
-        <span style="font-size:28px;">${discovered ? ingot.icon : '❓'}</span>
-        <span>${discovered ? ingot.name : 'Неизвестный материал'}</span>
+      <div class="modal-title" style="display:flex; align-items:center; gap:12px; justify-content:center;">
+        <span style="font-size:32px;">${discovered ? ingot.icon : '❓'}</span>
+        <span style="font-size:18px;">${discovered ? ingot.name : 'Неизвестный материал'}</span>
       </div>
       <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
     </div>
@@ -659,12 +702,12 @@ function showItemDetails(ingotId) {
         </div>
         
         ${discovered ? `
-          <div style="text-align:center; padding:8px; color:var(--text-secondary); font-size:11px; line-height:1.5;">
+          <div style="text-align:center; padding:12px; color:var(--text-secondary); font-size:12px; line-height:1.6; background:rgba(0,0,0,0.15); border-radius:16px; margin-top:4px;">
             ${ingot.description}
           </div>
         ` : `
-          <div style="text-align:center; padding:8px; color:var(--text-muted); font-size:11px;">
-            Отправьте экспедицию в указанную локацию чтобы найти этот материал
+          <div style="text-align:center; padding:12px; color:var(--text-muted); font-size:11px; background:rgba(0,0,0,0.15); border-radius:16px; margin-top:4px; letter-spacing:1px;">
+            ОТПРАВЬТЕ ЭКСПЕДИЦИЮ В УКАЗАННУЮ ЛОКАЦИЮ
           </div>
         `}
       </div>
@@ -683,7 +726,6 @@ function showItemDetails(ingotId) {
 let activeTooltip = null;
 
 function initJournalTooltips() {
-  // Удаляем старый тултип если есть
   if (activeTooltip) {
     activeTooltip.remove();
     activeTooltip = null;
@@ -695,7 +737,6 @@ function initJournalTooltips() {
   document.body.appendChild(tooltip);
   
   document.querySelectorAll('.journal-node[data-tooltip]').forEach(node => {
-    // Пропускаем неизвестные ноды
     if (node.classList.contains('journal-node-unknown')) return;
     
     node.addEventListener('click', (e) => {
@@ -706,13 +747,13 @@ function initJournalTooltips() {
       const rect = node.getBoundingClientRect();
       tooltip.textContent = text;
       tooltip.style.left = (rect.left + rect.width / 2 - tooltip.offsetWidth / 2) + 'px';
-      tooltip.style.top = (rect.top - 40) + 'px';
+      tooltip.style.top = (rect.top - 44) + 'px';
       tooltip.classList.add('show');
       
       clearTimeout(tooltip._timeout);
       tooltip._timeout = setTimeout(() => {
         tooltip.classList.remove('show');
-      }, 1500);
+      }, 1600);
     });
   });
 }
@@ -956,7 +997,6 @@ export function closeModal() {
     modalTimerInterval = null;
   }
   
-  // Убираем тултип журнала
   const tooltip = document.getElementById('journalTooltip');
   if (tooltip) tooltip.remove();
   
@@ -2357,7 +2397,6 @@ export function renderCollectionTab() {
         `;
       }
       
-      // ★ ИНДИКАТОР ЗНАНИЙ (ТРИ ТОЧКИ)
       const sourceKnown = discovered || isIngotSourceKnown(ing.id);
       const usageKnown = isIngotUsageKnown(ing.id);
       
