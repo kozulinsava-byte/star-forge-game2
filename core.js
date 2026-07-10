@@ -76,6 +76,68 @@ export const meteorStormState = {
   cooldownDuration: 60000
 };
 
+// ========== PITY-СИСТЕМА (ЧЕСТНЫЙ РАНДОМ) ==========
+const pityCounters = {};
+
+function getPityAdjustedDrop(geodeId) {
+  const g = CONFIG_GEODES[geodeId];
+  if (!g || g.isSpecial) {
+    const rand = Math.random();
+    let cum = 0;
+    for (let e of g.lootTable) {
+      cum += e.chance;
+      if (rand < cum) return e.ingotId;
+    }
+    return g.lootTable[0].ingotId;
+  }
+
+  if (!pityCounters[geodeId]) {
+    pityCounters[geodeId] = {};
+    g.lootTable.forEach(e => { pityCounters[geodeId][e.ingotId] = 0; });
+  }
+
+  const counters = pityCounters[geodeId];
+  
+  // Рассчитываем скорректированные шансы с учётом pity
+  const adjustedTable = g.lootTable.map(e => {
+    const missesSinceLastDrop = counters[e.ingotId] || 0;
+    // Каждые 5 невыпадений подряд увеличивают шанс на 50% от базового
+    const pityBonus = Math.floor(missesSinceLastDrop / 5) * (e.chance * 0.5);
+    const adjustedChance = e.chance + pityBonus;
+    return { ...e, adjustedChance };
+  });
+
+  // Нормализуем шансы чтобы сумма была = 1
+  const totalChance = adjustedTable.reduce((sum, e) => sum + e.adjustedChance, 0);
+  const normalized = adjustedTable.map(e => ({
+    ...e,
+    normalizedChance: e.adjustedChance / totalChance
+  }));
+
+  // Бросаем кубик
+  const rand = Math.random();
+  let cum = 0;
+  let droppedId = normalized[0].ingotId;
+  for (let e of normalized) {
+    cum += e.normalizedChance;
+    if (rand < cum) {
+      droppedId = e.ingotId;
+      break;
+    }
+  }
+
+  // Обновляем счётчики pity
+  for (let ingotId in counters) {
+    if (ingotId === droppedId) {
+      counters[ingotId] = 0; // сброс при выпадении
+    } else {
+      counters[ingotId] = (counters[ingotId] || 0) + 1; // +1 к невыпавшим
+    }
+  }
+
+  return droppedId;
+}
+
 export function sendBotNotification(message) {
   console.log('[StarForge Notification]', message);
 }
@@ -1569,6 +1631,7 @@ export function startGlobalTimer() {
     checkCompletedExpeditions();
     updateExpeditionTimers();
     updateEventTimer();
+    updateQuestTimer();
     regenEnergy();
   }, 500);
 }
@@ -1594,6 +1657,27 @@ function updateEventTimer() {
   const timerEl = document.getElementById('eventTimer');
   if (timerEl && event) {
     timerEl.textContent = eventsManager.getTimeLeft();
+  }
+}
+
+// ========== ЖИВОЙ ТАЙМЕР ЗАКАЗОВ ГИЛЬДИИ ==========
+function updateQuestTimer() {
+  const questTimerEl = document.getElementById('questCooldownTimer');
+  if (!questTimerEl) return;
+  
+  const remaining = getQuestCooldownRemaining();
+  if (remaining > 0) {
+    const m = Math.floor(remaining / 60000);
+    const s = Math.ceil((remaining % 60000) / 1000);
+    questTimerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  } else {
+    // Таймер истёк — обновляем заказы
+    checkAndRefreshQuests();
+    if (_renderEventsTab) {
+      import('./ui.js').then(ui => {
+        if (ui.currentTab === 'events') _renderEventsTab();
+      });
+    }
   }
 }
 
@@ -1869,8 +1953,8 @@ export function initRoulette(geodeId) {
   if (!playerState) return;
   const g = CONFIG_GEODES[geodeId]; if (!g || g.isSpecial) return;
   
-  const rand = Math.random(); let cum = 0; let droppedId = g.lootTable[0].ingotId;
-  for (let e of g.lootTable) { cum += e.chance; if (rand < cum) { droppedId = e.ingotId; break; } }
+  // ★ ИСПОЛЬЗУЕМ PITY-СИСТЕМУ вместо чистого рандома
+  const droppedId = getPityAdjustedDrop(geodeId);
   
   const resultIngot = CONFIG_ITEMS[droppedId];
   const items = g.lootTable.map(e => CONFIG_ITEMS[e.ingotId]);
@@ -1945,7 +2029,7 @@ function stopRoulette() {
   setTimeout(() => { if (_showRewardPopup) _showRewardPopup(resultIngot); if (_renderCurrentTab) _renderCurrentTab(); }, 100);
 }
 
-// ---------- КУЗНИЦА ----------
+// ---------- КУЗНИЦА (BRAWL) С КНОПКОЙ БЫСТРОГО ОТКРЫТИЯ ----------
 let brawlState = { geodeId: null, isSpecial: false, tapsRemaining: 10, isOpen: false };
 const brawlOverlay = document.getElementById('brawlOverlay');
 const brawlGeode = document.getElementById('brawlGeode');
@@ -1965,10 +2049,114 @@ export function openBrawlOverlay(geodeId, isSpecial) {
   if (isSpecial) { brawlGeode.classList.add('special-geode'); } else { brawlGeode.classList.remove('special-geode'); }
   document.querySelector('.brawl-hint').style.display = 'block'; brawlCounter.style.display = 'block';
   if (_getGeodeStageImage && _renderImageToElement) { const stage = _getGeodeStageImage(geodeId, 10); _renderImageToElement(brawlGeode, stage.imagePath, stage.fallbackIcon, '#8B7355'); }
+  
+  // ★ ДОБАВЛЯЕМ КНОПКУ БЫСТРОГО ОТКРЫТИЯ НА ЭТАП BRAWL
+  const existingSkipBtn = document.getElementById('brawlSkipBtn');
+  if (existingSkipBtn) existingSkipBtn.remove();
+  
+  const skipBtn = document.createElement('button');
+  skipBtn.id = 'brawlSkipBtn';
+  skipBtn.textContent = '⏩ Быстрое открытие';
+  skipBtn.style.cssText = `
+    display: block;
+    margin: 16px auto 0;
+    background: rgba(255,215,0,0.12);
+    border: 1px solid rgba(255,215,0,0.25);
+    color: var(--accent-gold);
+    padding: 10px 20px;
+    border-radius: 24px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  `;
+  skipBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    skipBrawlOpening();
+  });
+  
+  const brawlContent = document.getElementById('brawlContent');
+  if (brawlContent) {
+    brawlContent.appendChild(skipBtn);
+  }
+  
   brawlOverlay.classList.add('active');
 }
 
-function closeBrawlOverlay() { brawlOverlay.classList.remove('active'); brawlState.isOpen = false; isOpeningGeode = false; if (_renderCurrentTab) _renderCurrentTab(); }
+// ★ ФУНКЦИЯ БЫСТРОГО ОТКРЫТИЯ ЖЕОДЫ (ПРОПУСК BRAWL)
+function skipBrawlOpening() {
+  if (!playerState || !brawlState.isOpen) return;
+  
+  const geodeId = brawlState.geodeId;
+  const isSpecial = brawlState.isSpecial;
+  
+  // Списываем жеоду
+  if (playerState.geodes[geodeId] > 0) {
+    playerState.geodes[geodeId]--;
+  }
+  playerState.player.totalOpened++;
+  
+  let droppedIngot = null;
+  let xpGained = 0;
+  
+  if (isSpecial) {
+    const g = CONFIG_GEODES[geodeId];
+    const loc = g.location;
+    if (!playerState.collectedArtifacts[loc]) {
+      playerState.collectedArtifacts[loc] = [];
+    }
+    const available = g.possibleIngots.filter((ingId) => !playerState.collectedArtifacts[loc].includes(ingId));
+    const picked = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : g.possibleIngots[0];
+    droppedIngot = CONFIG_ITEMS[picked];
+    playerState.ingots[picked] = (playerState.ingots[picked] || 0) + 1;
+    playerState.minedStats[picked] = (playerState.minedStats[picked] || 0) + 1;
+    if (!playerState.collectedArtifacts[loc].includes(picked)) {
+      playerState.collectedArtifacts[loc].push(picked);
+      playerState.player.totalArtifacts++;
+    }
+    if (!playerState.discoveredSpecialGeodes[loc]) playerState.discoveredSpecialGeodes[loc] = true;
+    xpGained = droppedIngot.xpValue;
+    addXP(xpGained);
+    saveGame();
+    
+    const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1;
+    if (droppedIngot.isCollectible && isFirstCollectible) {
+      showCollectibleAnimation(droppedIngot);
+    }
+    
+    // Показываем результат сразу
+    brawlGeode.style.display = 'none';
+    document.querySelector('.brawl-hint').style.display = 'none';
+    brawlCounter.style.display = 'none';
+    const skipBtn = document.getElementById('brawlSkipBtn');
+    if (skipBtn) skipBtn.remove();
+    
+    if (_renderImageToElement) _renderImageToElement(brawlResultIcon, droppedIngot.imagePath, droppedIngot.icon, droppedIngot.fallbackColor);
+    brawlResultName.textContent = droppedIngot.name;
+    brawlResultRarity.textContent = droppedIngot.rarity;
+    brawlResultRarity.style.color = droppedIngot.rarityClass === 'collectible' ? '#FF64FF' : (droppedIngot.rarityClass === 'legendary' ? '#FFD700' : '#fff');
+    brawlResult.classList.add('show');
+    brawlCloseBtn.style.display = 'block';
+    isOpeningGeode = false;
+    if (_renderCurrentTab) _renderCurrentTab();
+  } else {
+    // Обычная жеода — переходим к конвейеру
+    brawlOverlay.classList.remove('active');
+    brawlState.isOpen = false;
+    const skipBtn = document.getElementById('brawlSkipBtn');
+    if (skipBtn) skipBtn.remove();
+    initRoulette(geodeId);
+  }
+}
+
+function closeBrawlOverlay() {
+  brawlOverlay.classList.remove('active');
+  brawlState.isOpen = false;
+  isOpeningGeode = false;
+  const skipBtn = document.getElementById('brawlSkipBtn');
+  if (skipBtn) skipBtn.remove();
+  if (_renderCurrentTab) _renderCurrentTab();
+}
 
 function handleBrawlTap(e) {
   if (!brawlState.isOpen || brawlState.tapsRemaining <= 0) return;
@@ -1983,6 +2171,9 @@ function finishBrawlOpening() {
   if (!playerState) return; const geodeId = brawlState.geodeId; const isSpecial = brawlState.isSpecial;
   if (playerState.geodes[geodeId] > 0) { playerState.geodes[geodeId]--; } playerState.player.totalOpened++;
   let droppedIngot = null; let xpGained = 0;
+  const skipBtn = document.getElementById('brawlSkipBtn');
+  if (skipBtn) skipBtn.remove();
+  
   if (isSpecial) { const g = CONFIG_GEODES[geodeId]; const loc = g.location; if (!playerState.collectedArtifacts[loc]) { playerState.collectedArtifacts[loc] = []; } const available = g.possibleIngots.filter((ingId) => !playerState.collectedArtifacts[loc].includes(ingId)); const picked = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : g.possibleIngots[0]; droppedIngot = CONFIG_ITEMS[picked]; playerState.ingots[picked] = (playerState.ingots[picked] || 0) + 1; playerState.minedStats[picked] = (playerState.minedStats[picked] || 0) + 1; if (!playerState.collectedArtifacts[loc].includes(picked)) { playerState.collectedArtifacts[loc].push(picked); playerState.player.totalArtifacts++; } if (!playerState.discoveredSpecialGeodes[loc]) playerState.discoveredSpecialGeodes[loc] = true; xpGained = droppedIngot.xpValue; addXP(xpGained); saveGame(); const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1; if (droppedIngot.isCollectible && isFirstCollectible) { showCollectibleAnimation(droppedIngot); } brawlGeode.classList.add('explode-animation'); brawlGeode.classList.remove('special-geode'); document.querySelector('.brawl-hint').style.display = 'none'; brawlCounter.style.display = 'none'; setTimeout(() => { brawlGeode.style.display = 'none'; if (_renderImageToElement) _renderImageToElement(brawlResultIcon, droppedIngot.imagePath, droppedIngot.icon, droppedIngot.fallbackColor); brawlResultName.textContent = droppedIngot.name; brawlResultRarity.textContent = droppedIngot.rarity; brawlResultRarity.style.color = droppedIngot.rarityClass === 'collectible' ? '#FF64FF' : (droppedIngot.rarityClass === 'legendary' ? '#FFD700' : '#fff'); brawlResult.classList.add('show'); brawlCloseBtn.style.display = 'block'; isOpeningGeode = false; if (_renderCurrentTab) _renderCurrentTab(); }, 500); }
   else { brawlGeode.classList.add('explode-animation'); document.querySelector('.brawl-hint').style.display = 'none'; brawlCounter.style.display = 'none'; setTimeout(() => { brawlOverlay.classList.remove('active'); brawlState.isOpen = false; initRoulette(geodeId); }, 500); }
 }
