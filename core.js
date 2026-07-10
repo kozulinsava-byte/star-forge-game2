@@ -45,7 +45,8 @@ export let playerState = {
   completedQuests: [],
   questCooldownEnd: null,
   unlockedExpeditions: ['swamp'],
-  discoveredAlchemyRecipes: []
+  discoveredAlchemyRecipes: [],
+  discoveredKnowledge: {}
 };
 
 export function getPlayerState() {
@@ -136,6 +137,55 @@ function getPityAdjustedDrop(geodeId) {
   }
 
   return droppedId;
+}
+
+// ========== СИСТЕМА ЗНАНИЙ (ЖУРНАЛ ИССЛЕДОВАТЕЛЯ) ==========
+function initIngotKnowledge(ingotId) {
+  if (!playerState.discoveredKnowledge[ingotId]) {
+    playerState.discoveredKnowledge[ingotId] = {
+      sourceKnown: false,
+      usedInKnown: false
+    };
+  }
+}
+
+function revealIngotSource(ingotId) {
+  initIngotKnowledge(ingotId);
+  if (!playerState.discoveredKnowledge[ingotId].sourceKnown) {
+    playerState.discoveredKnowledge[ingotId].sourceKnown = true;
+    saveGame();
+  }
+}
+
+function revealIngotUsage(ingotId) {
+  initIngotKnowledge(ingotId);
+  if (!playerState.discoveredKnowledge[ingotId].usedInKnown) {
+    playerState.discoveredKnowledge[ingotId].usedInKnown = true;
+    saveGame();
+  }
+}
+
+export function isIngotSourceKnown(ingotId) {
+  const ingot = CONFIG_ITEMS[ingotId];
+  if (!ingot) return false;
+  // Если слиток уже найден — источник автоматически известен
+  if (playerState.minedStats[ingotId] > 0) return true;
+  return playerState.discoveredKnowledge[ingotId]?.sourceKnown || false;
+}
+
+export function isIngotUsageKnown(ingotId) {
+  return playerState.discoveredKnowledge[ingotId]?.usedInKnown || false;
+}
+
+export function isRecipeDiscovered(recipeId) {
+  const recipe = ALCHEMY_RECIPES[recipeId];
+  if (!recipe) return false;
+  // Рецепт считается открытым если оба ингредиента известны
+  return recipe.ingredients.every(ingId => playerState.minedStats[ingId] > 0);
+}
+
+export function getDiscoveredKnowledge() {
+  return playerState.discoveredKnowledge || {};
 }
 
 export function sendBotNotification(message) {
@@ -1337,7 +1387,8 @@ export function saveGame() {
       levelLocked: ingotSave.levelLocked,
       equippedArtifacts: playerState.equippedArtifacts || [null, null, null],
       unlockedExpeditions: playerState.unlockedExpeditions || ['swamp'],
-      discoveredAlchemyRecipes: playerState.discoveredAlchemyRecipes || []
+      discoveredAlchemyRecipes: playerState.discoveredAlchemyRecipes || [],
+      discoveredKnowledge: playerState.discoveredKnowledge || {}
     },
     collectibleSerials,
     nextSerial,
@@ -1461,6 +1512,12 @@ function applySaveData(data) {
     playerState.discoveredAlchemyRecipes = [];
   }
   
+  if (saved.discoveredKnowledge && typeof saved.discoveredKnowledge === 'object') {
+    playerState.discoveredKnowledge = { ...saved.discoveredKnowledge };
+  } else {
+    playerState.discoveredKnowledge = {};
+  }
+  
   initIngotState({
     ingotShavings: saved.ingotShavings || 0,
     tapEnergy: saved.tapEnergy || 500,
@@ -1517,6 +1574,7 @@ export const saveToLocalStorage = saveGame;
   playerState.equippedArtifacts = [null, null, null];
   playerState.unlockedExpeditions = ['swamp'];
   playerState.discoveredAlchemyRecipes = [];
+  playerState.discoveredKnowledge = {};
   
   console.log('[Core] DEFAULT_STATE применён синхронно при загрузке модуля');
 })();
@@ -1749,6 +1807,11 @@ export function performAlchemy(ingotId1, ingotId2) {
   playerState.minedStats[matchedRecipe.resultIngotId] = (playerState.minedStats[matchedRecipe.resultIngotId] || 0) + 1;
   playerState.player.totalIngots++;
   
+  // ★ РАСКРЫВАЕМ ЗНАНИЯ ОБ ИСПОЛЬЗОВАНИИ ИНГРЕДИЕНТОВ
+  revealIngotUsage(ingotId1);
+  revealIngotUsage(ingotId2);
+  revealIngotSource(matchedRecipe.resultIngotId);
+  
   let totalXP = matchedRecipe.xpReward;
   if (isFirstDiscovery) {
     playerState.discoveredAlchemyRecipes.push(matchedRecipe.id);
@@ -1943,6 +2006,9 @@ function skipConveyor() {
   cleanupConveyor();
   isOpeningGeode = false;
   
+  // ★ РАСКРЫВАЕМ ИСТОЧНИК ПОЛУЧЕНИЯ
+  revealIngotSource(resultIngot.id);
+  
   setTimeout(() => {
     if (_showRewardPopup) _showRewardPopup(resultIngot);
     if (_renderCurrentTab) _renderCurrentTab();
@@ -2026,6 +2092,10 @@ function stopRoulette() {
   if (playerState.minedStats[resultIngot.id] === 0) { isFirstDiscovery = true; xpGained = Math.floor(xpGained * 3); if (_showToast) _showToast(`🎉 ПЕРВОЕ ОТКРЫТИЕ! +${xpGained} XP`, '🌟'); }
   playerState.ingots[resultIngot.id] = (playerState.ingots[resultIngot.id] || 0) + 1; playerState.minedStats[resultIngot.id] = (playerState.minedStats[resultIngot.id] || 0) + 1; playerState.player.totalIngots++;
   addXP(xpGained); saveGame(); cleanupConveyor(); isOpeningGeode = false;
+  
+  // ★ РАСКРЫВАЕМ ИСТОЧНИК ПОЛУЧЕНИЯ
+  revealIngotSource(resultIngot.id);
+  
   setTimeout(() => { if (_showRewardPopup) _showRewardPopup(resultIngot); if (_renderCurrentTab) _renderCurrentTab(); }, 100);
 }
 
@@ -2119,6 +2189,9 @@ function skipBrawlOpening() {
     addXP(xpGained);
     saveGame();
     
+    // ★ РАСКРЫВАЕМ ИСТОЧНИК
+    revealIngotSource(picked);
+    
     const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1;
     if (droppedIngot.isCollectible && isFirstCollectible) {
       showCollectibleAnimation(droppedIngot);
@@ -2174,7 +2247,7 @@ function finishBrawlOpening() {
   const skipBtn = document.getElementById('brawlSkipBtn');
   if (skipBtn) skipBtn.remove();
   
-  if (isSpecial) { const g = CONFIG_GEODES[geodeId]; const loc = g.location; if (!playerState.collectedArtifacts[loc]) { playerState.collectedArtifacts[loc] = []; } const available = g.possibleIngots.filter((ingId) => !playerState.collectedArtifacts[loc].includes(ingId)); const picked = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : g.possibleIngots[0]; droppedIngot = CONFIG_ITEMS[picked]; playerState.ingots[picked] = (playerState.ingots[picked] || 0) + 1; playerState.minedStats[picked] = (playerState.minedStats[picked] || 0) + 1; if (!playerState.collectedArtifacts[loc].includes(picked)) { playerState.collectedArtifacts[loc].push(picked); playerState.player.totalArtifacts++; } if (!playerState.discoveredSpecialGeodes[loc]) playerState.discoveredSpecialGeodes[loc] = true; xpGained = droppedIngot.xpValue; addXP(xpGained); saveGame(); const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1; if (droppedIngot.isCollectible && isFirstCollectible) { showCollectibleAnimation(droppedIngot); } brawlGeode.classList.add('explode-animation'); brawlGeode.classList.remove('special-geode'); document.querySelector('.brawl-hint').style.display = 'none'; brawlCounter.style.display = 'none'; setTimeout(() => { brawlGeode.style.display = 'none'; if (_renderImageToElement) _renderImageToElement(brawlResultIcon, droppedIngot.imagePath, droppedIngot.icon, droppedIngot.fallbackColor); brawlResultName.textContent = droppedIngot.name; brawlResultRarity.textContent = droppedIngot.rarity; brawlResultRarity.style.color = droppedIngot.rarityClass === 'collectible' ? '#FF64FF' : (droppedIngot.rarityClass === 'legendary' ? '#FFD700' : '#fff'); brawlResult.classList.add('show'); brawlCloseBtn.style.display = 'block'; isOpeningGeode = false; if (_renderCurrentTab) _renderCurrentTab(); }, 500); }
+  if (isSpecial) { const g = CONFIG_GEODES[geodeId]; const loc = g.location; if (!playerState.collectedArtifacts[loc]) { playerState.collectedArtifacts[loc] = []; } const available = g.possibleIngots.filter((ingId) => !playerState.collectedArtifacts[loc].includes(ingId)); const picked = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : g.possibleIngots[0]; droppedIngot = CONFIG_ITEMS[picked]; playerState.ingots[picked] = (playerState.ingots[picked] || 0) + 1; playerState.minedStats[picked] = (playerState.minedStats[picked] || 0) + 1; if (!playerState.collectedArtifacts[loc].includes(picked)) { playerState.collectedArtifacts[loc].push(picked); playerState.player.totalArtifacts++; } if (!playerState.discoveredSpecialGeodes[loc]) playerState.discoveredSpecialGeodes[loc] = true; xpGained = droppedIngot.xpValue; addXP(xpGained); saveGame(); revealIngotSource(picked); const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1; if (droppedIngot.isCollectible && isFirstCollectible) { showCollectibleAnimation(droppedIngot); } brawlGeode.classList.add('explode-animation'); brawlGeode.classList.remove('special-geode'); document.querySelector('.brawl-hint').style.display = 'none'; brawlCounter.style.display = 'none'; setTimeout(() => { brawlGeode.style.display = 'none'; if (_renderImageToElement) _renderImageToElement(brawlResultIcon, droppedIngot.imagePath, droppedIngot.icon, droppedIngot.fallbackColor); brawlResultName.textContent = droppedIngot.name; brawlResultRarity.textContent = droppedIngot.rarity; brawlResultRarity.style.color = droppedIngot.rarityClass === 'collectible' ? '#FF64FF' : (droppedIngot.rarityClass === 'legendary' ? '#FFD700' : '#fff'); brawlResult.classList.add('show'); brawlCloseBtn.style.display = 'block'; isOpeningGeode = false; if (_renderCurrentTab) _renderCurrentTab(); }, 500); }
   else { brawlGeode.classList.add('explode-animation'); document.querySelector('.brawl-hint').style.display = 'none'; brawlCounter.style.display = 'none'; setTimeout(() => { brawlOverlay.classList.remove('active'); brawlState.isOpen = false; initRoulette(geodeId); }, 500); }
 }
 
