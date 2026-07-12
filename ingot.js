@@ -3,6 +3,7 @@ import { CONFIG_ITEMS, EQUIP_SLOTS_CONFIG } from './config.js';
 import { getPlayerState, saveGame } from './core.js';
 
 // ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (8 УРОВНЕЙ) — ЭПОХА «ТРЯСИНА» ==========
+// Ключ = текущий уровень игрока. Данные = требования для перехода на следующий уровень.
 const INGOT_LEVELS = {
   1: { level: 1, name: 'Грязевой сгусток', icon: '🟤', era: 'Трясина', shavingsCost: 150, ingotCost: { wet_sand: 2, mud_ingot: 1 }, tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
   2: { level: 2, name: 'Болотный самородок', icon: '🟢', era: 'Трясина', shavingsCost: 500, ingotCost: { mud_ingot: 2, silt_clump: 1 }, tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
@@ -13,6 +14,7 @@ const INGOT_LEVELS = {
   7: { level: 7, name: 'Погребённый слиток', icon: '🧩', era: 'Трясина', shavingsCost: 60000, ingotCost: { broken_tile: 2, scrap_ingot: 1 }, tapPower: 120, image: 'assets/king_ingot/ingot_7.png' }
 };
 
+// Данные для отображения текущего уровня (имя, иконка, эра, tapPower)
 const INGOT_DISPLAY = {
   1: { name: 'Грязевой сгусток', icon: '🟤', era: 'Трясина', tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
   2: { name: 'Болотный самородок', icon: '🟢', era: 'Трясина', tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
@@ -192,7 +194,7 @@ export function getMaxTapEnergy() { return ingotState.maxTapEnergy; }
 export function isLevelLocked() { return ingotState.levelLocked; }
 export function isForgeRushActive() { return forgeRushState.active; }
 
-// ★ ФУНКЦИЯ СПИСАНИЯ СТРУЖКИ (ДЛЯ СИНТЕЗА И АЛХИМИИ)
+// ★ ФУНКЦИЯ СПИСАНИЯ СТРУЖКИ
 export function deductShavings(amount) {
   if (ingotState.shavings >= amount) {
     ingotState.shavings -= amount;
@@ -727,7 +729,7 @@ function renderEquipSlots() {
   return html;
 }
 
-// ========== ГЛАВНАЯ ОТРИСОВКА ==========
+// ========== ГЛАВНАЯ ОТРИСОВКА (С ИНТЕРАКТИВНЫМИ ИКОНКАМИ ИНГРЕДИЕНТОВ) ==========
 export function renderIngotScreen(container) {
   stopUIUpdates();
   const state = getPlayerState();
@@ -771,6 +773,10 @@ export function renderIngotScreen(container) {
       @keyframes rushTimerPulse {
         0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
         50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      }
+      @keyframes ingotIconGlow {
+        0%, 100% { box-shadow: 0 0 4px rgba(255,215,0,0.2); }
+        50% { box-shadow: 0 0 10px rgba(255,215,0,0.6); }
       }
       
       .ingot-screen {
@@ -1014,6 +1020,26 @@ export function renderIngotScreen(container) {
       .ingot-progress-bar-inner.shavings { background: linear-gradient(90deg, #8B7355, #A08060); }
       .ingot-progress-bar-inner.ingot { background: linear-gradient(90deg, #6B5A45, #8B7355); }
       .ingot-progress-bar-inner.xp { background: linear-gradient(90deg, #5C4A3A, #8B7355); }
+      
+      .ingot-ingredient-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: rgba(139,115,85,0.1);
+        border: 1px solid rgba(139,115,85,0.3);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-left: 6px;
+        animation: ingotIconGlow 2.5s ease-in-out infinite;
+      }
+      .ingot-ingredient-icon:active {
+        transform: scale(1.2);
+        background: rgba(139,115,85,0.2);
+        border-color: rgba(255,215,0,0.6);
+      }
       
       .ingot-upgrade-btn {
         display: block;
