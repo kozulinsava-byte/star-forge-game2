@@ -3,7 +3,6 @@ import { CONFIG_ITEMS, EQUIP_SLOTS_CONFIG } from './config.js';
 import { getPlayerState, saveGame } from './core.js';
 
 // ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (8 УРОВНЕЙ) — ЭПОХА «ТРЯСИНА» ==========
-// Ключ = текущий уровень игрока. Данные = требования для перехода на следующий уровень.
 const INGOT_LEVELS = {
   1: { level: 1, name: 'Грязевой сгусток', icon: '🟤', era: 'Трясина', shavingsCost: 150, ingotCost: { wet_sand: 2, mud_ingot: 1 }, tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
   2: { level: 2, name: 'Болотный самородок', icon: '🟢', era: 'Трясина', shavingsCost: 500, ingotCost: { mud_ingot: 2, silt_clump: 1 }, tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
@@ -14,7 +13,6 @@ const INGOT_LEVELS = {
   7: { level: 7, name: 'Погребённый слиток', icon: '🧩', era: 'Трясина', shavingsCost: 60000, ingotCost: { broken_tile: 2, scrap_ingot: 1 }, tapPower: 120, image: 'assets/king_ingot/ingot_7.png' }
 };
 
-// Данные для отображения текущего уровня (имя, иконка, эра, tapPower)
 const INGOT_DISPLAY = {
   1: { name: 'Грязевой сгусток', icon: '🟤', era: 'Трясина', tapPower: 1, image: 'assets/king_ingot/ingot_1.png' },
   2: { name: 'Болотный самородок', icon: '🟢', era: 'Трясина', tapPower: 3, image: 'assets/king_ingot/ingot_2.png' },
@@ -193,6 +191,19 @@ export function getTapEnergy() { return ingotState.tapEnergy; }
 export function getMaxTapEnergy() { return ingotState.maxTapEnergy; }
 export function isLevelLocked() { return ingotState.levelLocked; }
 export function isForgeRushActive() { return forgeRushState.active; }
+
+// ★ ФУНКЦИЯ СПИСАНИЯ СТРУЖКИ (ДЛЯ СИНТЕЗА И АЛХИМИИ)
+export function deductShavings(amount) {
+  if (ingotState.shavings >= amount) {
+    ingotState.shavings -= amount;
+    const shavingsDisplay = document.getElementById('ingotShavingsDisplay');
+    if (shavingsDisplay) shavingsDisplay.textContent = ingotState.shavings;
+    updateBottomProgressBars();
+    debouncedSave();
+    return true;
+  }
+  return false;
+}
 
 export function getCurrentIngotData() {
   const state = getPlayerState();
@@ -467,17 +478,14 @@ function checkUpgradeAvailability() {
   
   const canUpgrade = hasShavings && hasIngots;
   
-  // Ищем кнопку или контейнер с прогрессом
   const upgradeBtn = document.getElementById('performUpgradeBtn');
   const ingotBottom = document.querySelector('.ingot-bottom');
   
   if (canUpgrade && upgradeBtn) {
-    // Кнопка уже есть, всё ок
     return;
   }
   
   if (canUpgrade && !upgradeBtn && ingotBottom) {
-    // Ресурсов достаточно, но кнопки нет — перерисовываем нижнюю часть
     const state = getPlayerState();
     const upgradeData = INGOT_LEVELS[state.player.level];
     const nextXP = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3300, 4000, 4800, 5700, 6700, 7800, 9000, 10300, 11700, 13200, 15000][state.player.level] || 15000;
