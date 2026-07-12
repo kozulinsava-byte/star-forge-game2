@@ -267,7 +267,7 @@ export function performSynthesis(ingotId, count, targetIngotId) {
 // ========== ТАЙМЕР ДО СЛЕДУЮЩЕГО ИВЕНТА ==========
 export function getNextEventTime() {
   const now = Date.now();
-  const interval = 30 * 60 * 1000; // 30 минут
+  const interval = 30 * 60 * 1000;
   const currentSlot = Math.floor(now / interval);
   const nextSlotStart = (currentSlot + 1) * interval;
   return Math.max(0, nextSlotStart - now);
