@@ -1,9 +1,9 @@
 // ========== UI МОДУЛЬ: ОТРИСОВКА ИНТЕРФЕЙСА ==========
 import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, ALCHEMY_RECIPES, LEVELS, STATUSES, GUILD_QUESTS } from './config.js';
-import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy, isIngotSourceKnown, isIngotUsageKnown, isRecipeDiscovered, getDiscoveredKnowledge } from './core.js';
-import { renderIngotScreen, getBonusRecycledChance, getBonusExpeditionSpeed, getActiveBonuses } from './ingot.js';
+import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy, isIngotSourceKnown, isIngotUsageKnown, isRecipeDiscovered, getDiscoveredKnowledge, performSynthesis, getSynthesisTargets, getSynthesisChance, getSynthesisCost } from './core.js';
+import { renderIngotScreen, getBonusRecycledChance, getBonusExpeditionSpeed, getActiveBonuses, getShavings } from './ingot.js';
 
-// Точка входа для мини-игр
+// 🆕 Точка входа для мини-игр
 let _startQuenchGame = null;
 let _startStackGame = null;
 let _startUpgradeGame = null;
@@ -19,8 +19,10 @@ async function loadMiniGames() {
   }
 }
 
+// Загружаем мини-игры при старте
 loadMiniGames();
 
+// Регистрируем UI функции в core.js
 registerUIFunctions({
     showToast: showToast,
     getGeodeStageImage: getGeodeStageImage,
@@ -34,18 +36,25 @@ registerUIFunctions({
     updateMeteorShardsDisplay: updateMeteorShardsDisplay
 });
 
+// DOM-элементы
 export const mainContent = document.getElementById('mainContent');
 const showcaseOverlay = document.getElementById('showcaseOverlay');
 const showcaseContent = document.getElementById('showcaseContent');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalContent = document.getElementById('modalContent');
 
+// Текущие вкладки
 export let currentTab = 'expeditions';
 export let inventorySubTab = 'geodes';
 export let collectionSubTab = 'encyclopedia';
 
+// ID интервала для живого таймера в модалке
 let modalTimerInterval = null;
+
+// Состояние аккордеона
 let expandedGroups = {};
+
+// Состояние алхимии
 let alchemyMode = false;
 let alchemyFirstIngot = null;
 
@@ -69,7 +78,7 @@ function toggleTheme() {
 
 initTheme();
 
-// ---------- УТИЛИТЫ РЕНДЕРИНГА ----------
+// ---------- УТИЛИТЫ РЕНДЕРИНГА (ЭМОДЗИ-ЗАГЛУШКИ) ----------
 export function renderImageToElement(el, src, fallbackIcon, fallbackColor) {
   if (!el) return;
   
@@ -145,7 +154,7 @@ export function showRewardPopup(ingot) {
   closeBtn.addEventListener('click', closeHandler);
 }
 
-// ---------- SHOWCASE ИНВЕНТАРЯ ----------
+// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ ИНВЕНТАРЯ) ----------
 function openInventoryShowcase(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
@@ -216,7 +225,7 @@ function openInventoryShowcase(ingotId) {
   }, 10);
 }
 
-// ---------- SHOWCASE КОЛЛЕКЦИИ ----------
+// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ КОЛЛЕКЦИИ) ----------
 function openCollectionShowcase(ingotId) {
   const state = getPlayerState();
   const ingot = CONFIG_ITEMS[ingotId];
@@ -364,7 +373,6 @@ function showItemDetails(ingotId) {
   
   const discovered = state.minedStats[ingotId] > 0;
   
-  // ===== ИНДИКАТОР ЗНАНИЙ =====
   const sourceKnown = discovered || isIngotSourceKnown(ingotId);
   const usageKnown = isIngotUsageKnown(ingotId);
   
@@ -376,7 +384,7 @@ function showItemDetails(ingotId) {
     </div>
   `;
   
-  // ===== ЗОНА 1: КАК ПОЛУЧИТЬ (СОЗВЕЗДИЕ ИСТОЧНИКА) =====
+  // ===== ЗОНА 1: КАК ПОЛУЧИТЬ =====
   let sourceHtml = '';
   
   if (ingot.sourceType === 'expedition') {
@@ -396,7 +404,9 @@ function showItemDetails(ingotId) {
             : `<span style="font-size:38px; opacity:0.4;">❓</span>`
           }
         </div>
-        <div style="font-size:12px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:6px; font-weight:${discovered ? '600' : '400'};">${discovered ? ingot.name : '???'}</div>
+        <div style="font-size:12px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:6px; font-weight:${discovered ? '600' : '400'};">
+          ${discovered ? ingot.name : '???'}
+        </div>
         ${!discovered && locUnlocked ? `<div style="font-size:10px; color:var(--accent-gold); margin-top:4px; letter-spacing:1px;">ОТПРАВЬТЕ ЭКСПЕДИЦИЮ</div>` : ''}
       </div>
     `;
@@ -473,13 +483,15 @@ function showItemDetails(ingotId) {
             : `<span style="font-size:38px; opacity:0.4;">❓</span>`
           }
         </div>
-        <div style="font-size:12px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:6px; font-weight:${discovered ? '600' : '400'};">${discovered ? ingot.name : '???'}</div>
+        <div style="font-size:12px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:6px; font-weight:${discovered ? '600' : '400'};">
+          ${discovered ? ingot.name : '???'}
+        </div>
         <div style="font-size:10px; color:var(--accent-purple); margin-top:4px; letter-spacing:1px;">МЕТЕОРИТНЫЙ ШТОРМ</div>
       </div>
     `;
   }
   
-  // ===== ЗОНА 2: ГДЕ ПРИМЕНЯЕТСЯ (СОЗВЕЗДИЕ РЕЦЕПТОВ) — БЕЗ СПОЙЛЕРОВ =====
+  // ===== ЗОНА 2: ГДЕ ПРИМЕНЯЕТСЯ =====
   let usageHtml = '';
   const usedInRecipes = [];
   
@@ -490,7 +502,6 @@ function showItemDetails(ingotId) {
       const otherIng = CONFIG_ITEMS[otherIngId];
       const resultIng = CONFIG_ITEMS[recipe.resultIngotId];
       const otherKnown = state.minedStats[otherIngId] > 0;
-      // ★ БАГ-ФИКС: результат известен только если игрок уже находил этот сплав
       const resultKnown = state.minedStats[recipe.resultIngotId] > 0;
       
       usedInRecipes.push({
@@ -716,7 +727,6 @@ function showItemDetails(ingotId) {
   
   openModal(html);
   
-  // ★ ИНИЦИАЛИЗИРУЕМ ТУЛТИПЫ ПОСЛЕ ОТКРЫТИЯ МОДАЛКИ
   setTimeout(() => {
     initJournalTooltips();
   }, 50);
@@ -758,7 +768,438 @@ function initJournalTooltips() {
   });
 }
 
-// ---------- АДМИН-ПАНЕЛЬ ----------
+// ========== ★ СИСТЕМА «СИНТЕЗ» — МОДАЛКА ★ ==========
+function showSynthesisModal() {
+  const state = getPlayerState();
+  
+  // Собираем доступные для синтеза слитки (только те, что есть в инвентаре, не коллекционные)
+  const availableIngots = Object.entries(state.ingots)
+    .filter(([id, count]) => count > 0 && !CONFIG_ITEMS[id].isCollectible)
+    .map(([id, count]) => ({ id, count, ingot: CONFIG_ITEMS[id] }))
+    .filter(item => {
+      // Проверяем есть ли цель для синтеза
+      const targets = getSynthesisTargets(item.id);
+      return targets.length > 0;
+    });
+  
+  if (availableIngots.length === 0) {
+    showToast('Нет слитков для синтеза! Добудьте больше ресурсов.', '⚠️');
+    return;
+  }
+  
+  let itemsHtml = '';
+  availableIngots.forEach(({ id, count, ingot }) => {
+    const targets = getSynthesisTargets(id);
+    const targetNames = targets.map(t => t.name).join(', ');
+    const targetIcons = targets.map(t => t.icon).join('');
+    
+    itemsHtml += `
+      <div class="synthesis-item" data-ingot="${id}" style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(0,0,0,0.2); border-radius:14px; cursor:pointer; margin-bottom:6px; transition:all 0.2s; border:1px solid transparent;">
+        <span style="font-size:28px;">${ingot.icon}</span>
+        <div style="flex:1; text-align:left;">
+          <div style="font-weight:600; font-size:13px; color:#fff;">${ingot.name}</div>
+          <div style="font-size:10px; color:var(--text-secondary);">${count} шт. · ${ingot.rarity}</div>
+          <div style="font-size:9px; color:var(--accent-gold); margin-top:2px;">→ ${targetIcons} ${targetNames}</div>
+        </div>
+      </div>
+    `;
+  });
+  
+  const currentShavings = getShavings();
+  
+  const html = `
+    <style>
+      @keyframes synthesisPulse {
+        0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.2); }
+        50% { box-shadow: 0 0 40px rgba(255,215,0,0.5); }
+      }
+      @keyframes synthesisSuccess {
+        0% { opacity: 0; transform: scale(0.3); }
+        50% { opacity: 1; transform: scale(1.2); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      @keyframes synthesisFail {
+        0% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0; transform: scale(0.2) rotate(180deg); }
+      }
+      @keyframes gaugeFill {
+        0% { width: 0%; }
+      }
+      @keyframes particleBurst {
+        0% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(var(--sx), var(--sy)) scale(0); opacity: 0; }
+      }
+      
+      .synthesis-item.selected {
+        border-color: rgba(255,215,0,0.6) !important;
+        background: rgba(255,215,0,0.08) !important;
+      }
+      .synthesis-item:active { background: rgba(255,215,0,0.05); }
+      
+      .synthesis-count-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: rgba(255,215,0,0.08);
+        border: 1px solid rgba(255,215,0,0.2);
+        color: var(--accent-gold);
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin: 0 4px;
+      }
+      .synthesis-count-btn:active { transform: scale(0.9); background: rgba(255,215,0,0.2); }
+      .synthesis-count-btn.active { background: rgba(255,215,0,0.2); border-color: rgba(255,215,0,0.6); }
+      
+      .synthesis-start-btn {
+        display: block;
+        width: 100%;
+        padding: 18px;
+        border: none;
+        border-radius: 60px;
+        font-family: 'Unbounded', sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        letter-spacing: 2px;
+        cursor: pointer;
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #5C4A3A 0%, #8B7355 40%, #A08060 100%);
+        color: #fff;
+        margin-top: 14px;
+        transition: all 0.2s;
+        box-shadow: 0 4px 20px rgba(139,115,85,0.3);
+      }
+      .synthesis-start-btn:active { transform: scale(0.95); }
+      .synthesis-start-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+      
+      .synthesis-gauge-outer {
+        width: 100%;
+        height: 14px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 12px 0;
+      }
+      .synthesis-gauge-inner {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s ease;
+        background: linear-gradient(90deg, #FFD700, #FF8C00);
+      }
+      
+      .synthesis-result-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.9);
+        z-index: 10002;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+      }
+      .synthesis-result-icon {
+        font-size: 80px;
+        animation: synthesisSuccess 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+      .synthesis-result-text {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 20px;
+        font-weight: 800;
+        color: #FFD700;
+        margin-top: 16px;
+      }
+      .synthesis-particle {
+        position: fixed;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 10003;
+        animation: particleBurst 0.8s ease-out forwards;
+      }
+    </style>
+    <div class="modal-header">
+      <div class="modal-title">⚗️ Синтез слитков</div>
+      <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
+    </div>
+    <div class="modal-content" style="text-align:left;">
+      <div class="modal-description" style="text-align:center;">
+        Превратите слитки одной редкости в более ценный ресурс
+      </div>
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px; text-align:center;">
+        💫 Стружка: <span style="color:#FFD700; font-weight:700;">${currentShavings}</span>
+      </div>
+      <div style="max-height:200px; overflow-y:auto; margin:10px 0;" id="synthesisItemList">
+        ${itemsHtml}
+      </div>
+      <div id="synthesisConfig" style="display:none;">
+        <div style="text-align:center; margin:12px 0;">
+          <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Количество слитков для синтеза</div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+            <button class="synthesis-count-btn" data-count="1">1</button>
+            <button class="synthesis-count-btn" data-count="2">2</button>
+            <button class="synthesis-count-btn" data-count="3">3</button>
+            <button class="synthesis-count-btn" data-count="4">4</button>
+            <button class="synthesis-count-btn" data-count="5">5</button>
+          </div>
+        </div>
+        <div id="synthesisChanceDisplay" style="text-align:center; margin:8px 0;">
+          <span style="font-size:12px; color:var(--text-secondary);">Шанс успеха: </span>
+          <span style="font-family:'Unbounded',sans-serif; font-size:22px; font-weight:800; color:#50C878;" id="synthesisChanceValue">20%</span>
+        </div>
+        <div id="synthesisCostDisplay" style="text-align:center; margin:4px 0; font-size:11px; color:var(--text-muted);">
+          Стоимость: <span style="color:#FFD700;" id="synthesisCostValue">50</span> стружки
+        </div>
+        <div id="synthesisTargetDisplay" style="text-align:center; margin:8px 0; font-size:12px; color:var(--text-secondary);">
+          Цель: <span id="synthesisTargetName" style="color:#FFD700;"></span> <span id="synthesisTargetIcon"></span>
+        </div>
+        <button class="synthesis-start-btn" id="synthesisStartBtn" disabled>⚡ НАЧАТЬ СИНТЕЗ</button>
+      </div>
+    </div>
+  `;
+  
+  openModal(html);
+  
+  let selectedIngot = null;
+  let selectedCount = 1;
+  let selectedTarget = null;
+  
+  setTimeout(() => {
+    document.querySelectorAll('.synthesis-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.synthesis-item').forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedIngot = item.dataset.ingot;
+        
+        const targets = getSynthesisTargets(selectedIngot);
+        if (targets.length > 0) {
+          selectedTarget = targets[0].id;
+          document.getElementById('synthesisTargetName').textContent = targets[0].name;
+          document.getElementById('synthesisTargetIcon').textContent = targets[0].icon;
+        }
+        
+        document.getElementById('synthesisConfig').style.display = 'block';
+        updateSynthesisUI();
+      });
+    });
+    
+    document.querySelectorAll('.synthesis-count-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.synthesis-count-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedCount = parseInt(btn.dataset.count);
+        updateSynthesisUI();
+      });
+    });
+    
+    // По умолчанию выбираем 1
+    const defaultBtn = document.querySelector('.synthesis-count-btn[data-count="1"]');
+    if (defaultBtn) defaultBtn.classList.add('active');
+    
+    document.getElementById('synthesisStartBtn').addEventListener('click', () => {
+      if (!selectedIngot || !selectedTarget) return;
+      
+      const state = getPlayerState();
+      const count = Math.min(selectedCount, state.ingots[selectedIngot] || 0);
+      
+      if (count <= 0) {
+        showToast('Недостаточно слитков!', '⚠️');
+        return;
+      }
+      
+      const shavingsCost = getSynthesisCost(count);
+      const currentShavings = getShavings();
+      if (currentShavings < shavingsCost) {
+        showToast(`Недостаточно стружки! Нужно ${shavingsCost}`, '⚠️');
+        return;
+      }
+      
+      closeModal();
+      playSynthesisAnimation(selectedIngot, count, selectedTarget);
+    });
+    
+    function updateSynthesisUI() {
+      if (!selectedIngot) return;
+      const chance = getSynthesisChance(selectedCount);
+      const cost = getSynthesisCost(selectedCount);
+      const state = getPlayerState();
+      const available = state.ingots[selectedIngot] || 0;
+      
+      document.getElementById('synthesisChanceValue').textContent = chance + '%';
+      document.getElementById('synthesisChanceValue').style.color = chance >= 60 ? '#50C878' : chance >= 30 ? '#FFA500' : '#FF4444';
+      document.getElementById('synthesisCostValue').textContent = cost;
+      
+      const canAfford = available >= selectedCount && getShavings() >= cost;
+      document.getElementById('synthesisStartBtn').disabled = !canAfford;
+    }
+  }, 30);
+}
+
+// ========== ★ АНИМАЦИЯ СИНТЕЗА ★ ==========
+function playSynthesisAnimation(ingotId, count, targetId) {
+  const ingot = CONFIG_ITEMS[ingotId];
+  const target = CONFIG_ITEMS[targetId];
+  const chance = getSynthesisChance(count);
+  const cost = getSynthesisCost(count);
+  
+  // Создаём оверлей
+  const overlay = document.createElement('div');
+  overlay.className = 'synthesis-result-overlay';
+  overlay.style.background = 'radial-gradient(circle at 50% 40%, rgba(20,10,0,0.98) 0%, rgba(0,0,0,0.98) 100%)';
+  
+  // Иконки слитков "стекаются"
+  const iconsContainer = document.createElement('div');
+  iconsContainer.style.cssText = 'display:flex; gap:8px; margin-bottom:20px;';
+  for (let i = 0; i < count; i++) {
+    const icon = document.createElement('span');
+    icon.textContent = ingot.icon;
+    icon.style.cssText = 'font-size:36px; transition: all 0.5s ease;';
+    icon.style.animation = 'synthesisSuccess 0.5s ease forwards';
+    icon.style.animationDelay = (i * 0.1) + 's';
+    iconsContainer.appendChild(icon);
+  }
+  overlay.appendChild(iconsContainer);
+  
+  // Шкала удачи
+  const gaugeOuter = document.createElement('div');
+  gaugeOuter.style.cssText = 'width:70%; max-width:260px; height:14px; background:rgba(255,255,255,0.05); border-radius:10px; overflow:hidden; margin:16px 0;';
+  const gaugeInner = document.createElement('div');
+  gaugeInner.style.cssText = 'height:100%; border-radius:10px; background:linear-gradient(90deg, #FFD700, #FF8C00); width:0%; transition: width 0.8s cubic-bezier(0.25, 0.8, 0.25, 1.2);';
+  gaugeOuter.appendChild(gaugeInner);
+  overlay.appendChild(gaugeOuter);
+  
+  // Текст шанса
+  const chanceText = document.createElement('div');
+  chanceText.style.cssText = 'font-family:Unbounded,sans-serif; font-size:28px; font-weight:800; color:#FFD700; margin-bottom:8px;';
+  chanceText.textContent = chance + '%';
+  overlay.appendChild(chanceText);
+  
+  const labelText = document.createElement('div');
+  labelText.style.cssText = 'font-size:13px; color:var(--text-secondary);';
+  labelText.textContent = 'Шанс успеха';
+  overlay.appendChild(labelText);
+  
+  document.body.appendChild(overlay);
+  
+  // Анимация заполнения шкалы
+  setTimeout(() => {
+    gaugeInner.style.width = chance + '%';
+  }, 300);
+  
+  // Через 1.5 секунды — выполняем синтез
+  setTimeout(() => {
+    const result = performSynthesis(ingotId, count, targetId);
+    
+    if (result.success) {
+      // Успех!
+      gaugeInner.style.background = 'linear-gradient(90deg, #50C878, #00FF88)';
+      chanceText.textContent = 'УСПЕХ!';
+      chanceText.style.color = '#50C878';
+      labelText.textContent = `Получен: ${result.target.name}`;
+      
+      // Вспышка
+      spawnSynthesisParticles('success');
+      
+      // Иконка результата
+      setTimeout(() => {
+        iconsContainer.innerHTML = '';
+        const resultIcon = document.createElement('span');
+        resultIcon.textContent = result.target.icon;
+        resultIcon.style.cssText = 'font-size:72px; animation: synthesisSuccess 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;';
+        iconsContainer.appendChild(resultIcon);
+      }, 400);
+      
+    } else {
+      // Неудача
+      gaugeInner.style.background = 'linear-gradient(90deg, #FF4444, #FF0000)';
+      chanceText.textContent = 'НЕУДАЧА';
+      chanceText.style.color = '#FF4444';
+      labelText.textContent = 'Материалы распались';
+      
+      spawnSynthesisParticles('fail');
+      
+      // Анимация распада
+      setTimeout(() => {
+        iconsContainer.querySelectorAll('span').forEach((icon, i) => {
+          icon.style.transform = 'scale(0) rotate(180deg)';
+          icon.style.opacity = '0';
+          icon.style.transition = 'all 0.4s ease-in';
+          icon.style.transitionDelay = (i * 0.05) + 's';
+        });
+      }, 300);
+    }
+    
+    // Закрываем оверлей по клику или через 3 секунды
+    const closeOverlay = () => {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.4s ease-out';
+      setTimeout(() => overlay.remove(), 400);
+    };
+    
+    overlay.addEventListener('click', closeOverlay);
+    setTimeout(closeOverlay, 3000);
+    
+    // Обновляем UI
+    import('./ui.js').then(ui => {
+      if (ui.currentTab === 'inventory') ui.renderInventoryTab();
+      if (ui.currentTab === 'ingot') ui.renderIngotScreen(mainContent);
+    });
+    
+  }, 1500);
+}
+
+function spawnSynthesisParticles(type) {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const count = type === 'success' ? 30 : 20;
+  const color = type === 'success' ? '#FFD700' : '#FF4444';
+  
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'synthesis-particle';
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 60 + Math.random() * 140;
+    const sx = Math.cos(angle) * distance;
+    const sy = Math.sin(angle) * distance;
+    
+    particle.style.cssText = `
+      left: ${cx}px;
+      top: ${cy}px;
+      background: ${color};
+      box-shadow: 0 0 ${type === 'success' ? '12' : '6'}px ${color};
+      --sx: ${sx}px;
+      --sy: ${sy}px;
+      width: ${type === 'success' ? '8' : '5'}px;
+      height: ${type === 'success' ? '8' : '5'}px;
+    `;
+    
+    document.body.appendChild(particle);
+    setTimeout(() => particle.remove(), 900);
+  }
+  
+  // Вспышка при успехе
+  if (type === 'success') {
+    const flash = document.createElement('div');
+    flash.style.cssText = `
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.6) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 10002;
+      animation: synthesisSuccess 0.4s ease-out forwards;
+    `;
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 500);
+  }
+}
+
+// ========== АДМИН-ПАНЕЛЬ ==========
 function showAdminPanel() {
   const state = getPlayerState();
   const activeEventId = eventsManager.getActiveEventId();
@@ -1036,7 +1477,6 @@ function getAdjustedChances(geodeId) {
   
   return adjusted;
 }
-
 // ========== УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ БОНУСОВ ==========
 function getBonusDisplayHTML(baseValue, bonusPercent, suffix = '%', isInverted = false) {
   if (!bonusPercent || bonusPercent === 0) return '';
@@ -1751,18 +2191,23 @@ export function renderInventoryTab() {
       }
     }
   } else {
+    // Вкладка слитков
     const items = Object.entries(state.ingots).filter(([k, c]) => c > 0 && !CONFIG_ITEMS[k].isCollectible);
     
+    // ★ КНОПКИ АЛХИМИИ И СИНТЕЗА
     const alchemyAvailable = state.player.level >= 3;
     
     html += `
-      <div style="margin-bottom:14px;">
-        <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyMode ? 'background: rgba(255,68,68,0.15); border-color: rgba(255,68,68,0.4); color: #FF4444;' : ''}${!alchemyAvailable ? 'opacity: 0.35; cursor: not-allowed; border-color: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2);' : ''}" ${!alchemyAvailable ? 'disabled' : ''}>
+      <div style="margin-bottom:14px; display:flex; gap:8px;">
+        <button class="small-btn" id="toggleAlchemyBtn" style="flex:1; ${alchemyMode ? 'background: rgba(255,68,68,0.15); border-color: rgba(255,68,68,0.4); color: #FF4444;' : ''}${!alchemyAvailable ? 'opacity: 0.35; cursor: not-allowed; border-color: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2);' : ''}" ${!alchemyAvailable ? 'disabled' : ''}>
           ${!alchemyAvailable ? '🔒 Сплавить (ур. 3)' : (alchemyMode ? '❌ Отмена' : '⚗️ Сплавить')}
         </button>
-        ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
-        ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй.</div>` : ''}
+        <button class="small-btn" id="openSynthesisBtn" style="flex:1;">
+          ⚗️ Синтез
+        </button>
       </div>
+      ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
+      ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй.</div>` : ''}
     `;
     
     if (!items.length) {
@@ -1811,6 +2256,7 @@ export function renderInventoryTab() {
     
     mainContent.innerHTML = html;
     
+    // ★ CSS ДЛЯ ФИЛЬТРАЦИИ
     const filterStyle = document.createElement('style');
     filterStyle.id = 'alchemy-filter-styles';
     filterStyle.textContent = `
@@ -1832,6 +2278,7 @@ export function renderInventoryTab() {
       }
     }
     
+    // Обработчик кнопки Алхимии
     const alchemyBtn = document.getElementById('toggleAlchemyBtn');
     if (alchemyBtn && alchemyAvailable) {
       alchemyBtn.addEventListener('click', () => {
@@ -1846,6 +2293,15 @@ export function renderInventoryTab() {
       });
     }
     
+    // Обработчик кнопки Синтеза
+    const synthesisBtn = document.getElementById('openSynthesisBtn');
+    if (synthesisBtn) {
+      synthesisBtn.addEventListener('click', () => {
+        showSynthesisModal();
+      });
+    }
+    
+    // Обработчики кликов по слиткам
     if (alchemyMode) {
       document.querySelectorAll('[data-ingot]').forEach(card => {
         card.addEventListener('click', () => {
@@ -1905,6 +2361,8 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const resultIngot = CONFIG_ITEMS[matchedRecipe.resultIngotId];
   const isFirstDiscovery = !state.discoveredAlchemyRecipes || !state.discoveredAlchemyRecipes.includes(matchedRecipe.id);
   const totalXP = matchedRecipe.xpReward + (isFirstDiscovery ? matchedRecipe.discoveryBonusXP : 0);
+  const shavingsCost = matchedRecipe.shavingsCost || 30;
+  const currentShavings = getShavings();
   
   const ing1Known = state.minedStats[ingotId1] > 0;
   const ing2Known = state.minedStats[ingotId2] > 0;
@@ -2071,6 +2529,7 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
             : `<div style="font-size:12px;color:var(--text-primary);font-weight:600;">${resultIngot.name}</div>`}
           <div class="alch-badge">⚡ +${totalXP} XP</div>
           ${isFirstDiscovery ? '<div style="font-size:9px;color:#FFD700;margin-top:3px;">Первое открытие</div>' : ''}
+          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Стоимость: 💫 ${shavingsCost} стружки (доступно: ${currentShavings})</div>
         </div>
         <button class="alch-btn" id="confirmAlchemyBtn">Сплавить</button>
         <button class="alch-cancel-btn" id="cancelAlchemyBtn">Отмена</button>
@@ -2121,6 +2580,7 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
 
 // ========== ★ ТРИУМФАЛЬНОЕ ОТКРЫТИЕ ★ ==========
 function playDiscoveryAnimation(ingot, xpGained) {
+  // Инжект стилей
   if (!document.getElementById('discovery-anim-styles')) {
     const style = document.createElement('style');
     style.id = 'discovery-anim-styles';
@@ -2243,9 +2703,11 @@ function playDiscoveryAnimation(ingot, xpGained) {
     document.head.appendChild(style);
   }
   
+  // Overlay
   const overlay = document.createElement('div');
   overlay.className = 'disc-overlay';
   
+  // Кокон
   const cocoon = document.createElement('div');
   cocoon.className = 'disc-cocoon';
   cocoon.id = 'discCocoon';
@@ -2255,6 +2717,7 @@ function playDiscoveryAnimation(ingot, xpGained) {
   cocoon.appendChild(core);
   overlay.appendChild(cocoon);
   
+  // Результат (скрыт изначально)
   const resultWrapper = document.createElement('div');
   resultWrapper.className = 'disc-result-wrapper';
   resultWrapper.id = 'discResultWrapper';
@@ -2288,6 +2751,7 @@ function playDiscoveryAnimation(ingot, xpGained) {
   
   document.body.appendChild(overlay);
   
+  // Анимация: кокон пульсирует → разрывается → появляется результат
   setTimeout(() => {
     cocoon.classList.add('breaking');
     createExplosionParticles();
@@ -2298,6 +2762,7 @@ function playDiscoveryAnimation(ingot, xpGained) {
     }, 700);
   }, 1500);
   
+  // Кнопка «Продолжить» — закрывает оверлей
   continueBtn.addEventListener('click', () => {
     overlay.style.opacity = '0';
     overlay.style.transition = 'opacity 0.4s ease-out';
@@ -2339,6 +2804,7 @@ function createExplosionParticles() {
     setTimeout(() => particle.remove(), 1100);
   }
   
+  // Вспышка
   const flash = document.createElement('div');
   flash.style.cssText = `
     position: fixed;
@@ -2397,6 +2863,7 @@ export function renderCollectionTab() {
         `;
       }
       
+      // ★ ИНДИКАТОР ЗНАНИЙ (ТРИ ТОЧКИ)
       const sourceKnown = discovered || isIngotSourceKnown(ing.id);
       const usageKnown = isIngotUsageKnown(ing.id);
       
@@ -2513,6 +2980,7 @@ export function renderGamesTab() {
   
   let html = '<div class="section-title">🎮 Игры <button class="help-btn" data-help="events">?</button></div>';
   
+  // ===== ЗОНА 1: ГЛОБАЛЬНОЕ СОБЫТИЕ =====
   html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:10px 0 8px; color:var(--accent-gold);">🌐 Глобальное событие</div>';
   
   if (!activeEvent || !activeEventId) {
@@ -2570,6 +3038,7 @@ export function renderGamesTab() {
     `;
   }
   
+  // ===== ЗОНА 2: ЗАКАЗЫ ГИЛЬДИИ =====
   html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:20px 0 8px; color:var(--accent-gold);">📜 Заказы Гильдии</div>';
   
   const activeQuests = state.activeQuests || [];
@@ -2630,6 +3099,7 @@ export function renderGamesTab() {
     }
   }
   
+  // ===== ЗОНА 3: МИНИ-ИГРЫ =====
   html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:20px 0 8px; color:var(--accent-gold);">🎰 Мини-игры</div>';
   
   const miniGames = [
@@ -2665,6 +3135,7 @@ export function renderGamesTab() {
   
   mainContent.innerHTML = html;
   
+  // Обработчики
   const enterForgeBtn = document.getElementById('enterForgeBtn');
   if (enterForgeBtn) enterForgeBtn.addEventListener('click', () => openForge());
   
