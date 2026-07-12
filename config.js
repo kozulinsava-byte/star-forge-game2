@@ -580,7 +580,7 @@ EXPEDITION_GROUPS.forEach(group => {
 });
 
 // ============================================================
-// АЛХИМИЯ: РЕЦЕПТЫ СПЛАВОВ ТРЯСИНЫ
+// АЛХИМИЯ: РЕЦЕПТЫ СПЛАВОВ ТРЯСИНЫ (СО СТОИМОСТЬЮ В СТРУЖКЕ)
 // ============================================================
 export const ALCHEMY_RECIPES = {
     // ========== БОЛОТО ==========
@@ -594,7 +594,8 @@ export const ALCHEMY_RECIPES = {
         location: 'swamp',
         reqLevel: 3,
         xpReward: 25,
-        discoveryBonusXP: 50
+        discoveryBonusXP: 50,
+        shavingsCost: 20
     },
     bog_clump: {
         id: 'bog_clump',
@@ -606,7 +607,8 @@ export const ALCHEMY_RECIPES = {
         location: 'swamp',
         reqLevel: 3,
         xpReward: 25,
-        discoveryBonusXP: 50
+        discoveryBonusXP: 50,
+        shavingsCost: 25
     },
     swamp_mix: {
         id: 'swamp_mix',
@@ -618,7 +620,8 @@ export const ALCHEMY_RECIPES = {
         location: 'swamp',
         reqLevel: 3,
         xpReward: 25,
-        discoveryBonusXP: 50
+        discoveryBonusXP: 50,
+        shavingsCost: 25
     },
 
     // ========== ГНИЛОЙ ЛЕС ==========
@@ -632,7 +635,8 @@ export const ALCHEMY_RECIPES = {
         location: 'rotforest',
         reqLevel: 3,
         xpReward: 30,
-        discoveryBonusXP: 60
+        discoveryBonusXP: 60,
+        shavingsCost: 30
     },
     rot_alloy: {
         id: 'rot_alloy',
@@ -644,7 +648,8 @@ export const ALCHEMY_RECIPES = {
         location: 'rotforest',
         reqLevel: 3,
         xpReward: 30,
-        discoveryBonusXP: 60
+        discoveryBonusXP: 60,
+        shavingsCost: 30
     },
     root_clump: {
         id: 'root_clump',
@@ -656,7 +661,8 @@ export const ALCHEMY_RECIPES = {
         location: 'rotforest',
         reqLevel: 3,
         xpReward: 30,
-        discoveryBonusXP: 60
+        discoveryBonusXP: 60,
+        shavingsCost: 30
     },
 
     // ========== РЖАВОЕ ДНО ==========
@@ -670,7 +676,8 @@ export const ALCHEMY_RECIPES = {
         location: 'rustbottom',
         reqLevel: 3,
         xpReward: 35,
-        discoveryBonusXP: 70
+        discoveryBonusXP: 70,
+        shavingsCost: 40
     },
     scrap_mix: {
         id: 'scrap_mix',
@@ -682,7 +689,8 @@ export const ALCHEMY_RECIPES = {
         location: 'rustbottom',
         reqLevel: 3,
         xpReward: 35,
-        discoveryBonusXP: 70
+        discoveryBonusXP: 70,
+        shavingsCost: 40
     },
     scrap_ingot: {
         id: 'scrap_ingot',
@@ -694,7 +702,8 @@ export const ALCHEMY_RECIPES = {
         location: 'rustbottom',
         reqLevel: 3,
         xpReward: 35,
-        discoveryBonusXP: 70
+        discoveryBonusXP: 70,
+        shavingsCost: 40
     }
 };
 
