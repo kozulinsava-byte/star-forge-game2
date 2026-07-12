@@ -182,10 +182,10 @@ export function getDiscoveredKnowledge() {
   return playerState.discoveredKnowledge || {};
 }
 
-// ========== СИСТЕМА «СИНТЕЗ» (КОНТРАКТ) ==========
+// ========== СИСТЕМА «СИНТЕЗ» (КОНТРАКТ) — ЛОКАЦИОННЫЙ МЕТОД ==========
 const RARITY_ORDER = ['junk', 'recycled', 'common', 'rare', 'epic', 'legendary'];
 
-export function getSynthesisTargets(ingotId) {
+export function getSynthesisTargetsByLocation(ingotId, locationCounts) {
   const ingot = CONFIG_ITEMS[ingotId];
   if (!ingot || ingot.isCollectible) return [];
   
@@ -194,74 +194,82 @@ export function getSynthesisTargets(ingotId) {
   
   const nextRarity = RARITY_ORDER[currentRarityIndex + 1];
   
-  const targets = [];
+  // Собираем возможные цели по локациям
+  const targetsByLocation = {};
   for (let id in CONFIG_ITEMS) {
     const candidate = CONFIG_ITEMS[id];
     if (candidate.isCollectible) continue;
-    if (candidate.rarityLevel === nextRarity && candidate.location === ingot.location) {
-      targets.push(candidate);
+    if (candidate.rarityLevel === nextRarity) {
+      const loc = candidate.location;
+      if (!targetsByLocation[loc]) targetsByLocation[loc] = [];
+      targetsByLocation[loc].push(candidate);
     }
   }
   
-  if (targets.length === 0) {
-    for (let id in CONFIG_ITEMS) {
-      const candidate = CONFIG_ITEMS[id];
-      if (candidate.isCollectible) continue;
-      if (candidate.rarityLevel === nextRarity) {
-        targets.push(candidate);
-      }
+  // Рассчитываем шансы на основе пропорции локаций
+  const totalCount = Object.values(locationCounts).reduce((sum, c) => sum + c, 0);
+  const results = [];
+  
+  for (let loc in targetsByLocation) {
+    const count = locationCounts[loc] || 0;
+    if (count > 0) {
+      const chance = (count / totalCount) * 100;
+      // Выбираем случайную цель из этой локации
+      const targets = targetsByLocation[loc];
+      const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+      results.push({
+        target: randomTarget,
+        chance: Math.round(chance),
+        location: loc
+      });
     }
   }
   
-  return targets;
+  return results;
 }
 
-export function getSynthesisChance(count) {
-  return Math.min(100, count * 20);
+export function getSynthesisCost() {
+  return 150; // фиксированная стоимость для 5 слитков
 }
 
-export function getSynthesisCost(count) {
-  return 50 + (count - 1) * 30;
-}
-
-export function performSynthesis(ingotId, count, targetIngotId) {
+export function performSynthesis(ingotId, targetIngotId, selectedIngots) {
   if (!playerState) return { success: false, message: 'Ошибка состояния игры.' };
   
   const ingot = CONFIG_ITEMS[ingotId];
   const target = CONFIG_ITEMS[targetIngotId];
   if (!ingot || !target) return { success: false, message: 'Слиток не найден!' };
   
-  if ((playerState.ingots[ingotId] || 0) < count) {
-    return { success: false, message: `Недостаточно ${ingot.name}!` };
+  // Проверяем наличие всех выбранных слитков
+  for (let selId of selectedIngots) {
+    if ((playerState.ingots[selId] || 0) < 1) {
+      return { success: false, message: `Недостаточно ${CONFIG_ITEMS[selId]?.name || selId}!` };
+    }
   }
   
-  const shavingsCost = getSynthesisCost(count);
+  const shavingsCost = getSynthesisCost();
   const currentShavings = getShavings();
   if (currentShavings < shavingsCost) {
     return { success: false, message: `Недостаточно стружки! Нужно ${shavingsCost}` };
   }
   
-  playerState.ingots[ingotId] -= count;
+  // Списываем слитки
+  for (let selId of selectedIngots) {
+    playerState.ingots[selId]--;
+  }
   
+  // Списываем стружку
   import('./ingot.js').then(ingotModule => {
     ingotModule.deductShavings(shavingsCost);
   });
   
-  const chance = getSynthesisChance(count);
-  const roll = Math.random() * 100;
-  const isSuccess = roll < chance;
+  // Успех гарантирован при 5 слитках
+  playerState.ingots[targetIngotId] = (playerState.ingots[targetIngotId] || 0) + 1;
+  playerState.minedStats[targetIngotId] = (playerState.minedStats[targetIngotId] || 0) + 1;
+  playerState.player.totalIngots++;
+  revealIngotSource(targetIngotId);
+  saveGame();
   
-  if (isSuccess) {
-    playerState.ingots[targetIngotId] = (playerState.ingots[targetIngotId] || 0) + 1;
-    playerState.minedStats[targetIngotId] = (playerState.minedStats[targetIngotId] || 0) + 1;
-    playerState.player.totalIngots++;
-    revealIngotSource(targetIngotId);
-    saveGame();
-    return { success: true, target: target, chance: chance, roll: roll, count: count, shavingsCost: shavingsCost };
-  } else {
-    saveGame();
-    return { success: false, message: 'Синтез не удался. Материалы распались.', chance: chance, roll: roll, count: count, shavingsCost: shavingsCost };
-  }
+  return { success: true, target: target, shavingsCost: shavingsCost };
 }
 
 // ========== ТАЙМЕР ДО СЛЕДУЮЩЕГО ИВЕНТА ==========
@@ -331,8 +339,8 @@ function setTimerTimeout(timerName, callback, delay) {
   return activeTimers[timerName];
 }
 
-// ---------- УНИВЕРСАЛЬНЫЙ ИВЕНТ-МЕНЕДЖЕР ----------
-const EVENT_LIST = ['great_smelt', 'meteor_storm'];
+// ---------- УНИВЕРСАЛЬНЫЙ ИВЕНТ-МЕНЕДЖЕР (3 ИВЕНТА) ----------
+const EVENT_LIST = ['great_smelt', 'meteor_storm', 'contracts'];
 const EVENT_DURATION = 15 * 60 * 1000;
 const ROTATION_INTERVAL = 30 * 60 * 1000;
 
@@ -358,6 +366,17 @@ const EVENT_DEFINITIONS = {
     startToast: '☄️',
     endMessage: 'Метеоритный шторм утих, небо снова чистое!',
     endToast: '☄️'
+  },
+  contracts: {
+    id: 'contracts',
+    name: '⚗️ Контракты Синтеза',
+    icon: '⚗️',
+    description: 'Контракты открыты!',
+    longDescription: 'Используй 5 слитков одной редкости для создания более ценного ресурса!',
+    startMessage: '⚗️ Контракты Синтеза открыты!',
+    startToast: '⚗️',
+    endMessage: 'Контракты закрыты до следующего цикла.',
+    endToast: '🔒'
   }
 };
 
