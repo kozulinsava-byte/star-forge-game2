@@ -1,6 +1,6 @@
 // ========== UI МОДУЛЬ: ОТРИСОВКА ИНТЕРФЕЙСА ==========
 import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, ALCHEMY_RECIPES, LEVELS, STATUSES, GUILD_QUESTS } from './config.js';
-import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy, isIngotSourceKnown, isIngotUsageKnown, isRecipeDiscovered, getDiscoveredKnowledge, performSynthesis, getSynthesisTargets, getSynthesisChance, getSynthesisCost, getNextEventTime } from './core.js';
+import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy, isIngotSourceKnown, isIngotUsageKnown, isRecipeDiscovered, getDiscoveredKnowledge, performSynthesis, getSynthesisTargetsByLocation, getSynthesisCost, getNextEventTime } from './core.js';
 import { renderIngotScreen, getBonusRecycledChance, getBonusExpeditionSpeed, getActiveBonuses, getShavings } from './ingot.js';
 
 // 🆕 Точка входа для мини-игр
@@ -774,7 +774,7 @@ function initJournalTooltips() {
   });
 }
 
-// ========== ★ СИСТЕМА «КОНТРАКТ» (СИНТЕЗ В СТИЛЕ CS2) ★ ==========
+// ========== ★ ИВЕНТ «КОНТРАКТЫ» (СИНТЕЗ CS2) ★ ==========
 function showContractModal() {
   const state = getPlayerState();
   const currentShavings = getShavings();
@@ -799,17 +799,10 @@ function showContractModal() {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.05); }
       }
-      @keyframes gaugeRace {
-        0% { width: 0%; }
-      }
       @keyframes successBurst {
         0% { opacity: 0; transform: scale(0.3); }
         50% { opacity: 1; transform: scale(1.2); }
         100% { opacity: 1; transform: scale(1); }
-      }
-      @keyframes failDisappear {
-        0% { opacity: 1; transform: scale(1); }
-        100% { opacity: 0; transform: scale(0.2) rotate(180deg); }
       }
       @keyframes particleFly {
         0% { transform: translate(0, 0) scale(1); opacity: 1; }
@@ -831,7 +824,7 @@ function showContractModal() {
       }
       .contract-card {
         width: 100%;
-        max-width: 380px;
+        max-width: 400px;
         background: linear-gradient(135deg, rgba(20,20,25,0.98) 0%, rgba(10,10,15,0.99) 100%);
         border-radius: 28px;
         padding: 24px 18px;
@@ -901,31 +894,32 @@ function showContractModal() {
       }
       .contract-slot.locked:active { transform: none; }
       
-      .contract-chance {
-        text-align: center;
+      .contract-chances {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
         margin: 10px 0;
+        padding: 8px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 14px;
       }
-      .contract-chance-label {
-        font-size: 11px;
-        color: var(--text-secondary);
+      .contract-chance-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
       }
-      .contract-chance-value {
-        font-family: 'Unbounded', sans-serif;
-        font-size: 36px;
-        font-weight: 800;
-      }
-      .contract-chance-bar-outer {
-        width: 100%;
-        height: 8px;
+      .contract-chance-bar-mini {
+        flex: 1;
+        height: 6px;
         background: rgba(255,255,255,0.05);
-        border-radius: 10px;
+        border-radius: 3px;
         overflow: hidden;
-        margin-top: 6px;
       }
-      .contract-chance-bar-inner {
+      .contract-chance-bar-fill {
         height: 100%;
-        border-radius: 10px;
-        transition: width 0.4s ease;
+        border-radius: 3px;
+        transition: width 0.3s ease;
       }
       
       .contract-cost {
@@ -1026,19 +1020,19 @@ function showContractModal() {
         cursor: pointer;
         margin-bottom: 6px;
         transition: all 0.2s;
-        border: 1px solid transparent;
+        border: 2px solid transparent;
       }
-      .contract-picker-item:active {
-        background: rgba(255,215,0,0.05);
-        border-color: rgba(255,215,0,0.3);
-      }
+      .contract-picker-item:active { background: rgba(255,215,0,0.05); }
       .contract-picker-item.locked {
         opacity: 0.25;
         cursor: not-allowed;
+        border-color: rgba(255,68,68,0.4) !important;
+        background: rgba(255,68,68,0.05) !important;
       }
-      .contract-picker-item.locked:active {
-        background: rgba(0,0,0,0.2);
-        border-color: transparent;
+      .contract-picker-item.locked:active { background: rgba(255,68,68,0.05); }
+      .contract-picker-item.compatible {
+        border-color: rgba(80,200,120,0.4) !important;
+        background: rgba(80,200,120,0.05) !important;
       }
       .contract-picker-close {
         display: block;
@@ -1090,7 +1084,7 @@ function showContractModal() {
     <div class="contract-overlay" id="contractOverlay">
       <div class="contract-card">
         <div class="contract-title">⚗️ КОНТРАКТ СИНТЕЗА</div>
-        <div class="contract-subtitle">Выберите слитки для превращения</div>
+        <div class="contract-subtitle">Выберите 5 слитков одной редкости</div>
         
         <div class="contract-slots" id="contractSlots">
           <div class="contract-slot" data-slot="0">+</div>
@@ -1100,23 +1094,13 @@ function showContractModal() {
           <div class="contract-slot" data-slot="4">+</div>
         </div>
         
-        <div class="contract-chance">
-          <div class="contract-chance-label">Шанс успеха</div>
-          <div class="contract-chance-value" id="contractChanceValue" style="color:#FF4444;">0%</div>
-          <div class="contract-chance-bar-outer">
-            <div class="contract-chance-bar-inner" id="contractChanceBar" style="width:0%; background:#FF4444;"></div>
-          </div>
-        </div>
+        <div class="contract-chances" id="contractChances" style="display:none;"></div>
         
         <div class="contract-cost">
-          Стоимость: <span id="contractCostValue">0</span> стружки
+          Стоимость: <span id="contractCostValue">150</span> стружки
         </div>
         
-        <div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-bottom:4px;">
-          Цель: <span id="contractTargetDisplay" style="color:var(--accent-gold);">—</span>
-        </div>
-        
-        <button class="contract-btn" id="contractStartBtn" disabled>СИНТЕЗ (0 💫)</button>
+        <button class="contract-btn" id="contractStartBtn" disabled>СИНТЕЗ (150 💫)</button>
         <button class="contract-exit-btn" id="contractExitBtn">Закрыть</button>
       </div>
     </div>
@@ -1129,64 +1113,69 @@ function showContractModal() {
   document.body.insertAdjacentHTML('beforeend', html);
   
   // Состояние контракта
-  let selectedIngotId = null;
-  let selectedCount = 0;
-  let selectedTarget = null;
+  let selectedIngots = [];
+  let selectedRarity = null;
   const maxSlots = 5;
   
   const overlay = document.getElementById('contractOverlay');
-  const chanceValue = document.getElementById('contractChanceValue');
-  const chanceBar = document.getElementById('contractChanceBar');
-  const costValue = document.getElementById('contractCostValue');
-  const targetDisplay = document.getElementById('contractTargetDisplay');
+  const chancesDiv = document.getElementById('contractChances');
   const startBtn = document.getElementById('contractStartBtn');
   
   function updateUI() {
-    const chance = getSynthesisChance(selectedCount);
-    const cost = getSynthesisCost(selectedCount);
+    fillSlots();
     
-    chanceValue.textContent = chance + '%';
-    chanceValue.style.color = chance >= 60 ? '#50C878' : chance >= 30 ? '#FFA500' : '#FF4444';
-    chanceBar.style.width = chance + '%';
-    chanceBar.style.background = chance >= 60 
-      ? 'linear-gradient(90deg, #50C878, #00FF88)' 
-      : chance >= 30 
-        ? 'linear-gradient(90deg, #FFA500, #FFD700)' 
-        : 'linear-gradient(90deg, #FF4444, #FF0000)';
-    costValue.textContent = cost;
-    
-    if (selectedTarget) {
-      targetDisplay.textContent = selectedTarget.name + ' ' + selectedTarget.icon;
-    } else {
-      targetDisplay.textContent = '—';
-    }
-    
-    const canAfford = selectedCount > 0 
-      && selectedIngotId 
-      && (state.ingots[selectedIngotId] || 0) >= selectedCount 
-      && getShavings() >= cost;
-    
-    startBtn.disabled = !canAfford;
-    startBtn.textContent = selectedCount > 0 ? `СИНТЕЗ (${cost} 💫)` : 'СИНТЕЗ (0 💫)';
-    
-    if (canAfford) {
+    if (selectedIngots.length === maxSlots && selectedRarity) {
+      // Рассчитываем шансы по локационному методу
+      const locationCounts = {};
+      selectedIngots.forEach(id => {
+        const ingot = CONFIG_ITEMS[id];
+        const loc = ingot.location;
+        locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+      });
+      
+      const results = getSynthesisTargetsByLocation(selectedIngots[0], locationCounts);
+      
+      let chancesHtml = '';
+      results.forEach(r => {
+        chancesHtml += `
+          <div class="contract-chance-row">
+            <span>${r.target.icon}</span>
+            <span style="flex:1; font-size:11px; color:var(--text-primary);">${r.target.name}</span>
+            <span style="font-weight:700; color:${r.chance >= 50 ? '#50C878' : '#FFA500'};">${r.chance}%</span>
+            <div class="contract-chance-bar-mini">
+              <div class="contract-chance-bar-fill" style="width:${r.chance}%; background:${r.chance >= 50 ? 'linear-gradient(90deg, #50C878, #00FF88)' : 'linear-gradient(90deg, #FFA500, #FFD700)'};"></div>
+            </div>
+          </div>
+        `;
+      });
+      chancesDiv.innerHTML = chancesHtml;
+      chancesDiv.style.display = 'flex';
+      
+      const cost = getSynthesisCost();
+      startBtn.disabled = false;
       startBtn.classList.add('ready');
+      startBtn.textContent = `СИНТЕЗ (${cost} 💫)`;
     } else {
+      chancesDiv.style.display = 'none';
+      startBtn.disabled = true;
       startBtn.classList.remove('ready');
+      startBtn.textContent = 'СИНТЕЗ (150 💫)';
     }
   }
   
   function fillSlots() {
     const slots = document.querySelectorAll('.contract-slot');
     slots.forEach((slot, i) => {
-      if (i < selectedCount) {
+      if (i < selectedIngots.length) {
         slot.classList.add('filled');
         slot.classList.remove('locked');
-        slot.textContent = selectedIngotId ? CONFIG_ITEMS[selectedIngotId].icon : '+';
-      } else if (selectedCount > 0 && i >= selectedCount) {
-        slot.classList.remove('filled');
-        slot.classList.add('locked');
-        slot.textContent = '🔒';
+        slot.textContent = CONFIG_ITEMS[selectedIngots[i]].icon;
+      } else if (selectedIngots.length > 0 && i >= selectedIngots.length && !selectedRarity) {
+        slot.classList.remove('filled', 'locked');
+        slot.textContent = '+';
+      } else if (selectedRarity && selectedIngots.length < maxSlots && i >= selectedIngots.length) {
+        slot.classList.remove('filled', 'locked');
+        slot.textContent = '+';
       } else {
         slot.classList.remove('filled', 'locked');
         slot.textContent = '+';
@@ -1197,35 +1186,19 @@ function showContractModal() {
   // Обработчики слотов
   document.querySelectorAll('.contract-slot').forEach(slot => {
     slot.addEventListener('click', () => {
-      if (slot.classList.contains('locked')) return;
-      
-      if (selectedIngotId && !slot.classList.contains('filled')) {
-        // Добавляем ещё один слот того же типа
-        const available = state.ingots[selectedIngotId] || 0;
-        if (selectedCount < available && selectedCount < maxSlots) {
-          selectedCount++;
-          fillSlots();
-          updateUI();
-        } else if (selectedCount >= available) {
-          showToast(`Больше нет ${CONFIG_ITEMS[selectedIngotId].name}!`, '⚠️');
-        }
-        return;
-      }
+      const slotIndex = parseInt(slot.dataset.slot);
       
       if (slot.classList.contains('filled')) {
         // Убираем этот слот и все после него
-        const slotIndex = parseInt(slot.dataset.slot);
-        selectedCount = slotIndex;
-        if (selectedCount === 0) {
-          selectedIngotId = null;
-          selectedTarget = null;
+        selectedIngots = selectedIngots.slice(0, slotIndex);
+        if (selectedIngots.length === 0) {
+          selectedRarity = null;
         }
-        fillSlots();
         updateUI();
         return;
       }
       
-      // Первый выбор — открываем пикер
+      // Открываем пикер
       showContractPicker();
     });
   });
@@ -1237,21 +1210,30 @@ function showContractModal() {
     
     let itemsHtml = '';
     allIngots.forEach(({ id, count, ingot }) => {
-      const targets = getSynthesisTargets(id);
-      const hasTarget = targets.length > 0;
-      const isLocked = selectedIngotId && id !== selectedIngotId;
+      if (count <= 0) return;
+      
+      let itemClass = 'contract-picker-item';
+      let isLocked = false;
+      
+      if (selectedRarity) {
+        if (ingot.rarityLevel !== selectedRarity) {
+          itemClass += ' locked';
+          isLocked = true;
+        } else {
+          itemClass += ' compatible';
+        }
+      }
+      
+      const hasTarget = getSynthesisTargetsByLocation(id, { [ingot.location]: 5 }).length > 0;
       
       itemsHtml += `
-        <div class="contract-picker-item ${isLocked || !hasTarget ? 'locked' : ''}" data-ingot="${id}">
+        <div class="${itemClass}" data-ingot="${id}" data-locked="${isLocked}">
           <span style="font-size:28px;">${ingot.icon}</span>
           <div style="flex:1; text-align:left;">
             <div style="font-weight:600; font-size:13px; color:#fff;">${ingot.name}</div>
-            <div style="font-size:10px; color:var(--text-secondary);">${count} шт. · ${ingot.rarity}</div>
-            ${hasTarget 
-              ? `<div style="font-size:9px; color:var(--accent-gold); margin-top:2px;">→ ${getSynthesisTargets(id).map(t => t.icon).join('')} ${getSynthesisTargets(id).map(t => t.name).join(', ')}</div>` 
-              : '<div style="font-size:9px; color:#FF4444;">Нет цели</div>'
-            }
+            <div style="font-size:10px; color:var(--text-secondary);">${count} шт. · ${ingot.rarity} · ${CONFIG_EXPEDITIONS[ingot.location]?.name || '???'}</div>
           </div>
+          <span style="font-size:12px; color:${isLocked ? '#FF4444' : '#50C878'};">${isLocked ? '✕' : '✓'}</span>
         </div>
       `;
     });
@@ -1259,7 +1241,7 @@ function showContractModal() {
     const pickerHTML = `
       <div class="contract-picker-overlay" id="contractPickerOverlay">
         <div class="contract-picker-card">
-          <div class="contract-picker-title">Выберите слиток</div>
+          <div class="contract-picker-title">${selectedRarity ? 'Выберите слиток той же редкости' : 'Выберите первый слиток'}</div>
           ${itemsHtml}
           <div class="contract-picker-close" id="contractPickerClose">Отмена</div>
         </div>
@@ -1271,20 +1253,27 @@ function showContractModal() {
     document.querySelectorAll('.contract-picker-item:not(.locked)').forEach(item => {
       item.addEventListener('click', () => {
         const ingotId = item.dataset.ingot;
-        const hasTarget = getSynthesisTargets(ingotId).length > 0;
-        if (!hasTarget) return;
+        const ingot = CONFIG_ITEMS[ingotId];
+        const available = state.ingots[ingotId] || 0;
         
-        selectedIngotId = ingotId;
-        selectedCount = 1;
-        const targets = getSynthesisTargets(ingotId);
-        if (targets.length > 0) {
-          selectedTarget = targets[0];
+        // Проверяем, не превышает ли количество
+        const alreadySelected = selectedIngots.filter(id => id === ingotId).length;
+        if (alreadySelected >= available) {
+          showToast(`Больше нет ${ingot.name}!`, '⚠️');
+          return;
         }
         
-        fillSlots();
-        updateUI();
+        if (!selectedRarity) {
+          selectedRarity = ingot.rarityLevel;
+        }
         
-        document.getElementById('contractPickerOverlay')?.remove();
+        selectedIngots.push(ingotId);
+        
+        if (selectedIngots.length >= maxSlots) {
+          document.getElementById('contractPickerOverlay')?.remove();
+        }
+        
+        updateUI();
       });
     });
     
@@ -1301,15 +1290,41 @@ function showContractModal() {
   
   // Кнопка СИНТЕЗ
   startBtn.addEventListener('click', () => {
-    if (!selectedIngotId || !selectedTarget || selectedCount <= 0) return;
-    const cost = getSynthesisCost(selectedCount);
+    if (selectedIngots.length !== maxSlots || !selectedRarity) return;
+    const cost = getSynthesisCost();
     if (getShavings() < cost) {
       showToast('Недостаточно стружки!', '⚠️');
       return;
     }
     
+    // Определяем результат по локационному методу
+    const locationCounts = {};
+    selectedIngots.forEach(id => {
+      const ingot = CONFIG_ITEMS[id];
+      const loc = ingot.location;
+      locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+    });
+    
+    const results = getSynthesisTargetsByLocation(selectedIngots[0], locationCounts);
+    if (results.length === 0) {
+      showToast('Нет доступных целей!', '⚠️');
+      return;
+    }
+    
+    // Выбираем случайную цель с учётом шансов
+    const totalChance = results.reduce((sum, r) => sum + r.chance, 0);
+    let roll = Math.random() * totalChance;
+    let selectedResult = results[0];
+    for (let r of results) {
+      roll -= r.chance;
+      if (roll <= 0) {
+        selectedResult = r;
+        break;
+      }
+    }
+    
     overlay.style.display = 'none';
-    playContractAnimation(selectedIngotId, selectedCount, selectedTarget.id);
+    playContractAnimation(selectedIngots, selectedResult.target);
   });
   
   // Кнопка Закрыть
@@ -1329,74 +1344,61 @@ function showContractModal() {
 }
 
 // ========== ★ АНИМАЦИЯ СИНТЕЗА ★ ==========
-function playContractAnimation(ingotId, count, targetId) {
-  const ingot = CONFIG_ITEMS[ingotId];
-  const target = CONFIG_ITEMS[targetId];
-  const chance = getSynthesisChance(count);
-  const cost = getSynthesisCost(count);
+function playContractAnimation(selectedIngots, target) {
+  const cost = getSynthesisCost();
   
   // Создаём оверлей
   const overlay = document.createElement('div');
   overlay.className = 'contract-result-overlay';
   overlay.style.background = 'radial-gradient(circle at 50% 40%, rgba(20,10,0,0.98) 0%, rgba(0,0,0,0.98) 100%)';
   
-  // Иконки слитков "стекаются"
+  // Иконки слитков
   const iconsContainer = document.createElement('div');
   iconsContainer.style.cssText = 'display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; justify-content:center;';
-  for (let i = 0; i < count; i++) {
+  selectedIngots.forEach((id, i) => {
     const icon = document.createElement('span');
-    icon.textContent = ingot.icon;
+    icon.textContent = CONFIG_ITEMS[id].icon;
     icon.style.cssText = 'font-size:36px; transition: all 0.5s ease;';
     icon.style.animation = 'successBurst 0.5s ease forwards';
     icon.style.animationDelay = (i * 0.1) + 's';
     iconsContainer.appendChild(icon);
-  }
+  });
   overlay.appendChild(iconsContainer);
   
-  // Шкала удачи
-  const gaugeOuter = document.createElement('div');
-  gaugeOuter.style.cssText = 'width:70%; max-width:260px; height:14px; background:rgba(255,255,255,0.05); border-radius:10px; overflow:hidden; margin:16px 0;';
-  const gaugeInner = document.createElement('div');
-  gaugeInner.style.cssText = 'height:100%; border-radius:10px; transition:width 0.8s cubic-bezier(0.25,0.8,0.25,1.2); width:0%;';
-  gaugeInner.style.background = chance >= 60 
-    ? 'linear-gradient(90deg, #50C878, #00FF88)' 
-    : chance >= 30 
-      ? 'linear-gradient(90deg, #FFA500, #FFD700)' 
-      : 'linear-gradient(90deg, #FF4444, #FF0000)';
-  gaugeOuter.appendChild(gaugeInner);
-  overlay.appendChild(gaugeOuter);
-  
-  // Текст шанса
-  const chanceText = document.createElement('div');
-  chanceText.style.cssText = 'font-family:Unbounded,sans-serif; font-size:28px; font-weight:800; color:#FFD700; margin-bottom:8px;';
-  chanceText.textContent = chance + '%';
-  overlay.appendChild(chanceText);
-  
+  // Текст
   const labelText = document.createElement('div');
-  labelText.style.cssText = 'font-size:13px; color:var(--text-secondary);';
-  labelText.textContent = 'Шанс успеха';
+  labelText.style.cssText = 'font-size:14px; color:var(--text-secondary); margin-bottom:20px;';
+  labelText.textContent = 'Выполняется синтез...';
   overlay.appendChild(labelText);
   
   document.body.appendChild(overlay);
   
-  // Анимация заполнения шкалы
-  setTimeout(() => {
-    gaugeInner.style.width = chance + '%';
-  }, 300);
-  
   // Через 1.5 секунды — выполняем синтез
   setTimeout(() => {
-    const result = performSynthesis(ingotId, count, targetId);
+    const result = performSynthesis(selectedIngots[0], target.id, selectedIngots);
     
     if (result.success) {
-      // Успех!
-      gaugeInner.style.background = 'linear-gradient(90deg, #50C878, #00FF88)';
-      chanceText.textContent = 'УСПЕХ!';
-      chanceText.style.color = '#50C878';
       labelText.textContent = `Получен: ${result.target.name}`;
       
-      // Вспышка
-      spawnContractParticles('success');
+      // Частицы успеха
+      for (let i = 0; i < 30; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'contract-particle';
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 60 + Math.random() * 140;
+        particle.style.cssText = `
+          left: ${window.innerWidth/2}px;
+          top: ${window.innerHeight/2}px;
+          background: #FFD700;
+          box-shadow: 0 0 12px #FFD700;
+          --sx: ${Math.cos(angle) * distance}px;
+          --sy: ${Math.sin(angle) * distance}px;
+          width: 8px;
+          height: 8px;
+        `;
+        document.body.appendChild(particle);
+        setTimeout(() => particle.remove(), 900);
+      }
       
       // Иконка результата
       setTimeout(() => {
@@ -1406,25 +1408,6 @@ function playContractAnimation(ingotId, count, targetId) {
         resultIcon.style.cssText = 'font-size:72px; animation: successBurst 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;';
         iconsContainer.appendChild(resultIcon);
       }, 400);
-      
-    } else {
-      // Неудача
-      gaugeInner.style.background = 'linear-gradient(90deg, #FF4444, #FF0000)';
-      chanceText.textContent = 'НЕУДАЧА';
-      chanceText.style.color = '#FF4444';
-      labelText.textContent = 'Материалы распались';
-      
-      spawnContractParticles('fail');
-      
-      // Анимация распада
-      setTimeout(() => {
-        iconsContainer.querySelectorAll('span').forEach((icon, i) => {
-          icon.style.transform = 'scale(0) rotate(180deg)';
-          icon.style.opacity = '0';
-          icon.style.transition = 'all 0.4s ease-in';
-          icon.style.transitionDelay = (i * 0.05) + 's';
-        });
-      }, 300);
     }
     
     // Закрываем оверлей по клику или через 3 секунды
@@ -1433,63 +1416,10 @@ function playContractAnimation(ingotId, count, targetId) {
       overlay.style.transition = 'opacity 0.4s ease-out';
       setTimeout(() => overlay.remove(), 400);
     };
-    
     overlay.addEventListener('click', closeOverlay);
     setTimeout(closeOverlay, 3000);
     
-    // Обновляем UI
-    import('./ui.js').then(ui => {
-      if (ui.currentTab === 'inventory') ui.renderInventoryTab();
-      if (ui.currentTab === 'ingot') ui.renderIngotScreen(mainContent);
-    });
-    
   }, 1500);
-}
-
-function spawnContractParticles(type) {
-  const cx = window.innerWidth / 2;
-  const cy = window.innerHeight / 2;
-  const count = type === 'success' ? 30 : 20;
-  const color = type === 'success' ? '#FFD700' : '#FF4444';
-  
-  for (let i = 0; i < count; i++) {
-    const particle = document.createElement('div');
-    particle.className = 'contract-particle';
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 60 + Math.random() * 140;
-    const sx = Math.cos(angle) * distance;
-    const sy = Math.sin(angle) * distance;
-    
-    particle.style.cssText = `
-      left: ${cx}px;
-      top: ${cy}px;
-      background: ${color};
-      box-shadow: 0 0 ${type === 'success' ? '12' : '6'}px ${color};
-      --sx: ${sx}px;
-      --sy: ${sy}px;
-      width: ${type === 'success' ? '8' : '5'}px;
-      height: ${type === 'success' ? '8' : '5'}px;
-    `;
-    
-    document.body.appendChild(particle);
-    setTimeout(() => particle.remove(), 900);
-  }
-  
-  // Вспышка при успехе
-  if (type === 'success') {
-    const flash = document.createElement('div');
-    flash.style.cssText = `
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.6) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 521;
-      animation: successBurst 0.4s ease-out forwards;
-    `;
-    document.body.appendChild(flash);
-    setTimeout(() => flash.remove(), 500);
-  }
 }
 // ---------- АДМИН-ПАНЕЛЬ ----------
 function showAdminPanel() {
@@ -1516,12 +1446,13 @@ function showAdminPanel() {
       <div style="background: rgba(0,0,0,0.2); border-radius: 16px; padding: 12px; margin-bottom: 12px;">
         <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">Текущий ивент:</div>
         <div style="font-weight: 700; font-size: 16px; color: var(--accent-gold);">
-          ${activeEventId ? (activeEventId === 'great_smelt' ? '🔥 Великая Переплавка' : '☄️ Метеоритный Шторм') : '❌ В данный момент нет активных событий'}
+          ${activeEventId ? (activeEventId === 'great_smelt' ? '🔥 Великая Переплавка' : (activeEventId === 'meteor_storm' ? '☄️ Метеоритный Шторм' : '⚗️ Контракты Синтеза')) : '❌ В данный момент нет активных событий'}
         </div>
         ${activeEventId ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Осталось: ${eventsManager.getTimeLeft()}</div>` : ''}
       </div>
       <button class="btn" id="adminStartSmelt" style="margin-bottom:8px;">🔥 Запустить Великую переплавку</button>
       <button class="btn" id="adminStartMeteor" style="margin-bottom:8px;">☄️ Запустить Метеоритный шторм</button>
+      <button class="btn" id="adminStartContracts" style="margin-bottom:8px;">⚗️ Запустить Контракты</button>
       <button class="btn" id="adminEndEvent" style="margin-bottom:8px; background: linear-gradient(135deg, #FF4444, #CC0000); box-shadow: 0 4px 20px rgba(255,0,0,0.3);">⏹️ Завершить текущий ивент</button>
       <button class="btn" id="adminSpeedMode" style="margin-bottom:8px; background: linear-gradient(135deg, #FFD700, #FFA500); color: #000;">⚡ Ускорить ротацию (Тест)</button>
       
@@ -1601,15 +1532,18 @@ function showAdminPanel() {
       closeModal(); 
     });
     
+    // 🆕 ПОЛНЫЙ СБРОС ПРОГРЕССА
     document.getElementById('adminResetProgress')?.addEventListener('click', () => {
       const state = getPlayerState();
       
+      // Сброс уровня и опыта игрока
       state.player.level = 1;
       state.player.xp = 0;
       state.player.totalOpened = 0;
       state.player.totalIngots = 0;
       state.player.totalArtifacts = 0;
       
+      // Сброс экспедиций
       for (let k in state.expeditions) {
         state.expeditions[k].active = false;
         state.expeditions[k].endTime = null;
@@ -1617,41 +1551,64 @@ function showAdminPanel() {
         state.expeditions[k].specialChanceBoost = null;
       }
       
+      // Сброс жеод до стартовых
       Object.keys(state.geodes).forEach(k => { state.geodes[k] = 0; });
       state.geodes['swamp'] = 3;
       
+      // Полный сброс слитков и статистики
       Object.keys(state.ingots).forEach(k => { state.ingots[k] = 0; });
       Object.keys(state.minedStats).forEach(k => { state.minedStats[k] = 0; });
       
+      // Сброс особых жеод и артефактов
       Object.keys(state.discoveredSpecialGeodes).forEach(k => { state.discoveredSpecialGeodes[k] = false; });
       state.collectedArtifacts.swamp = [];
       state.collectedArtifacts.rotforest = [];
       state.collectedArtifacts.rustbottom = [];
       state.collectedArtifacts.meteor = [];
       
+      // Сброс эхо-кулдаунов и бонусов экспедиций
       state.echoCooldowns = {};
       state.expeditionBonuses = {};
+      
+      // Сброс метеоритных осколков
       state.meteorShards = 0;
       state.meteorCooldownEnd = null;
+      
+      // Сброс квестов
       state.activeQuests = [];
       state.questRefreshTime = null;
       state.completedQuests = [];
       state.questCooldownEnd = null;
+      
+      // Сброс разблокированных экспедиций до стартовых
       state.unlockedExpeditions = ['swamp'];
+      
+      // Сброс слотов экипировки
       state.equippedArtifacts = [null, null, null];
+      
+      // Сброс открытий алхимии
       state.discoveredAlchemyRecipes = [];
+      
+      // Сброс знаний
       state.discoveredKnowledge = {};
       
+      // Сброс флага туториала
       import('./tutorial.js').then(t => {
         t.resetTutorialFlag();
       });
       
+      // ★ ИСПРАВЛЕНИЕ: сначала сбрасываем ingotState, потом сохраняем
       import('./ingot.js').then(ingot => {
         ingot.resetIngotState();
+        
+        // Полная очистка localStorage и сохранение ПОСЛЕ сброса ingotState
         localStorage.removeItem('starforge_v1');
         saveGame();
+        
         showToast('💀 Прогресс полностью сброшен!', '🗑️');
         closeModal();
+        
+        // Перезагрузка страницы для чистой инициализации
         setTimeout(() => {
           location.reload();
         }, 500);
@@ -1669,6 +1626,13 @@ function showAdminPanel() {
       eventsManager.startEventById('meteor_storm');
       saveGame();
       showToast('Метеоритный шторм запущен!', '☄️');
+      closeModal();
+    });
+    
+    document.getElementById('adminStartContracts')?.addEventListener('click', () => {
+      eventsManager.startEventById('contracts');
+      saveGame();
+      showToast('Контракты запущены!', '⚗️');
       closeModal();
     });
     
@@ -1730,6 +1694,7 @@ export function closeModal() {
     modalTimerInterval = null;
   }
   
+  // Убираем тултип журнала
   const tooltip = document.getElementById('journalTooltip');
   if (tooltip) tooltip.remove();
   
@@ -1745,6 +1710,7 @@ function getAdjustedChances(geodeId) {
   const bonusRecycled = getBonusRecycledChance();
   if (bonusRecycled <= 0) return null;
   
+  // Копируем базовые шансы
   const adjusted = g.lootTable.map(entry => {
     const ingot = CONFIG_ITEMS[entry.ingotId];
     return {
@@ -1755,12 +1721,16 @@ function getAdjustedChances(geodeId) {
     };
   });
   
+  // Находим все слоты с редкостью 'recycled' (Вторичный)
   const recycledSlots = adjusted.filter(s => s.rarity === 'recycled');
+  // Находим слоты с редкостью 'junk' (Хлам)
   const junkSlots = adjusted.filter(s => s.rarity === 'junk');
   
   if (recycledSlots.length === 0 || junkSlots.length === 0) return null;
   
+  // Бонус распределяется поровну между всеми recycled-слотами
   const bonusPerRecycled = (bonusRecycled / 100) / recycledSlots.length;
+  // Штраф распределяется поровну между всеми junk-слотами
   const penaltyTotal = bonusRecycled / 100;
   const penaltyPerJunk = penaltyTotal / junkSlots.length;
   
@@ -1960,6 +1930,7 @@ export function showExpeditionInfoModal(expId) {
   const special = CONFIG_GEODES[exp.specialGeodeId];
   const discovered = state.discoveredSpecialGeodes[expId];
 
+  // ★ РАСЧЁТ БОНУСОВ ДЛЯ ОТОБРАЖЕНИЯ
   const bonusSpeed = getBonusExpeditionSpeed();
   const baseTimer = exp.timer;
   const adjustedTimer = bonusSpeed > 0 ? Math.floor(baseTimer * (1 - bonusSpeed / 100)) : baseTimer;
@@ -2009,6 +1980,7 @@ export function showExpeditionInfoModal(expId) {
     actionBtn = `<div id="modalExpeditionAction"><button class="btn" id="modalStartExpedition" data-expedition="${expId}">⛏️ ОТПРАВИТЬСЯ</button></div>`;
   }
 
+  // ★ ФОРМИРУЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ С БОНУСОМ
   const timerBonusHTML = bonusSpeed > 0 
     ? `${baseTimer} сек <span style="color:#50C878; font-size:11px;">(-${bonusSpeed}%)</span> → ${adjustedTimer} сек`
     : `${baseTimer} сек`;
@@ -2487,20 +2459,17 @@ export function renderInventoryTab() {
     // Вкладка слитков
     const items = Object.entries(state.ingots).filter(([k, c]) => c > 0 && !CONFIG_ITEMS[k].isCollectible);
     
-    // ★ КНОПКИ АЛХИМИИ И КОНТРАКТА
+    // ★ КНОПКА АЛХИМИИ
     const alchemyAvailable = state.player.level >= 3;
     
     html += `
-      <div style="margin-bottom:14px; display:flex; gap:8px;">
-        <button class="small-btn" id="toggleAlchemyBtn" style="flex:1; ${alchemyMode ? 'background: rgba(255,68,68,0.15); border-color: rgba(255,68,68,0.4); color: #FF4444;' : ''}${!alchemyAvailable ? 'opacity: 0.35; cursor: not-allowed; border-color: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2);' : ''}" ${!alchemyAvailable ? 'disabled' : ''}>
+      <div style="margin-bottom:14px;">
+        <button class="small-btn" id="toggleAlchemyBtn" style="width:100%; ${alchemyMode ? 'background: rgba(255,68,68,0.15); border-color: rgba(255,68,68,0.4); color: #FF4444;' : ''}${!alchemyAvailable ? 'opacity: 0.35; cursor: not-allowed; border-color: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2);' : ''}" ${!alchemyAvailable ? 'disabled' : ''}>
           ${!alchemyAvailable ? '🔒 Сплавить (ур. 3)' : (alchemyMode ? '❌ Отмена' : '⚗️ Сплавить')}
         </button>
-        <button class="small-btn" id="openContractBtn" style="flex:1;">
-          ⚗️ Контракт
-        </button>
+        ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
+        ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй.</div>` : ''}
       </div>
-      ${alchemyMode ? '<div style="text-align:center; font-size:10px; color:var(--accent-gold); margin-top:6px;">Выберите первый слиток для сплава</div>' : ''}
-      ${alchemyMode && alchemyFirstIngot ? `<div style="text-align:center; font-size:10px; color:var(--text-secondary); margin-top:2px;">Выбран: ${CONFIG_ITEMS[alchemyFirstIngot]?.icon} ${CONFIG_ITEMS[alchemyFirstIngot]?.name}. Выберите второй.</div>` : ''}
     `;
     
     if (!items.length) {
@@ -2586,14 +2555,6 @@ export function renderInventoryTab() {
       });
     }
     
-    // Обработчик кнопки Контракта
-    const contractBtn = document.getElementById('openContractBtn');
-    if (contractBtn) {
-      contractBtn.addEventListener('click', () => {
-        showContractModal();
-      });
-    }
-    
     // Обработчики кликов по слиткам
     if (alchemyMode) {
       document.querySelectorAll('[data-ingot]').forEach(card => {
@@ -2657,6 +2618,7 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
   const shavingsCost = matchedRecipe.shavingsCost || 30;
   const currentShavings = getShavings();
   
+  // ★ ОПРЕДЕЛЯЕМ ВИДИМОСТЬ ИНГРЕДИЕНТОВ В РЕЦЕПТЕ
   const ing1Known = state.minedStats[ingotId1] > 0;
   const ing2Known = state.minedStats[ingotId2] > 0;
   
@@ -3340,6 +3302,21 @@ export function renderGamesTab() {
         </div>
       </div>
     `;
+  } else if (activeEventId === 'contracts') {
+    html += `
+      <div class="card" style="border: 2px solid rgba(255,215,0,0.4); background: rgba(255,215,0,0.05); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 50% 0%, rgba(255,215,0,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+        <div class="event-icon" style="font-size:48px; margin-bottom:12px;">${activeEvent.icon}</div>
+        <div class="event-title" style="color: var(--accent-gold); font-size: 18px; margin-bottom: 6px;">${activeEvent.name}</div>
+        <div class="event-desc" style="color: var(--text-primary); font-size: 12px; line-height: 1.4; margin-bottom: 12px;">${activeEvent.longDescription || activeEvent.description}</div>
+        <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span style="font-size: 18px;">⏳</span>
+          <span style="font-family: 'Unbounded', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent-gold);" id="eventTimer">${timeLeft}</span>
+          <span style="font-size: 11px; color: var(--text-secondary);">до завершения</span>
+        </div>
+        <button class="forge-smelt-btn" id="enterContractBtn" style="width: 100%; font-size: 13px; padding: 10px;">⚗️ ОТКРЫТЬ КОНТРАКТЫ</button>
+      </div>
+    `;
   }
   
   // ===== ЗОНА 2: ЗАКАЗЫ ГИЛЬДИИ =====
@@ -3442,6 +3419,9 @@ export function renderGamesTab() {
   // Обработчики
   const enterForgeBtn = document.getElementById('enterForgeBtn');
   if (enterForgeBtn) enterForgeBtn.addEventListener('click', () => openForge());
+  
+  const enterContractBtn = document.getElementById('enterContractBtn');
+  if (enterContractBtn) enterContractBtn.addEventListener('click', () => showContractModal());
   
   const playBtn = document.getElementById('playMeteorStormBtn');
   if (playBtn) {
