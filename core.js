@@ -1,6 +1,6 @@
 // ========== CORE МОДУЛЬ: ЛОГИКА ИГРЫ ==========
 import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, CRAFT_RECIPES, ALCHEMY_RECIPES, LEVELS, DEFAULT_STATE, GUILD_QUESTS } from './config.js';
-import { regenEnergy, checkLevelLock, getIngotSaveData, initIngotState, getBonusExpeditionSpeed, getBonusXP, getBonusDoubleDrop, getBonusRecycledChance } from './ingot.js';
+import { regenEnergy, checkLevelLock, getIngotSaveData, initIngotState, getBonusExpeditionSpeed, getBonusXP, getBonusDoubleDrop, getBonusRecycledChance, getShavings, getCurrentIngotData } from './ingot.js';
 
 // ========== ЗАГЛУШКИ UI ФУНКЦИЙ ==========
 let _showToast = null;
@@ -46,7 +46,8 @@ export let playerState = {
   questCooldownEnd: null,
   unlockedExpeditions: ['swamp'],
   discoveredAlchemyRecipes: [],
-  discoveredKnowledge: {}
+  discoveredKnowledge: {},
+  synthesisFailCount: {}
 };
 
 export function getPlayerState() {
@@ -99,23 +100,19 @@ function getPityAdjustedDrop(geodeId) {
 
   const counters = pityCounters[geodeId];
   
-  // Рассчитываем скорректированные шансы с учётом pity
   const adjustedTable = g.lootTable.map(e => {
     const missesSinceLastDrop = counters[e.ingotId] || 0;
-    // Каждые 5 невыпадений подряд увеличивают шанс на 50% от базового
     const pityBonus = Math.floor(missesSinceLastDrop / 5) * (e.chance * 0.5);
     const adjustedChance = e.chance + pityBonus;
     return { ...e, adjustedChance };
   });
 
-  // Нормализуем шансы чтобы сумма была = 1
   const totalChance = adjustedTable.reduce((sum, e) => sum + e.adjustedChance, 0);
   const normalized = adjustedTable.map(e => ({
     ...e,
     normalizedChance: e.adjustedChance / totalChance
   }));
 
-  // Бросаем кубик
   const rand = Math.random();
   let cum = 0;
   let droppedId = normalized[0].ingotId;
@@ -127,12 +124,11 @@ function getPityAdjustedDrop(geodeId) {
     }
   }
 
-  // Обновляем счётчики pity
   for (let ingotId in counters) {
     if (ingotId === droppedId) {
-      counters[ingotId] = 0; // сброс при выпадении
+      counters[ingotId] = 0;
     } else {
-      counters[ingotId] = (counters[ingotId] || 0) + 1; // +1 к невыпавшим
+      counters[ingotId] = (counters[ingotId] || 0) + 1;
     }
   }
 
@@ -168,7 +164,6 @@ function revealIngotUsage(ingotId) {
 export function isIngotSourceKnown(ingotId) {
   const ingot = CONFIG_ITEMS[ingotId];
   if (!ingot) return false;
-  // Если слиток уже найден — источник автоматически известен
   if (playerState.minedStats[ingotId] > 0) return true;
   return playerState.discoveredKnowledge[ingotId]?.sourceKnown || false;
 }
@@ -180,12 +175,98 @@ export function isIngotUsageKnown(ingotId) {
 export function isRecipeDiscovered(recipeId) {
   const recipe = ALCHEMY_RECIPES[recipeId];
   if (!recipe) return false;
-  // Рецепт считается открытым если оба ингредиента известны
   return recipe.ingredients.every(ingId => playerState.minedStats[ingId] > 0);
 }
 
 export function getDiscoveredKnowledge() {
   return playerState.discoveredKnowledge || {};
+}
+
+// ========== СИСТЕМА «СИНТЕЗ» ==========
+const RARITY_ORDER = ['junk', 'recycled', 'common', 'rare', 'epic', 'legendary'];
+
+export function getSynthesisTargets(ingotId) {
+  const ingot = CONFIG_ITEMS[ingotId];
+  if (!ingot || ingot.isCollectible) return [];
+  
+  const currentRarityIndex = RARITY_ORDER.indexOf(ingot.rarityLevel);
+  if (currentRarityIndex === -1 || currentRarityIndex >= RARITY_ORDER.length - 1) return [];
+  
+  const nextRarity = RARITY_ORDER[currentRarityIndex + 1];
+  
+  // Находим все слитки следующей редкости из той же локации
+  const targets = [];
+  for (let id in CONFIG_ITEMS) {
+    const candidate = CONFIG_ITEMS[id];
+    if (candidate.isCollectible) continue;
+    if (candidate.rarityLevel === nextRarity && candidate.location === ingot.location) {
+      targets.push(candidate);
+    }
+  }
+  
+  // Если в той же локации нет — ищем в других локациях
+  if (targets.length === 0) {
+    for (let id in CONFIG_ITEMS) {
+      const candidate = CONFIG_ITEMS[id];
+      if (candidate.isCollectible) continue;
+      if (candidate.rarityLevel === nextRarity) {
+        targets.push(candidate);
+      }
+    }
+  }
+  
+  return targets;
+}
+
+export function getSynthesisChance(count) {
+  return Math.min(100, count * 20);
+}
+
+export function getSynthesisCost(count) {
+  // Стоимость в стружке: базовая + за количество
+  return 50 + (count - 1) * 30;
+}
+
+export function performSynthesis(ingotId, count, targetIngotId) {
+  if (!playerState) return { success: false, message: 'Ошибка состояния игры.' };
+  
+  const ingot = CONFIG_ITEMS[ingotId];
+  const target = CONFIG_ITEMS[targetIngotId];
+  if (!ingot || !target) return { success: false, message: 'Слиток не найден!' };
+  
+  if ((playerState.ingots[ingotId] || 0) < count) {
+    return { success: false, message: `Недостаточно ${ingot.name}!` };
+  }
+  
+  const shavingsCost = getSynthesisCost(count);
+  const currentShavings = getShavings();
+  if (currentShavings < shavingsCost) {
+    return { success: false, message: `Недостаточно стружки! Нужно ${shavingsCost}` };
+  }
+  
+  // Списываем слитки
+  playerState.ingots[ingotId] -= count;
+  
+  // Списываем стружку
+  import('./ingot.js').then(ingotModule => {
+    ingotModule.deductShavings(shavingsCost);
+  });
+  
+  const chance = getSynthesisChance(count);
+  const roll = Math.random() * 100;
+  const isSuccess = roll < chance;
+  
+  if (isSuccess) {
+    playerState.ingots[targetIngotId] = (playerState.ingots[targetIngotId] || 0) + 1;
+    playerState.minedStats[targetIngotId] = (playerState.minedStats[targetIngotId] || 0) + 1;
+    playerState.player.totalIngots++;
+    revealIngotSource(targetIngotId);
+    saveGame();
+    return { success: true, target: target, chance: chance, roll: roll, count: count, shavingsCost: shavingsCost };
+  } else {
+    saveGame();
+    return { success: false, message: 'Синтез не удался. Материалы распались.', chance: chance, roll: roll, count: count, shavingsCost: shavingsCost };
+  }
 }
 
 export function sendBotNotification(message) {
@@ -246,7 +327,7 @@ function setTimerTimeout(timerName, callback, delay) {
   return activeTimers[timerName];
 }
 
-// ---------- УНИВЕРСАЛЬНЫЙ ИВЕНТ-МЕНЕДЖЕР (РОТАЦИЯ ПО СИСТЕМНОМУ ВРЕМЕНИ) ----------
+// ---------- УНИВЕРСАЛЬНЫЙ ИВЕНТ-МЕНЕДЖЕР ----------
 const EVENT_LIST = ['great_smelt', 'meteor_storm'];
 const EVENT_DURATION = 15 * 60 * 1000;
 const ROTATION_INTERVAL = 30 * 60 * 1000;
@@ -1326,7 +1407,6 @@ function endMeteorStorm() {
   if (_renderEventsTab) _renderEventsTab();
 }
 
-// МАГАЗИН ОБМЕНА ОСКОЛКОВ
 export const METEOR_SHOP_ITEMS = {
   meteor_common: { geodeId: 'meteor_common', name: 'Космический обломок', icon: '☄️', price: 300, description: 'Обычный осколок метеоритного дождя.' },
   meteor_rare: { geodeId: 'meteor_rare', name: 'Звёздное ядро', icon: '🌟', price: 700, description: 'Редкое ядро разрушенной звезды.' },
@@ -1388,7 +1468,8 @@ export function saveGame() {
       equippedArtifacts: playerState.equippedArtifacts || [null, null, null],
       unlockedExpeditions: playerState.unlockedExpeditions || ['swamp'],
       discoveredAlchemyRecipes: playerState.discoveredAlchemyRecipes || [],
-      discoveredKnowledge: playerState.discoveredKnowledge || {}
+      discoveredKnowledge: playerState.discoveredKnowledge || {},
+      synthesisFailCount: playerState.synthesisFailCount || {}
     },
     collectibleSerials,
     nextSerial,
@@ -1518,6 +1599,12 @@ function applySaveData(data) {
     playerState.discoveredKnowledge = {};
   }
   
+  if (saved.synthesisFailCount && typeof saved.synthesisFailCount === 'object') {
+    playerState.synthesisFailCount = { ...saved.synthesisFailCount };
+  } else {
+    playerState.synthesisFailCount = {};
+  }
+  
   initIngotState({
     ingotShavings: saved.ingotShavings || 0,
     tapEnergy: saved.tapEnergy || 500,
@@ -1575,6 +1662,7 @@ export const saveToLocalStorage = saveGame;
   playerState.unlockedExpeditions = ['swamp'];
   playerState.discoveredAlchemyRecipes = [];
   playerState.discoveredKnowledge = {};
+  playerState.synthesisFailCount = {};
   
   console.log('[Core] DEFAULT_STATE применён синхронно при загрузке модуля');
 })();
@@ -1718,7 +1806,6 @@ function updateEventTimer() {
   }
 }
 
-// ========== ЖИВОЙ ТАЙМЕР ЗАКАЗОВ ГИЛЬДИИ ==========
 function updateQuestTimer() {
   const questTimerEl = document.getElementById('questCooldownTimer');
   if (!questTimerEl) return;
@@ -1729,7 +1816,6 @@ function updateQuestTimer() {
     const s = Math.ceil((remaining % 60000) / 1000);
     questTimerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
   } else {
-    // Таймер истёк — обновляем заказы
     checkAndRefreshQuests();
     if (_renderEventsTab) {
       import('./ui.js').then(ui => {
@@ -1795,6 +1881,13 @@ export function performAlchemy(ingotId1, ingotId2) {
     return { success: false, message: `Недостаточно ${CONFIG_ITEMS[ingotId2]?.name || ingotId2}!` };
   }
   
+  // ★ ПРОВЕРКА СТРУЖКИ ДЛЯ АЛХИМИИ
+  const shavingsCost = matchedRecipe.shavingsCost || 30;
+  const currentShavings = getShavings();
+  if (currentShavings < shavingsCost) {
+    return { success: false, message: `Недостаточно стружки! Нужно ${shavingsCost}` };
+  }
+  
   if (!playerState.discoveredAlchemyRecipes) {
     playerState.discoveredAlchemyRecipes = [];
   }
@@ -1803,11 +1896,15 @@ export function performAlchemy(ingotId1, ingotId2) {
   playerState.ingots[ingotId1]--;
   playerState.ingots[ingotId2]--;
   
+  // ★ СПИСЫВАЕМ СТРУЖКУ
+  import('./ingot.js').then(ingotModule => {
+    ingotModule.deductShavings(shavingsCost);
+  });
+  
   playerState.ingots[matchedRecipe.resultIngotId] = (playerState.ingots[matchedRecipe.resultIngotId] || 0) + 1;
   playerState.minedStats[matchedRecipe.resultIngotId] = (playerState.minedStats[matchedRecipe.resultIngotId] || 0) + 1;
   playerState.player.totalIngots++;
   
-  // ★ РАСКРЫВАЕМ ЗНАНИЯ ОБ ИСПОЛЬЗОВАНИИ ИНГРЕДИЕНТОВ
   revealIngotUsage(ingotId1);
   revealIngotUsage(ingotId2);
   revealIngotSource(matchedRecipe.resultIngotId);
@@ -1828,7 +1925,8 @@ export function performAlchemy(ingotId1, ingotId2) {
     recipe: matchedRecipe,
     resultIngot: resultIngot,
     isFirstDiscovery: isFirstDiscovery,
-    xpGained: totalXP
+    xpGained: totalXP,
+    shavingsCost: shavingsCost
   };
 }
 
@@ -1958,35 +2056,28 @@ const VISIBLE_ITEMS = 3;
 
 function cleanupConveyor() { if (conveyorState.timeoutId) { clearTimeout(conveyorState.timeoutId); conveyorState.timeoutId = null; } conveyorOverlay.classList.remove('active'); conveyorState.isOpen = false; }
 
-// ========== ГЕНЕРАТОР СЛУЧАЙНОГО ПАТТЕРНА КОНВЕЙЕРА ==========
 function generateRandomPattern(items, resultIngot) {
-  // Случайная длина конвейера: от 20 до 40 слотов
   const totalLength = 20 + Math.floor(Math.random() * 21);
   const trackItems = [];
   
-  // Заполняем случайным порядком
   for (let i = 0; i < totalLength; i++) {
     trackItems.push(items[Math.floor(Math.random() * items.length)]);
   }
   
-  // Случайная позиция для результата: где-то между 65% и 85% длины
   const targetSlot = Math.floor(totalLength * (0.65 + Math.random() * 0.2));
   trackItems[targetSlot] = resultIngot;
   
   return { trackItems, targetSlot, totalLength };
 }
 
-// ========== БЫСТРОЕ ОТКРЫТИЕ (SKIP) ==========
 function skipConveyor() {
   if (!conveyorState.isOpen || !playerState) return;
   
-  // Очищаем таймер анимации
   if (conveyorState.timeoutId) {
     clearTimeout(conveyorState.timeoutId);
     conveyorState.timeoutId = null;
   }
   
-  // Мгновенно завершаем
   const resultIngot = conveyorState.resultIngot;
   const g = CONFIG_GEODES[conveyorState.geodeId];
   let xpGained = g.xpValue + (resultIngot?.xpValue || 0);
@@ -2006,7 +2097,6 @@ function skipConveyor() {
   cleanupConveyor();
   isOpeningGeode = false;
   
-  // ★ РАСКРЫВАЕМ ИСТОЧНИК ПОЛУЧЕНИЯ
   revealIngotSource(resultIngot.id);
   
   setTimeout(() => {
@@ -2019,13 +2109,11 @@ export function initRoulette(geodeId) {
   if (!playerState) return;
   const g = CONFIG_GEODES[geodeId]; if (!g || g.isSpecial) return;
   
-  // ★ ИСПОЛЬЗУЕМ PITY-СИСТЕМУ вместо чистого рандома
   const droppedId = getPityAdjustedDrop(geodeId);
   
   const resultIngot = CONFIG_ITEMS[droppedId];
   const items = g.lootTable.map(e => CONFIG_ITEMS[e.ingotId]);
   
-  // Генерируем случайный паттерн
   const { trackItems, targetSlot, totalLength } = generateRandomPattern(items, resultIngot);
   
   conveyorState.geodeId = geodeId;
@@ -2049,7 +2137,6 @@ export function initRoulette(geodeId) {
     }
   });
   
-  // Добавляем кнопку быстрого открытия
   conveyorTitle.innerHTML = `
     ${g.name}
     <button id="skipConveyorBtn" style="display:block; margin: 8px auto 0; background: rgba(255,215,0,0.12); border: 1px solid rgba(255,215,0,0.25); color: var(--accent-gold); padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
@@ -2059,7 +2146,6 @@ export function initRoulette(geodeId) {
   
   conveyorOverlay.classList.add('active');
   
-  // Привязываем кнопку skip
   setTimeout(() => {
     const skipBtn = document.getElementById('skipConveyorBtn');
     if (skipBtn) {
@@ -2093,7 +2179,6 @@ function stopRoulette() {
   playerState.ingots[resultIngot.id] = (playerState.ingots[resultIngot.id] || 0) + 1; playerState.minedStats[resultIngot.id] = (playerState.minedStats[resultIngot.id] || 0) + 1; playerState.player.totalIngots++;
   addXP(xpGained); saveGame(); cleanupConveyor(); isOpeningGeode = false;
   
-  // ★ РАСКРЫВАЕМ ИСТОЧНИК ПОЛУЧЕНИЯ
   revealIngotSource(resultIngot.id);
   
   setTimeout(() => { if (_showRewardPopup) _showRewardPopup(resultIngot); if (_renderCurrentTab) _renderCurrentTab(); }, 100);
@@ -2120,7 +2205,6 @@ export function openBrawlOverlay(geodeId, isSpecial) {
   document.querySelector('.brawl-hint').style.display = 'block'; brawlCounter.style.display = 'block';
   if (_getGeodeStageImage && _renderImageToElement) { const stage = _getGeodeStageImage(geodeId, 10); _renderImageToElement(brawlGeode, stage.imagePath, stage.fallbackIcon, '#8B7355'); }
   
-  // ★ ДОБАВЛЯЕМ КНОПКУ БЫСТРОГО ОТКРЫТИЯ НА ЭТАП BRAWL
   const existingSkipBtn = document.getElementById('brawlSkipBtn');
   if (existingSkipBtn) existingSkipBtn.remove();
   
@@ -2153,14 +2237,12 @@ export function openBrawlOverlay(geodeId, isSpecial) {
   brawlOverlay.classList.add('active');
 }
 
-// ★ ФУНКЦИЯ БЫСТРОГО ОТКРЫТИЯ ЖЕОДЫ (ПРОПУСК BRAWL)
 function skipBrawlOpening() {
   if (!playerState || !brawlState.isOpen) return;
   
   const geodeId = brawlState.geodeId;
   const isSpecial = brawlState.isSpecial;
   
-  // Списываем жеоду
   if (playerState.geodes[geodeId] > 0) {
     playerState.geodes[geodeId]--;
   }
@@ -2189,7 +2271,6 @@ function skipBrawlOpening() {
     addXP(xpGained);
     saveGame();
     
-    // ★ РАСКРЫВАЕМ ИСТОЧНИК
     revealIngotSource(picked);
     
     const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1;
@@ -2197,7 +2278,6 @@ function skipBrawlOpening() {
       showCollectibleAnimation(droppedIngot);
     }
     
-    // Показываем результат сразу
     brawlGeode.style.display = 'none';
     document.querySelector('.brawl-hint').style.display = 'none';
     brawlCounter.style.display = 'none';
@@ -2213,7 +2293,6 @@ function skipBrawlOpening() {
     isOpeningGeode = false;
     if (_renderCurrentTab) _renderCurrentTab();
   } else {
-    // Обычная жеода — переходим к конвейеру
     brawlOverlay.classList.remove('active');
     brawlState.isOpen = false;
     const skipBtn = document.getElementById('brawlSkipBtn');
