@@ -182,7 +182,7 @@ export function getDiscoveredKnowledge() {
   return playerState.discoveredKnowledge || {};
 }
 
-// ========== СИСТЕМА «СИНТЕЗ» ==========
+// ========== СИСТЕМА «СИНТЕЗ» (КОНТРАКТ) ==========
 const RARITY_ORDER = ['junk', 'recycled', 'common', 'rare', 'epic', 'legendary'];
 
 export function getSynthesisTargets(ingotId) {
@@ -194,7 +194,6 @@ export function getSynthesisTargets(ingotId) {
   
   const nextRarity = RARITY_ORDER[currentRarityIndex + 1];
   
-  // Находим все слитки следующей редкости из той же локации
   const targets = [];
   for (let id in CONFIG_ITEMS) {
     const candidate = CONFIG_ITEMS[id];
@@ -204,7 +203,6 @@ export function getSynthesisTargets(ingotId) {
     }
   }
   
-  // Если в той же локации нет — ищем в других локациях
   if (targets.length === 0) {
     for (let id in CONFIG_ITEMS) {
       const candidate = CONFIG_ITEMS[id];
@@ -223,7 +221,6 @@ export function getSynthesisChance(count) {
 }
 
 export function getSynthesisCost(count) {
-  // Стоимость в стружке: базовая + за количество
   return 50 + (count - 1) * 30;
 }
 
@@ -244,10 +241,8 @@ export function performSynthesis(ingotId, count, targetIngotId) {
     return { success: false, message: `Недостаточно стружки! Нужно ${shavingsCost}` };
   }
   
-  // Списываем слитки
   playerState.ingots[ingotId] -= count;
   
-  // Списываем стружку
   import('./ingot.js').then(ingotModule => {
     ingotModule.deductShavings(shavingsCost);
   });
@@ -267,6 +262,15 @@ export function performSynthesis(ingotId, count, targetIngotId) {
     saveGame();
     return { success: false, message: 'Синтез не удался. Материалы распались.', chance: chance, roll: roll, count: count, shavingsCost: shavingsCost };
   }
+}
+
+// ========== ТАЙМЕР ДО СЛЕДУЮЩЕГО ИВЕНТА ==========
+export function getNextEventTime() {
+  const now = Date.now();
+  const interval = 30 * 60 * 1000; // 30 минут
+  const currentSlot = Math.floor(now / interval);
+  const nextSlotStart = (currentSlot + 1) * interval;
+  return Math.max(0, nextSlotStart - now);
 }
 
 export function sendBotNotification(message) {
@@ -1881,7 +1885,6 @@ export function performAlchemy(ingotId1, ingotId2) {
     return { success: false, message: `Недостаточно ${CONFIG_ITEMS[ingotId2]?.name || ingotId2}!` };
   }
   
-  // ★ ПРОВЕРКА СТРУЖКИ ДЛЯ АЛХИМИИ
   const shavingsCost = matchedRecipe.shavingsCost || 30;
   const currentShavings = getShavings();
   if (currentShavings < shavingsCost) {
@@ -1896,7 +1899,6 @@ export function performAlchemy(ingotId1, ingotId2) {
   playerState.ingots[ingotId1]--;
   playerState.ingots[ingotId2]--;
   
-  // ★ СПИСЫВАЕМ СТРУЖКУ
   import('./ingot.js').then(ingotModule => {
     ingotModule.deductShavings(shavingsCost);
   });
@@ -2045,7 +2047,7 @@ function renderTestLeaderboard() {
   import('./ui.js').then(ui => ui.openModal(html));
 }
 
-// ---------- КОНВЕЙЕР (СЛУЧАЙНЫЙ ПАТТЕРН + БЫСТРОЕ ОТКРЫТИЕ) ----------
+// ---------- КОНВЕЙЕР ----------
 const conveyorOverlay = document.getElementById('conveyorOverlay');
 const conveyorTrack = document.getElementById('conveyorTrack');
 const conveyorTitle = document.getElementById('conveyorTitle');
@@ -2059,116 +2061,46 @@ function cleanupConveyor() { if (conveyorState.timeoutId) { clearTimeout(conveyo
 function generateRandomPattern(items, resultIngot) {
   const totalLength = 20 + Math.floor(Math.random() * 21);
   const trackItems = [];
-  
-  for (let i = 0; i < totalLength; i++) {
-    trackItems.push(items[Math.floor(Math.random() * items.length)]);
-  }
-  
+  for (let i = 0; i < totalLength; i++) { trackItems.push(items[Math.floor(Math.random() * items.length)]); }
   const targetSlot = Math.floor(totalLength * (0.65 + Math.random() * 0.2));
   trackItems[targetSlot] = resultIngot;
-  
   return { trackItems, targetSlot, totalLength };
 }
 
 function skipConveyor() {
   if (!conveyorState.isOpen || !playerState) return;
-  
-  if (conveyorState.timeoutId) {
-    clearTimeout(conveyorState.timeoutId);
-    conveyorState.timeoutId = null;
-  }
-  
+  if (conveyorState.timeoutId) { clearTimeout(conveyorState.timeoutId); conveyorState.timeoutId = null; }
   const resultIngot = conveyorState.resultIngot;
   const g = CONFIG_GEODES[conveyorState.geodeId];
   let xpGained = g.xpValue + (resultIngot?.xpValue || 0);
   let isFirstDiscovery = false;
-  
-  if (playerState.minedStats[resultIngot.id] === 0) {
-    isFirstDiscovery = true;
-    xpGained = Math.floor(xpGained * 3);
-    if (_showToast) _showToast(`🎉 ПЕРВОЕ ОТКРЫТИЕ! +${xpGained} XP`, '🌟');
-  }
-  
+  if (playerState.minedStats[resultIngot.id] === 0) { isFirstDiscovery = true; xpGained = Math.floor(xpGained * 3); if (_showToast) _showToast(`🎉 ПЕРВОЕ ОТКРЫТИЕ! +${xpGained} XP`, '🌟'); }
   playerState.ingots[resultIngot.id] = (playerState.ingots[resultIngot.id] || 0) + 1;
   playerState.minedStats[resultIngot.id] = (playerState.minedStats[resultIngot.id] || 0) + 1;
   playerState.player.totalIngots++;
-  addXP(xpGained);
-  saveGame();
-  cleanupConveyor();
-  isOpeningGeode = false;
-  
+  addXP(xpGained); saveGame(); cleanupConveyor(); isOpeningGeode = false;
   revealIngotSource(resultIngot.id);
-  
-  setTimeout(() => {
-    if (_showRewardPopup) _showRewardPopup(resultIngot);
-    if (_renderCurrentTab) _renderCurrentTab();
-  }, 100);
+  setTimeout(() => { if (_showRewardPopup) _showRewardPopup(resultIngot); if (_renderCurrentTab) _renderCurrentTab(); }, 100);
 }
 
 export function initRoulette(geodeId) {
   if (!playerState) return;
   const g = CONFIG_GEODES[geodeId]; if (!g || g.isSpecial) return;
-  
   const droppedId = getPityAdjustedDrop(geodeId);
-  
   const resultIngot = CONFIG_ITEMS[droppedId];
   const items = g.lootTable.map(e => CONFIG_ITEMS[e.ingotId]);
-  
   const { trackItems, targetSlot, totalLength } = generateRandomPattern(items, resultIngot);
-  
-  conveyorState.geodeId = geodeId;
-  conveyorState.isOpen = true;
-  conveyorState.resultIngot = resultIngot;
-  conveyorState.items = items;
-  conveyorState.trackItems = trackItems;
-  
+  conveyorState.geodeId = geodeId; conveyorState.isOpen = true; conveyorState.resultIngot = resultIngot; conveyorState.items = items; conveyorState.trackItems = trackItems;
   conveyorTrack.innerHTML = '';
-  trackItems.forEach((item, index) => {
-    const itemEl = document.createElement('div');
-    itemEl.className = 'conveyor-item';
-    itemEl.innerHTML = `<div class="conveyor-item-icon" id="conv-${index}"></div><div class="conveyor-item-name">${item.name}</div>`;
-    conveyorTrack.appendChild(itemEl);
-  });
-  
-  trackItems.forEach((item, index) => {
-    const el = document.getElementById(`conv-${index}`);
-    if (el && _renderImageToElement) {
-      _renderImageToElement(el, item.imagePath, item.icon, item.fallbackColor);
-    }
-  });
-  
-  conveyorTitle.innerHTML = `
-    ${g.name}
-    <button id="skipConveyorBtn" style="display:block; margin: 8px auto 0; background: rgba(255,215,0,0.12); border: 1px solid rgba(255,215,0,0.25); color: var(--accent-gold); padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-      ⏩ Быстрое открытие
-    </button>
-  `;
-  
+  trackItems.forEach((item, index) => { const itemEl = document.createElement('div'); itemEl.className = 'conveyor-item'; itemEl.innerHTML = `<div class="conveyor-item-icon" id="conv-${index}"></div><div class="conveyor-item-name">${item.name}</div>`; conveyorTrack.appendChild(itemEl); });
+  trackItems.forEach((item, index) => { const el = document.getElementById(`conv-${index}`); if (el && _renderImageToElement) { _renderImageToElement(el, item.imagePath, item.icon, item.fallbackColor); } });
+  conveyorTitle.innerHTML = `${g.name}<button id="skipConveyorBtn" style="display:block;margin:8px auto 0;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.25);color:var(--accent-gold);padding:6px 16px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;">⏩ Быстрое открытие</button>`;
   conveyorOverlay.classList.add('active');
-  
-  setTimeout(() => {
-    const skipBtn = document.getElementById('skipConveyorBtn');
-    if (skipBtn) {
-      skipBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        skipConveyor();
-      });
-    }
-  }, 50);
-  
+  setTimeout(() => { const skipBtn = document.getElementById('skipConveyorBtn'); if (skipBtn) { skipBtn.addEventListener('click', (e) => { e.stopPropagation(); skipConveyor(); }); } }, 50);
   const stopPosition = -(targetSlot * ITEM_WIDTH) + (VISIBLE_ITEMS * ITEM_WIDTH / 2) - ITEM_WIDTH / 2;
-  conveyorTrack.style.transition = 'none';
-  conveyorTrack.style.transform = 'translateX(0)';
-  conveyorTrack.offsetHeight;
-  
-  setTimeout(() => {
-    conveyorTrack.style.transition = 'transform 4.5s cubic-bezier(0.2, 0, 0.1, 1)';
-    conveyorTrack.style.transform = `translateX(${stopPosition}px)`;
-  }, 50);
-  
-  conveyorState.timeoutId = setTimeout(() => {
-    stopRoulette();
-  }, 4550);
+  conveyorTrack.style.transition = 'none'; conveyorTrack.style.transform = 'translateX(0)'; conveyorTrack.offsetHeight;
+  setTimeout(() => { conveyorTrack.style.transition = 'transform 4.5s cubic-bezier(0.2, 0, 0.1, 1)'; conveyorTrack.style.transform = `translateX(${stopPosition}px)`; }, 50);
+  conveyorState.timeoutId = setTimeout(() => { stopRoulette(); }, 4550);
 }
 
 function stopRoulette() {
@@ -2178,13 +2110,11 @@ function stopRoulette() {
   if (playerState.minedStats[resultIngot.id] === 0) { isFirstDiscovery = true; xpGained = Math.floor(xpGained * 3); if (_showToast) _showToast(`🎉 ПЕРВОЕ ОТКРЫТИЕ! +${xpGained} XP`, '🌟'); }
   playerState.ingots[resultIngot.id] = (playerState.ingots[resultIngot.id] || 0) + 1; playerState.minedStats[resultIngot.id] = (playerState.minedStats[resultIngot.id] || 0) + 1; playerState.player.totalIngots++;
   addXP(xpGained); saveGame(); cleanupConveyor(); isOpeningGeode = false;
-  
   revealIngotSource(resultIngot.id);
-  
   setTimeout(() => { if (_showRewardPopup) _showRewardPopup(resultIngot); if (_renderCurrentTab) _renderCurrentTab(); }, 100);
 }
 
-// ---------- КУЗНИЦА (BRAWL) С КНОПКОЙ БЫСТРОГО ОТКРЫТИЯ ----------
+// ---------- КУЗНИЦА (BRAWL) ----------
 let brawlState = { geodeId: null, isSpecial: false, tapsRemaining: 10, isOpen: false };
 const brawlOverlay = document.getElementById('brawlOverlay');
 const brawlGeode = document.getElementById('brawlGeode');
@@ -2204,111 +2134,24 @@ export function openBrawlOverlay(geodeId, isSpecial) {
   if (isSpecial) { brawlGeode.classList.add('special-geode'); } else { brawlGeode.classList.remove('special-geode'); }
   document.querySelector('.brawl-hint').style.display = 'block'; brawlCounter.style.display = 'block';
   if (_getGeodeStageImage && _renderImageToElement) { const stage = _getGeodeStageImage(geodeId, 10); _renderImageToElement(brawlGeode, stage.imagePath, stage.fallbackIcon, '#8B7355'); }
-  
-  const existingSkipBtn = document.getElementById('brawlSkipBtn');
-  if (existingSkipBtn) existingSkipBtn.remove();
-  
-  const skipBtn = document.createElement('button');
-  skipBtn.id = 'brawlSkipBtn';
-  skipBtn.textContent = '⏩ Быстрое открытие';
-  skipBtn.style.cssText = `
-    display: block;
-    margin: 16px auto 0;
-    background: rgba(255,215,0,0.12);
-    border: 1px solid rgba(255,215,0,0.25);
-    color: var(--accent-gold);
-    padding: 10px 20px;
-    border-radius: 24px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  `;
-  skipBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    skipBrawlOpening();
-  });
-  
-  const brawlContent = document.getElementById('brawlContent');
-  if (brawlContent) {
-    brawlContent.appendChild(skipBtn);
-  }
-  
+  const existingSkipBtn = document.getElementById('brawlSkipBtn'); if (existingSkipBtn) existingSkipBtn.remove();
+  const skipBtn = document.createElement('button'); skipBtn.id = 'brawlSkipBtn'; skipBtn.textContent = '⏩ Быстрое открытие';
+  skipBtn.style.cssText = 'display:block;margin:16px auto 0;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.25);color:var(--accent-gold);padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;';
+  skipBtn.addEventListener('click', (e) => { e.stopPropagation(); skipBrawlOpening(); });
+  const brawlContent = document.getElementById('brawlContent'); if (brawlContent) { brawlContent.appendChild(skipBtn); }
   brawlOverlay.classList.add('active');
 }
 
 function skipBrawlOpening() {
   if (!playerState || !brawlState.isOpen) return;
-  
-  const geodeId = brawlState.geodeId;
-  const isSpecial = brawlState.isSpecial;
-  
-  if (playerState.geodes[geodeId] > 0) {
-    playerState.geodes[geodeId]--;
-  }
-  playerState.player.totalOpened++;
-  
-  let droppedIngot = null;
-  let xpGained = 0;
-  
-  if (isSpecial) {
-    const g = CONFIG_GEODES[geodeId];
-    const loc = g.location;
-    if (!playerState.collectedArtifacts[loc]) {
-      playerState.collectedArtifacts[loc] = [];
-    }
-    const available = g.possibleIngots.filter((ingId) => !playerState.collectedArtifacts[loc].includes(ingId));
-    const picked = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : g.possibleIngots[0];
-    droppedIngot = CONFIG_ITEMS[picked];
-    playerState.ingots[picked] = (playerState.ingots[picked] || 0) + 1;
-    playerState.minedStats[picked] = (playerState.minedStats[picked] || 0) + 1;
-    if (!playerState.collectedArtifacts[loc].includes(picked)) {
-      playerState.collectedArtifacts[loc].push(picked);
-      playerState.player.totalArtifacts++;
-    }
-    if (!playerState.discoveredSpecialGeodes[loc]) playerState.discoveredSpecialGeodes[loc] = true;
-    xpGained = droppedIngot.xpValue;
-    addXP(xpGained);
-    saveGame();
-    
-    revealIngotSource(picked);
-    
-    const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1;
-    if (droppedIngot.isCollectible && isFirstCollectible) {
-      showCollectibleAnimation(droppedIngot);
-    }
-    
-    brawlGeode.style.display = 'none';
-    document.querySelector('.brawl-hint').style.display = 'none';
-    brawlCounter.style.display = 'none';
-    const skipBtn = document.getElementById('brawlSkipBtn');
-    if (skipBtn) skipBtn.remove();
-    
-    if (_renderImageToElement) _renderImageToElement(brawlResultIcon, droppedIngot.imagePath, droppedIngot.icon, droppedIngot.fallbackColor);
-    brawlResultName.textContent = droppedIngot.name;
-    brawlResultRarity.textContent = droppedIngot.rarity;
-    brawlResultRarity.style.color = droppedIngot.rarityClass === 'collectible' ? '#FF64FF' : (droppedIngot.rarityClass === 'legendary' ? '#FFD700' : '#fff');
-    brawlResult.classList.add('show');
-    brawlCloseBtn.style.display = 'block';
-    isOpeningGeode = false;
-    if (_renderCurrentTab) _renderCurrentTab();
-  } else {
-    brawlOverlay.classList.remove('active');
-    brawlState.isOpen = false;
-    const skipBtn = document.getElementById('brawlSkipBtn');
-    if (skipBtn) skipBtn.remove();
-    initRoulette(geodeId);
-  }
+  const geodeId = brawlState.geodeId; const isSpecial = brawlState.isSpecial;
+  if (playerState.geodes[geodeId] > 0) { playerState.geodes[geodeId]--; } playerState.player.totalOpened++;
+  let droppedIngot = null; let xpGained = 0;
+  if (isSpecial) { const g = CONFIG_GEODES[geodeId]; const loc = g.location; if (!playerState.collectedArtifacts[loc]) { playerState.collectedArtifacts[loc] = []; } const available = g.possibleIngots.filter((ingId) => !playerState.collectedArtifacts[loc].includes(ingId)); const picked = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : g.possibleIngots[0]; droppedIngot = CONFIG_ITEMS[picked]; playerState.ingots[picked] = (playerState.ingots[picked] || 0) + 1; playerState.minedStats[picked] = (playerState.minedStats[picked] || 0) + 1; if (!playerState.collectedArtifacts[loc].includes(picked)) { playerState.collectedArtifacts[loc].push(picked); playerState.player.totalArtifacts++; } if (!playerState.discoveredSpecialGeodes[loc]) playerState.discoveredSpecialGeodes[loc] = true; xpGained = droppedIngot.xpValue; addXP(xpGained); saveGame(); revealIngotSource(picked); const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1; if (droppedIngot.isCollectible && isFirstCollectible) { showCollectibleAnimation(droppedIngot); } brawlGeode.style.display = 'none'; document.querySelector('.brawl-hint').style.display = 'none'; brawlCounter.style.display = 'none'; const skipBtn = document.getElementById('brawlSkipBtn'); if (skipBtn) skipBtn.remove(); if (_renderImageToElement) _renderImageToElement(brawlResultIcon, droppedIngot.imagePath, droppedIngot.icon, droppedIngot.fallbackColor); brawlResultName.textContent = droppedIngot.name; brawlResultRarity.textContent = droppedIngot.rarity; brawlResultRarity.style.color = droppedIngot.rarityClass === 'collectible' ? '#FF64FF' : (droppedIngot.rarityClass === 'legendary' ? '#FFD700' : '#fff'); brawlResult.classList.add('show'); brawlCloseBtn.style.display = 'block'; isOpeningGeode = false; if (_renderCurrentTab) _renderCurrentTab(); }
+  else { brawlOverlay.classList.remove('active'); brawlState.isOpen = false; const skipBtn = document.getElementById('brawlSkipBtn'); if (skipBtn) skipBtn.remove(); initRoulette(geodeId); }
 }
 
-function closeBrawlOverlay() {
-  brawlOverlay.classList.remove('active');
-  brawlState.isOpen = false;
-  isOpeningGeode = false;
-  const skipBtn = document.getElementById('brawlSkipBtn');
-  if (skipBtn) skipBtn.remove();
-  if (_renderCurrentTab) _renderCurrentTab();
-}
+function closeBrawlOverlay() { brawlOverlay.classList.remove('active'); brawlState.isOpen = false; isOpeningGeode = false; const skipBtn = document.getElementById('brawlSkipBtn'); if (skipBtn) skipBtn.remove(); if (_renderCurrentTab) _renderCurrentTab(); }
 
 function handleBrawlTap(e) {
   if (!brawlState.isOpen || brawlState.tapsRemaining <= 0) return;
@@ -2322,10 +2165,7 @@ function handleBrawlTap(e) {
 function finishBrawlOpening() {
   if (!playerState) return; const geodeId = brawlState.geodeId; const isSpecial = brawlState.isSpecial;
   if (playerState.geodes[geodeId] > 0) { playerState.geodes[geodeId]--; } playerState.player.totalOpened++;
-  let droppedIngot = null; let xpGained = 0;
-  const skipBtn = document.getElementById('brawlSkipBtn');
-  if (skipBtn) skipBtn.remove();
-  
+  let droppedIngot = null; let xpGained = 0; const skipBtn = document.getElementById('brawlSkipBtn'); if (skipBtn) skipBtn.remove();
   if (isSpecial) { const g = CONFIG_GEODES[geodeId]; const loc = g.location; if (!playerState.collectedArtifacts[loc]) { playerState.collectedArtifacts[loc] = []; } const available = g.possibleIngots.filter((ingId) => !playerState.collectedArtifacts[loc].includes(ingId)); const picked = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : g.possibleIngots[0]; droppedIngot = CONFIG_ITEMS[picked]; playerState.ingots[picked] = (playerState.ingots[picked] || 0) + 1; playerState.minedStats[picked] = (playerState.minedStats[picked] || 0) + 1; if (!playerState.collectedArtifacts[loc].includes(picked)) { playerState.collectedArtifacts[loc].push(picked); playerState.player.totalArtifacts++; } if (!playerState.discoveredSpecialGeodes[loc]) playerState.discoveredSpecialGeodes[loc] = true; xpGained = droppedIngot.xpValue; addXP(xpGained); saveGame(); revealIngotSource(picked); const isFirstCollectible = droppedIngot.isCollectible && playerState.ingots[droppedIngot.id] === 1; if (droppedIngot.isCollectible && isFirstCollectible) { showCollectibleAnimation(droppedIngot); } brawlGeode.classList.add('explode-animation'); brawlGeode.classList.remove('special-geode'); document.querySelector('.brawl-hint').style.display = 'none'; brawlCounter.style.display = 'none'; setTimeout(() => { brawlGeode.style.display = 'none'; if (_renderImageToElement) _renderImageToElement(brawlResultIcon, droppedIngot.imagePath, droppedIngot.icon, droppedIngot.fallbackColor); brawlResultName.textContent = droppedIngot.name; brawlResultRarity.textContent = droppedIngot.rarity; brawlResultRarity.style.color = droppedIngot.rarityClass === 'collectible' ? '#FF64FF' : (droppedIngot.rarityClass === 'legendary' ? '#FFD700' : '#fff'); brawlResult.classList.add('show'); brawlCloseBtn.style.display = 'block'; isOpeningGeode = false; if (_renderCurrentTab) _renderCurrentTab(); }, 500); }
   else { brawlGeode.classList.add('explode-animation'); document.querySelector('.brawl-hint').style.display = 'none'; brawlCounter.style.display = 'none'; setTimeout(() => { brawlOverlay.classList.remove('active'); brawlState.isOpen = false; initRoulette(geodeId); }, 500); }
 }
