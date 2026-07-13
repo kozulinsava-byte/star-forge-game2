@@ -20,6 +20,7 @@ async function loadMiniGames() {
 
 loadMiniGames();
 
+
 registerUIFunctions({
     showToast: showToast,
     getGeodeStageImage: getGeodeStageImage,
