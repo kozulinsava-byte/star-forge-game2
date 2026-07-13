@@ -3,7 +3,6 @@ import { CONFIG_ITEMS, CONFIG_GEODES, CONFIG_EXPEDITIONS, EXPEDITION_GROUPS, ALC
 import { getPlayerState, getSerialForCollectible, isLocationCompleted, sellIngot, startExpedition, openBrawlOverlay, eventsManager, saveGame, devGiveXP, devGiveGeodes, devUnlockLocations, devResetGeodes, startSignalGame, exchangeSpecialGeodeForXP, openForge, sendBotNotification, registerUIFunctions, startMeteorStorm, canStartMeteorStorm, isMeteorStormOnCooldown, getMeteorCooldownRemaining, meteorStormState, buyMeteorGeode, METEOR_SHOP_ITEMS, completeQuest, refreshActiveQuests, toggleSpeedMode, getQuestCooldownRemaining, performAlchemy, isIngotSourceKnown, isIngotUsageKnown, isRecipeDiscovered, getDiscoveredKnowledge, performSynthesis, getSynthesisTargetsByLocation, getSynthesisCost, getNextEventTime } from './core.js';
 import { renderIngotScreen, getBonusRecycledChance, getBonusExpeditionSpeed, getActiveBonuses, getShavings } from './ingot.js';
 
-// 🆕 Точка входа для мини-игр
 let _startQuenchGame = null;
 let _startStackGame = null;
 let _startUpgradeGame = null;
@@ -19,10 +18,8 @@ async function loadMiniGames() {
     }
 }
 
-// Загружаем мини-игры при старте
 loadMiniGames();
 
-// Регистрируем UI функции в core.js
 registerUIFunctions({
     showToast: showToast,
     getGeodeStageImage: getGeodeStageImage,
@@ -36,36 +33,27 @@ registerUIFunctions({
     updateMeteorShardsDisplay: updateMeteorShardsDisplay
 });
 
-// DOM-элементы
 export const mainContent = document.getElementById('mainContent');
 const showcaseOverlay = document.getElementById('showcaseOverlay');
 const showcaseContent = document.getElementById('showcaseContent');
 const modalOverlay = document.getElementById('modalOverlay');
 const modalContent = document.getElementById('modalContent');
 
-// Текущие вкладки
 export let currentTab = 'expeditions';
 export let inventorySubTab = 'geodes';
 export let collectionSubTab = 'encyclopedia';
 
-// ID интервала для живого таймера в модалке
 let modalTimerInterval = null;
-
-// Состояние аккордеона
 let expandedGroups = {};
-
-// Состояние алхимии
 let alchemyMode = false;
 let alchemyFirstIngot = null;
 
-// ★ ГЛОБАЛЬНОЕ СОСТОЯНИЕ КОНТРАКТА (persistence между открытиями)
 let contractState = {
-    selectedIngots: [],       // массив ID слитков в слотах
-    selectedRarity: null,     // зафиксированная редкость
-    isActive: false           // флаг, что контракт в процессе
+    selectedIngots: [],
+    selectedRarity: null,
+    isActive: false
 };
 
-// ---------- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ----------
 function initTheme() {
     const savedTheme = localStorage.getItem('starforge_theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -76,7 +64,6 @@ function toggleTheme() {
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('starforge_theme', newTheme);
-
     const btn = document.getElementById('themeProfileBtn');
     if (btn) {
         btn.innerHTML = newTheme === 'dark' ? '🌙 Сменить тему (Светлая)' : '☀️ Сменить тему (Тёмная)';
@@ -85,10 +72,8 @@ function toggleTheme() {
 
 initTheme();
 
-// ---------- УТИЛИТЫ РЕНДЕРИНГА (ЭМОДЗИ-ЗАГЛУШКИ) ----------
 export function renderImageToElement(el, src, fallbackIcon, fallbackColor) {
     if (!el) return;
-
     el.innerHTML = '';
     const fb = document.createElement('span');
     fb.className = 'fallback-icon';
@@ -96,7 +81,6 @@ export function renderImageToElement(el, src, fallbackIcon, fallbackColor) {
     fb.style.color = fallbackColor || '#FFD700';
     fb.style.fontSize = el.classList.contains('card-icon') ? '40px' : 'inherit';
     el.appendChild(fb);
-
     const img = new Image();
     img.onload = () => {
         el.innerHTML = '';
@@ -117,43 +101,35 @@ export function renderMysteryPlaceholder(el) {
 export function getGeodeStageImage(geodeId, taps) {
     const g = CONFIG_GEODES[geodeId];
     if (!g) return { imagePath: '', fallbackIcon: '🪨' };
-
     for (let s of g.stages) {
         if (taps >= s.minTaps && taps <= s.maxTaps) {
             return { imagePath: s.imagePath, fallbackIcon: s.fallbackIcon };
         }
     }
-
     return { imagePath: g.stages[0].imagePath, fallbackIcon: g.stages[0].fallbackIcon };
 }
 
 export function showToast(msg, emoji = '✨') {
     const c = document.getElementById('toastContainer');
     if (!c) return;
-
     const t = document.createElement('div');
     t.className = 'toast';
     t.innerHTML = `<span>${emoji}</span> ${msg}`;
     c.appendChild(t);
-
     setTimeout(() => {
         t.style.opacity = '0';
         setTimeout(() => t.remove(), 300);
     }, 2500);
 }
 
-// ---------- REWARD POPUP ----------
 export function showRewardPopup(ingot) {
     const overlay = document.getElementById('rewardPopupOverlay');
     const iconEl = document.getElementById('rewardPopupIcon');
     const nameEl = document.getElementById('rewardPopupName');
     const closeBtn = document.getElementById('rewardPopupClose');
-
     renderImageToElement(iconEl, ingot.imagePath, ingot.icon, ingot.fallbackColor);
     nameEl.textContent = ingot.name;
-
     overlay.classList.add('active');
-
     const closeHandler = () => {
         overlay.classList.remove('active');
         closeBtn.removeEventListener('click', closeHandler);
@@ -161,45 +137,27 @@ export function showRewardPopup(ingot) {
     closeBtn.addEventListener('click', closeHandler);
 }
 
-// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ ИНВЕНТАРЯ) ----------
 function openInventoryShowcase(ingotId) {
     const state = getPlayerState();
     const ingot = CONFIG_ITEMS[ingotId];
     if (!ingot) return;
-
     const owned = state.ingots[ingotId] > 0;
     if (!owned) return;
-
     const rarityColors = {
-        'junk': '#6b6b6b',
-        'recycled': '#8b7355',
-        'common': '#A0A0A0',
-        'rare': '#4A9CFF',
-        'epic': '#B44AFF',
-        'legendary': '#FFD700',
-        'collectible': '#FF64FF'
+        'junk': '#6b6b6b', 'recycled': '#8b7355', 'common': '#A0A0A0',
+        'rare': '#4A9CFF', 'epic': '#B44AFF', 'legendary': '#FFD700', 'collectible': '#FF64FF'
     };
-
     const sourceNames = {
-        'expedition': 'Экспедиционный',
-        'crafted': 'Крафтовый',
-        'meteor': 'Метеоритный',
-        'special_meteor': 'Метеоритный',
-        'alchemy': 'Алхимический'
+        'expedition': 'Экспедиционный', 'crafted': 'Крафтовый', 'meteor': 'Метеоритный',
+        'special_meteor': 'Метеоритный', 'alchemy': 'Алхимический'
     };
-
     const sourceColors = {
-        'expedition': '#50C878',
-        'crafted': '#FF8C00',
-        'meteor': '#FF4444',
-        'special_meteor': '#FF4444',
-        'alchemy': '#FFD700'
+        'expedition': '#50C878', 'crafted': '#FF8C00', 'meteor': '#FF4444',
+        'special_meteor': '#FF4444', 'alchemy': '#FFD700'
     };
-
     const rarityColor = rarityColors[ingot.rarityLevel] || '#A0A0A0';
     const sourceColor = sourceColors[ingot.sourceType] || '#A0A0A0';
     const sourceName = sourceNames[ingot.sourceType] || ingot.sourceType;
-
     let html = `
         <div class="showcase-image" id="showcaseImage"></div>
         <div class="showcase-info">
@@ -213,14 +171,11 @@ function openInventoryShowcase(ingotId) {
             <button class="btn" id="showcaseDetailsBtn" style="margin-top:12px;" data-ingot="${ingotId}">📋 Подробнее</button>
         </div>
     `;
-
     showcaseContent.innerHTML = html;
-
     const imgEl = document.getElementById('showcaseImage');
     renderImageToElement(imgEl, ingot.imagePath, ingot.icon, ingot.fallbackColor);
     showcaseContent.style.opacity = '1';
     showcaseOverlay.classList.add('active');
-
     setTimeout(() => {
         const detailsBtn = document.getElementById('showcaseDetailsBtn');
         if (detailsBtn) {
@@ -232,47 +187,28 @@ function openInventoryShowcase(ingotId) {
     }, 10);
 }
 
-// ---------- SHOWCASE (ОТКРЫТИЕ КАРТОЧКИ ИЗ КОЛЛЕКЦИИ) ----------
 function openCollectionShowcase(ingotId) {
     const state = getPlayerState();
     const ingot = CONFIG_ITEMS[ingotId];
     if (!ingot) return;
-
     const discovered = state.minedStats[ingotId] > 0;
     const isCollectible = ingot.isCollectible;
-
     const rarityColors = {
-        'junk': '#6b6b6b',
-        'recycled': '#8b7355',
-        'common': '#A0A0A0',
-        'rare': '#4A9CFF',
-        'epic': '#B44AFF',
-        'legendary': '#FFD700',
-        'collectible': '#FF64FF'
+        'junk': '#6b6b6b', 'recycled': '#8b7355', 'common': '#A0A0A0',
+        'rare': '#4A9CFF', 'epic': '#B44AFF', 'legendary': '#FFD700', 'collectible': '#FF64FF'
     };
-
     const sourceNames = {
-        'expedition': 'Экспедиционный',
-        'crafted': 'Крафтовый',
-        'meteor': 'Метеоритный',
-        'special_meteor': 'Метеоритный',
-        'alchemy': 'Алхимический'
+        'expedition': 'Экспедиционный', 'crafted': 'Крафтовый', 'meteor': 'Метеоритный',
+        'special_meteor': 'Метеоритный', 'alchemy': 'Алхимический'
     };
-
     const sourceColors = {
-        'expedition': '#50C878',
-        'crafted': '#FF8C00',
-        'meteor': '#FF4444',
-        'special_meteor': '#FF4444',
-        'alchemy': '#FFD700'
+        'expedition': '#50C878', 'crafted': '#FF8C00', 'meteor': '#FF4444',
+        'special_meteor': '#FF4444', 'alchemy': '#FFD700'
     };
-
     const rarityColor = rarityColors[ingot.rarityLevel] || '#A0A0A0';
     const sourceColor = sourceColors[ingot.sourceType] || '#A0A0A0';
     const sourceName = sourceNames[ingot.sourceType] || ingot.sourceType;
-
     let html = '';
-
     if (!discovered && !ingot.isCollectible) {
         const locationName = CONFIG_EXPEDITIONS[ingot.location]?.name || 'неизвестной локации';
         html = `
@@ -289,7 +225,6 @@ function openCollectionShowcase(ingotId) {
         showcaseContent.innerHTML = html;
         renderMysteryPlaceholder(document.getElementById('showcaseImage'));
         showcaseContent.style.opacity = '0.8';
-
     } else if (!discovered && isCollectible) {
         html = `
             <div class="showcase-image" id="showcaseImage"></div>
@@ -305,7 +240,6 @@ function openCollectionShowcase(ingotId) {
         showcaseContent.innerHTML = html;
         renderMysteryPlaceholder(document.getElementById('showcaseImage'));
         showcaseContent.style.opacity = '0.8';
-
     } else if (isCollectible) {
         const effectText = ingot.effect_name ? `<div style="font-size:12px; color:#FFD700; margin-top:8px;">✨ Бонус: ${ingot.effect_name}</div>` : '';
         html = `
@@ -328,11 +262,9 @@ function openCollectionShowcase(ingotId) {
         showcaseContent.innerHTML = html;
         renderImageToElement(document.getElementById('showcaseImage'), ingot.imagePath, ingot.icon, ingot.fallbackColor);
         showcaseContent.style.opacity = '1';
-
         const styleEl = document.createElement('style');
         styleEl.textContent = '@keyframes legendaryGlow { 0%,100%{box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(180,0,255,0.4);} 50%{box-shadow:0 0 60px rgba(255,215,0,0.9),0 0 120px rgba(180,0,255,0.7);} }';
         showcaseContent.appendChild(styleEl);
-
     } else {
         html = `
             <div class="showcase-image" id="showcaseImage"></div>
@@ -354,9 +286,7 @@ function openCollectionShowcase(ingotId) {
         renderImageToElement(document.getElementById('showcaseImage'), ingot.imagePath, ingot.icon, ingot.fallbackColor);
         showcaseContent.style.opacity = '1';
     }
-
     showcaseOverlay.classList.add('active');
-
     setTimeout(() => {
         const detailsBtn = document.getElementById('showcaseDetailsBtn');
         if (detailsBtn) {
@@ -372,18 +302,13 @@ export function closeShowcase() {
     showcaseOverlay.classList.remove('active');
 }
 
-// ========== ★ ЖУРНАЛ ИССЛЕДОВАТЕЛЯ — ЭКРАН «ПОДРОБНЕЕ» ★ ==========
 function showItemDetails(ingotId) {
     const state = getPlayerState();
     const ingot = CONFIG_ITEMS[ingotId];
     if (!ingot) return;
-
     const discovered = state.minedStats[ingotId] > 0;
-
-    // ===== ИНДИКАТОР ЗНАНИЙ =====
     const sourceKnown = discovered || isIngotSourceKnown(ingotId);
     const usageKnown = isIngotUsageKnown(ingotId);
-
     const knowledgeDots = `
         <div style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;">
             <div class="knowledge-dot ${discovered ? 'active' : ''}" title="${discovered ? 'Предмет найден' : 'Предмет не найден'}"></div>
@@ -391,15 +316,11 @@ function showItemDetails(ingotId) {
             <div class="knowledge-dot ${usageKnown ? 'active' : ''}" title="${usageKnown ? 'Применение известно' : 'Применение неизвестно'}"></div>
         </div>
     `;
-
-    // ===== ЗОНА 1: КАК ПОЛУЧИТЬ (СОЗВЕЗДИЕ ИСТОЧНИКА) =====
     let sourceHtml = '';
-
     if (ingot.sourceType === 'expedition') {
         const locName = CONFIG_EXPEDITIONS[ingot.location]?.name || 'Неизвестная локация';
         const locIcon = CONFIG_EXPEDITIONS[ingot.location]?.fallbackIcon || '❓';
         const locUnlocked = state.unlockedExpeditions.includes(ingot.location);
-
         sourceHtml = `
             <div style="display:flex; flex-direction:column; align-items:center; gap:0; padding:20px 0;">
                 <div class="journal-node journal-node-location" data-tooltip="${locName}">
@@ -407,10 +328,7 @@ function showItemDetails(ingotId) {
                 </div>
                 <div class="journal-connector"></div>
                 <div class="journal-node ${discovered ? 'journal-node-known' : 'journal-node-unknown'}">
-                    ${discovered
-                ? `<span style="font-size:38px;">${ingot.icon}</span>`
-                : `<span style="font-size:38px; opacity:0.4;">❓</span>`
-            }
+                    ${discovered ? `<span style="font-size:38px;">${ingot.icon}</span>` : `<span style="font-size:38px; opacity:0.4;">❓</span>`}
                 </div>
                 <div style="font-size:12px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:6px; font-weight:${discovered ? '600' : '400'};">
                     ${discovered ? ingot.name : '???'}
@@ -419,7 +337,6 @@ function showItemDetails(ingotId) {
             </div>
         `;
     } else if (ingot.sourceType === 'alchemy') {
-        // Находим рецепт
         let recipeHtml = '';
         for (let recipeId in ALCHEMY_RECIPES) {
             const recipe = ALCHEMY_RECIPES[recipeId];
@@ -428,7 +345,6 @@ function showItemDetails(ingotId) {
                 const ing2Known = state.minedStats[recipe.ingredients[1]] > 0;
                 const ing1 = CONFIG_ITEMS[recipe.ingredients[0]];
                 const ing2 = CONFIG_ITEMS[recipe.ingredients[1]];
-
                 recipeHtml = `
                     <div style="display:flex; align-items:center; justify-content:center; gap:0; padding:20px 0; flex-wrap:wrap;">
                         <div class="journal-node ${ing1Known ? 'journal-node-known' : 'journal-node-unknown'}" data-tooltip="${ing1Known ? ing1.name : '???'}">
@@ -487,10 +403,7 @@ function showItemDetails(ingotId) {
                 </div>
                 <div class="journal-connector"></div>
                 <div class="journal-node ${discovered ? 'journal-node-known' : 'journal-node-unknown'}">
-                    ${discovered
-                ? `<span style="font-size:38px;">${ingot.icon}</span>`
-                : `<span style="font-size:38px; opacity:0.4;">❓</span>`
-            }
+                    ${discovered ? `<span style="font-size:38px;">${ingot.icon}</span>` : `<span style="font-size:38px; opacity:0.4;">❓</span>`}
                 </div>
                 <div style="font-size:12px; color:${discovered ? 'var(--text-primary)' : 'var(--text-muted)'}; margin-top:6px; font-weight:${discovered ? '600' : '400'};">
                     ${discovered ? ingot.name : '???'}
@@ -499,11 +412,8 @@ function showItemDetails(ingotId) {
             </div>
         `;
     }
-
-    // ===== ЗОНА 2: ГДЕ ПРИМЕНЯЕТСЯ (СОЗВЕЗДИЕ РЕЦЕПТОВ) — БЕЗ СПОЙЛЕРОВ =====
     let usageHtml = '';
     const usedInRecipes = [];
-
     for (let recipeId in ALCHEMY_RECIPES) {
         const recipe = ALCHEMY_RECIPES[recipeId];
         if (recipe.ingredients.includes(ingotId)) {
@@ -512,18 +422,9 @@ function showItemDetails(ingotId) {
             const resultIng = CONFIG_ITEMS[recipe.resultIngotId];
             const otherKnown = state.minedStats[otherIngId] > 0;
             const resultKnown = state.minedStats[recipe.resultIngotId] > 0;
-
-            usedInRecipes.push({
-                otherIngId,
-                otherIng,
-                otherKnown,
-                resultIng,
-                resultKnown,
-                recipeId
-            });
+            usedInRecipes.push({ otherIngId, otherIng, otherKnown, resultIng, resultKnown, recipeId });
         }
     }
-
     if (usedInRecipes.length > 0) {
         usedInRecipes.forEach(rec => {
             usageHtml += `
@@ -546,163 +447,35 @@ function showItemDetails(ingotId) {
     } else {
         usageHtml = '<div style="color:var(--text-muted); padding:20px; text-align:center; font-size:13px;">Пока не используется в известных рецептах</div>';
     }
-
-    // ===== СОБИРАЕМ МОДАЛКУ =====
     const html = `
         <style>
-            @keyframes knowledgeGlow {
-                0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.3); }
-                50% { box-shadow: 0 0 14px rgba(255,215,0,0.7); }
-            }
-            @keyframes nodeGlowKnown {
-                0%, 100% { box-shadow: 0 0 12px rgba(139,115,85,0.2); }
-                50% { box-shadow: 0 0 24px rgba(139,115,85,0.5); }
-            }
-            @keyframes nodeGlowResult {
-                0%, 100% { box-shadow: 0 0 16px rgba(255,215,0,0.2); }
-                50% { box-shadow: 0 0 32px rgba(255,215,0,0.6); }
-            }
-            @keyframes nodeGlowLocation {
-                0%, 100% { box-shadow: 0 0 12px rgba(80,200,120,0.15); }
-                50% { box-shadow: 0 0 24px rgba(80,200,120,0.4); }
-            }
-            @keyframes connectorPulse {
-                0%, 100% { opacity: 0.5; }
-                50% { opacity: 1; }
-            }
-            
-            .knowledge-dot {
-                width: 12px;
-                height: 12px;
-                border-radius: 50%;
-                background: #2a2a2a;
-                transition: all 0.4s ease;
-                box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
-            }
-            .knowledge-dot.active {
-                background: #FFD700;
-                box-shadow: 0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(255,215,0,0.3);
-                animation: knowledgeGlow 2.5s ease-in-out infinite;
-            }
-            
-            .journal-scroll {
-                max-height: 60vh;
-                overflow-y: auto;
-                padding: 6px;
-                scrollbar-width: thin;
-                scrollbar-color: rgba(255,215,0,0.2) transparent;
-            }
-            .journal-scroll::-webkit-scrollbar { width: 3px; }
-            .journal-scroll::-webkit-scrollbar-track { background: transparent; }
-            .journal-scroll::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.2); border-radius: 10px; }
-            
-            .journal-section {
-                background: linear-gradient(135deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.2) 100%);
-                border-radius: 24px;
-                padding: 20px 14px;
-                margin-bottom: 16px;
-                border: 1px solid rgba(255,255,255,0.05);
-                position: relative;
-                overflow: hidden;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            }
-            .journal-section::before {
-                content: '';
-                position: absolute;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                background: radial-gradient(ellipse at 50% 0%, rgba(139,115,85,0.08) 0%, transparent 70%);
-                pointer-events: none;
-            }
-            .journal-section-title {
-                font-size: 12px;
-                font-weight: 700;
-                color: var(--accent-gold);
-                margin-bottom: 10px;
-                text-align: center;
-                letter-spacing: 3px;
-                text-transform: uppercase;
-                position: relative;
-                text-shadow: 0 0 20px rgba(255,215,0,0.3);
-            }
-            
-            .journal-node {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 56px;
-                height: 56px;
-                border-radius: 18px;
-                cursor: pointer;
-                transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1.2);
-                position: relative;
-                z-index: 1;
-            }
-            .journal-node:active { transform: scale(1.12); }
-            
-            .journal-node-known {
-                background: linear-gradient(135deg, rgba(139,115,85,0.2) 0%, rgba(139,115,85,0.1) 100%);
-                border: 2px solid rgba(139,115,85,0.5);
-                box-shadow: 0 0 18px rgba(139,115,85,0.25);
-                animation: nodeGlowKnown 3s ease-in-out infinite;
-            }
-            .journal-node-unknown {
-                background: rgba(255,255,255,0.02);
-                border: 2px dashed rgba(255,255,255,0.08);
-                cursor: default;
-                box-shadow: none;
-            }
-            .journal-node-unknown:active { transform: none; }
-            .journal-node-location {
-                background: linear-gradient(135deg, rgba(80,200,120,0.15) 0%, rgba(80,200,120,0.05) 100%);
-                border: 2px solid rgba(80,200,120,0.4);
-                box-shadow: 0 0 20px rgba(80,200,120,0.2);
-                width: 64px;
-                height: 64px;
-                border-radius: 22px;
-                animation: nodeGlowLocation 3.5s ease-in-out infinite;
-            }
-            .journal-node-result {
-                background: linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.05) 100%);
-                border: 2px solid rgba(255,215,0,0.6);
-                box-shadow: 0 0 28px rgba(255,215,0,0.3);
-                width: 64px;
-                height: 64px;
-                border-radius: 22px;
-                animation: nodeGlowResult 2.8s ease-in-out infinite;
-            }
-            
-            .journal-connector {
-                width: 3px;
-                height: 28px;
-                background: linear-gradient(to bottom, rgba(255,215,0,0.6), rgba(255,215,0,0.05));
-                border-radius: 2px;
-                margin: 6px 0;
-                animation: connectorPulse 2s ease-in-out infinite;
-            }
-            
-            .journal-tooltip {
-                position: fixed;
-                background: rgba(18,18,22,0.98);
-                backdrop-filter: blur(20px);
-                border: 1px solid rgba(255,215,0,0.5);
-                border-radius: 14px;
-                padding: 10px 16px;
-                font-size: 12px;
-                color: #FFD700;
-                font-weight: 600;
-                pointer-events: none;
-                z-index: 10001;
-                box-shadow: 0 12px 32px rgba(0,0,0,0.7), 0 0 20px rgba(255,215,0,0.15);
-                opacity: 0;
-                transition: opacity 0.2s ease;
-                white-space: nowrap;
-                letter-spacing: 0.5px;
-            }
-            .journal-tooltip.show { opacity: 1; }
+            @keyframes knowledgeGlow { 0%,100%{box-shadow:0 0 6px rgba(255,215,0,0.3);} 50%{box-shadow:0 0 14px rgba(255,215,0,0.7);} }
+            @keyframes nodeGlowKnown { 0%,100%{box-shadow:0 0 12px rgba(139,115,85,0.2);} 50%{box-shadow:0 0 24px rgba(139,115,85,0.5);} }
+            @keyframes nodeGlowResult { 0%,100%{box-shadow:0 0 16px rgba(255,215,0,0.2);} 50%{box-shadow:0 0 32px rgba(255,215,0,0.6);} }
+            @keyframes nodeGlowLocation { 0%,100%{box-shadow:0 0 12px rgba(80,200,120,0.15);} 50%{box-shadow:0 0 24px rgba(80,200,120,0.4);} }
+            @keyframes connectorPulse { 0%,100%{opacity:0.5;} 50%{opacity:1;} }
+            .knowledge-dot { width:12px;height:12px;border-radius:50%;background:#2a2a2a;transition:all 0.4s ease;box-shadow:inset 0 1px 2px rgba(0,0,0,0.4); }
+            .knowledge-dot.active { background:#FFD700;box-shadow:0 0 10px rgba(255,215,0,0.6),0 0 20px rgba(255,215,0,0.3);animation:knowledgeGlow 2.5s ease-in-out infinite; }
+            .journal-scroll { max-height:60vh;overflow-y:auto;padding:6px;scrollbar-width:thin;scrollbar-color:rgba(255,215,0,0.2) transparent; }
+            .journal-scroll::-webkit-scrollbar { width:3px; }
+            .journal-scroll::-webkit-scrollbar-track { background:transparent; }
+            .journal-scroll::-webkit-scrollbar-thumb { background:rgba(255,215,0,0.2);border-radius:10px; }
+            .journal-section { background:linear-gradient(135deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.2) 100%);border-radius:24px;padding:20px 14px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+            .journal-section::before { content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 50% 0%,rgba(139,115,85,0.08) 0%,transparent 70%);pointer-events:none; }
+            .journal-section-title { font-size:12px;font-weight:700;color:var(--accent-gold);margin-bottom:10px;text-align:center;letter-spacing:3px;text-transform:uppercase;position:relative;text-shadow:0 0 20px rgba(255,215,0,0.3); }
+            .journal-node { display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:18px;cursor:pointer;transition:all 0.3s cubic-bezier(0.25,0.8,0.25,1.2);position:relative;z-index:1; }
+            .journal-node:active { transform:scale(1.12); }
+            .journal-node-known { background:linear-gradient(135deg,rgba(139,115,85,0.2) 0%,rgba(139,115,85,0.1) 100%);border:2px solid rgba(139,115,85,0.5);box-shadow:0 0 18px rgba(139,115,85,0.25);animation:nodeGlowKnown 3s ease-in-out infinite; }
+            .journal-node-unknown { background:rgba(255,255,255,0.02);border:2px dashed rgba(255,255,255,0.08);cursor:default;box-shadow:none; }
+            .journal-node-unknown:active { transform:none; }
+            .journal-node-location { background:linear-gradient(135deg,rgba(80,200,120,0.15) 0%,rgba(80,200,120,0.05) 100%);border:2px solid rgba(80,200,120,0.4);box-shadow:0 0 20px rgba(80,200,120,0.2);width:64px;height:64px;border-radius:22px;animation:nodeGlowLocation 3.5s ease-in-out infinite; }
+            .journal-node-result { background:linear-gradient(135deg,rgba(255,215,0,0.15) 0%,rgba(255,215,0,0.05) 100%);border:2px solid rgba(255,215,0,0.6);box-shadow:0 0 28px rgba(255,215,0,0.3);width:64px;height:64px;border-radius:22px;animation:nodeGlowResult 2.8s ease-in-out infinite; }
+            .journal-connector { width:3px;height:28px;background:linear-gradient(to bottom,rgba(255,215,0,0.6),rgba(255,215,0,0.05));border-radius:2px;margin:6px 0;animation:connectorPulse 2s ease-in-out infinite; }
+            .journal-tooltip { position:fixed;background:rgba(18,18,22,0.98);backdrop-filter:blur(20px);border:1px solid rgba(255,215,0,0.5);border-radius:14px;padding:10px 16px;font-size:12px;color:#FFD700;font-weight:600;pointer-events:none;z-index:10001;box-shadow:0 12px 32px rgba(0,0,0,0.7),0 0 20px rgba(255,215,0,0.15);opacity:0;transition:opacity 0.2s ease;white-space:nowrap;letter-spacing:0.5px; }
+            .journal-tooltip.show { opacity:1; }
         </style>
         <div class="modal-header">
-            <div class="modal-title" style="display:flex; align-items:center; gap:12px; justify-content:center;">
+            <div class="modal-title" style="display:flex;align-items:center;gap:12px;justify-content:center;">
                 <span style="font-size:32px;">${discovered ? ingot.icon : '❓'}</span>
                 <span style="font-size:18px;">${discovered ? ingot.name : 'Неизвестный материал'}</span>
             </div>
@@ -715,100 +488,65 @@ function showItemDetails(ingotId) {
                     <div class="journal-section-title">🔍 Источник</div>
                     ${sourceHtml}
                 </div>
-                
                 <div class="journal-section">
                     <div class="journal-section-title">⚒️ Применение в сплавах</div>
                     ${usageHtml}
                 </div>
-                
                 ${discovered ? `
-                    <div style="text-align:center; padding:12px; color:var(--text-secondary); font-size:12px; line-height:1.6; background:rgba(0,0,0,0.15); border-radius:16px; margin-top:4px;">
+                    <div style="text-align:center;padding:12px;color:var(--text-secondary);font-size:12px;line-height:1.6;background:rgba(0,0,0,0.15);border-radius:16px;margin-top:4px;">
                         ${ingot.description}
                     </div>
                 ` : `
-                    <div style="text-align:center; padding:12px; color:var(--text-muted); font-size:11px; background:rgba(0,0,0,0.15); border-radius:16px; margin-top:4px; letter-spacing:1px;">
+                    <div style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px;background:rgba(0,0,0,0.15);border-radius:16px;margin-top:4px;letter-spacing:1px;">
                         ОТПРАВЬТЕ ЭКСПЕДИЦИЮ В УКАЗАННУЮ ЛОКАЦИЮ
                     </div>
                 `}
             </div>
         </div>
     `;
-
     openModal(html);
-
-    // ★ ИНИЦИАЛИЗИРУЕМ ТУЛТИПЫ ПОСЛЕ ОТКРЫТИЯ МОДАЛКИ
-    setTimeout(() => {
-        initJournalTooltips();
-    }, 50);
+    setTimeout(() => { initJournalTooltips(); }, 50);
 }
 
-// ========== ★ СИСТЕМА ТУЛТИПОВ ДЛЯ ЖУРНАЛА ★ ==========
 let activeTooltip = null;
 
 function initJournalTooltips() {
-    // Удаляем старый тултип если есть
-    if (activeTooltip) {
-        activeTooltip.remove();
-        activeTooltip = null;
-    }
-
+    if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; }
     const tooltip = document.createElement('div');
     tooltip.className = 'journal-tooltip';
     tooltip.id = 'journalTooltip';
     document.body.appendChild(tooltip);
-
     document.querySelectorAll('.journal-node[data-tooltip]').forEach(node => {
-        // Пропускаем неизвестные ноды
         if (node.classList.contains('journal-node-unknown')) return;
-
         node.addEventListener('click', (e) => {
             e.stopPropagation();
             const text = node.dataset.tooltip;
             if (!text || text === '???') return;
-
             const rect = node.getBoundingClientRect();
             tooltip.textContent = text;
             tooltip.style.left = (rect.left + rect.width / 2 - tooltip.offsetWidth / 2) + 'px';
             tooltip.style.top = (rect.top - 44) + 'px';
             tooltip.classList.add('show');
-
             clearTimeout(tooltip._timeout);
-            tooltip._timeout = setTimeout(() => {
-                tooltip.classList.remove('show');
-            }, 1600);
+            tooltip._timeout = setTimeout(() => { tooltip.classList.remove('show'); }, 1600);
         });
     });
 }
 
-// ========== ★★★★★ ПОЛНАЯ ПЕРЕСБОРКА КОНТРАКТОВ ★★★★★ ==========
-
-// ★ УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ПЕРЕМЕЩЕНИЯ СЛИТКА: Инвентарь ↔ Контракт
-// action: 'to_contract' — забрать из инвентаря в слот контракта
-// action: 'to_inventory' — вернуть из слота контракта в инвентарь
 function moveIngotBetweenInventories(ingotId, action = 'to_contract') {
     const state = getPlayerState();
     const ingot = CONFIG_ITEMS[ingotId];
     if (!ingot) return false;
-
     if (action === 'to_contract') {
-        // Проверяем, есть ли слиток в инвентаре (с учётом уже заблокированных в контракте)
         const lockedInContract = contractState.selectedIngots.filter(id => id === ingotId).length;
         const availableInInventory = (state.ingots[ingotId] || 0) - lockedInContract;
-        if (availableInInventory <= 0) {
-            showToast(`Нет доступных ${ingot.name}!`, '⚠️');
-            return false;
-        }
-        // Физически НЕ списываем из playerState.ingots — блокируем через contractState
-        // Слиток считается «перемещённым», а не «потраченным», до момента Синтеза/Отмены
+        if (availableInInventory <= 0) { showToast(`Нет доступных ${ingot.name}!`, '⚠️'); return false; }
         return true;
     } else if (action === 'to_inventory') {
-        // Просто удаляем из contractState.selectedIngots — слиток возвращается в инвентарь
         const index = contractState.selectedIngots.indexOf(ingotId);
         if (index !== -1) {
             contractState.selectedIngots.splice(index, 1);
-            if (contractState.selectedIngots.length === 0) {
-                contractState.selectedRarity = null;
-            }
+            if (contractState.selectedIngots.length === 0) { contractState.selectedRarity = null; }
             return true;
         }
         return false;
@@ -816,7 +554,6 @@ function moveIngotBetweenInventories(ingotId, action = 'to_contract') {
     return false;
 }
 
-// ★ ПОЛУЧИТЬ РЕАЛЬНО ДОСТУПНОЕ КОЛИЧЕСТВО СЛИТКОВ (с учётом заблокированных в контракте)
 function getAvailableIngotCount(ingotId) {
     const state = getPlayerState();
     const totalOwned = state.ingots[ingotId] || 0;
@@ -824,446 +561,109 @@ function getAvailableIngotCount(ingotId) {
     return Math.max(0, totalOwned - lockedInContract);
 }
 
-// ★ СПИСАНИЕ ВСЕХ ЗАБЛОКИРОВАННЫХ СЛИТКОВ ПРИ СИНТЕЗЕ
 function consumeContractIngots() {
     const state = getPlayerState();
     const consumed = {};
-    for (let ingotId of contractState.selectedIngots) {
-        consumed[ingotId] = (consumed[ingotId] || 0) + 1;
-    }
-    for (let ingotId in consumed) {
-        state.ingots[ingotId] -= consumed[ingotId];
-        if (state.ingots[ingotId] < 0) state.ingots[ingotId] = 0;
-    }
+    for (let ingotId of contractState.selectedIngots) { consumed[ingotId] = (consumed[ingotId] || 0) + 1; }
+    for (let ingotId in consumed) { state.ingots[ingotId] -= consumed[ingotId]; if (state.ingots[ingotId] < 0) state.ingots[ingotId] = 0; }
     saveGame();
 }
 
-// ★ ВОЗВРАТ ВСЕХ ЗАБЛОКИРОВАННЫХ СЛИТКОВ ПРИ ОТМЕНЕ
 function returnContractIngots() {
-    // Слитки физически не списывались — просто очищаем contractState
     contractState.selectedIngots = [];
     contractState.selectedRarity = null;
     contractState.isActive = false;
 }
 
-// ========== ★ ГЛАВНАЯ ФУНКЦИЯ: ОТРИСОВКА КОНТРАКТА ★ ==========
+// ========== ★ КОНТРАКТЫ ★ ==========
+
 function showContractModal() {
     const state = getPlayerState();
     const currentShavings = getShavings();
     const maxSlots = 5;
     const cost = getSynthesisCost();
 
-    // Инжектим стили
     if (!document.getElementById('contract-styles-v2')) {
         const style = document.createElement('style');
         style.id = 'contract-styles-v2';
         style.textContent = `
-            @keyframes contractSlotGlow {
-                0%, 100% { box-shadow: 0 0 12px rgba(255,215,0,0.3), inset 0 0 12px rgba(255,215,0,0.05); }
-                50% { box-shadow: 0 0 28px rgba(255,215,0,0.7), inset 0 0 20px rgba(255,215,0,0.12); }
-            }
-            @keyframes contractBtnPulse {
-                0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(255,215,0,0.5), 0 0 60px rgba(255,140,0,0.3); }
-                50% { transform: scale(1.04); box-shadow: 0 0 50px rgba(255,215,0,0.9), 0 0 90px rgba(255,140,0,0.6); }
-            }
-            @keyframes contractSlotPopIn {
-                0% { transform: scale(0.3); opacity: 0; }
-                60% { transform: scale(1.15); opacity: 1; }
-                100% { transform: scale(1); opacity: 1; }
-            }
-            @keyframes contractIngotGlow {
-                0%, 100% { box-shadow: 0 0 8px rgba(80,200,120,0.3); }
-                50% { box-shadow: 0 0 22px rgba(80,200,120,0.7); }
-            }
-            @keyframes contractResultBurst {
-                0% { transform: scale(0.1); opacity: 0; }
-                50% { transform: scale(1.3); opacity: 1; }
-                100% { transform: scale(1); opacity: 1; }
-            }
-            @keyframes contractParticleFly {
-                0% { transform: translate(0, 0) scale(1); opacity: 1; }
-                100% { transform: translate(var(--sx), var(--sy)) scale(0); opacity: 0; }
-            }
-            @keyframes contractRarityPulse {
-                0%, 100% { opacity: 0.8; }
-                50% { opacity: 1; }
-            }
-            @keyframes contractFlashBurst {
-                0% { opacity: 0; }
-                35% { opacity: 1; }
-                100% { opacity: 0; }
-            }
-            
-            .contract-fullscreen {
-                position: fixed;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                background: radial-gradient(ellipse at 50% 30%, rgba(20,15,5,0.98) 0%, rgba(5,5,8,0.99) 100%);
-                z-index: 500;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: flex-start;
-                padding: 20px 16px 32px;
-                box-sizing: border-box;
-                overflow-y: auto;
-                font-family: 'Montserrat', sans-serif;
-            }
-            
-            .contract-header {
-                text-align: center;
-                margin-bottom: 8px;
-                width: 100%;
-                max-width: 400px;
-            }
-            .contract-title-main {
-                font-family: 'Unbounded', sans-serif;
-                font-size: 22px;
-                font-weight: 800;
-                color: #FFD700;
-                letter-spacing: 2px;
-                text-transform: uppercase;
-                text-shadow: 0 0 30px rgba(255,215,0,0.4);
-            }
-            .contract-subtitle-main {
-                font-size: 12px;
-                color: rgba(255,255,255,0.5);
-                margin-top: 4px;
-                letter-spacing: 1px;
-            }
-            
-            .contract-rarity-badge {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                background: rgba(255,215,0,0.08);
-                border: 1px solid rgba(255,215,0,0.25);
-                border-radius: 40px;
-                padding: 8px 20px;
-                margin: 12px auto;
-                font-size: 13px;
-                font-weight: 700;
-                color: #FFD700;
-                letter-spacing: 1px;
-                animation: contractRarityPulse 2s ease-in-out infinite;
-            }
-            .contract-rarity-badge.locked {
-                color: rgba(255,255,255,0.4);
-                border-color: rgba(255,255,255,0.1);
-                background: rgba(255,255,255,0.02);
-                animation: none;
-            }
-            
-            .contract-slots-row {
-                display: flex;
-                gap: 10px;
-                justify-content: center;
-                margin: 12px 0;
-                width: 100%;
-                max-width: 400px;
-                flex-wrap: wrap;
-            }
-            .contract-slot-v2 {
-                width: 60px;
-                height: 60px;
-                border-radius: 18px;
-                background: rgba(255,255,255,0.03);
-                border: 2px dashed rgba(255,255,255,0.12);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1.2);
-                font-size: 28px;
-                color: rgba(255,215,0,0.2);
-                position: relative;
-                -webkit-tap-highlight-color: transparent;
-            }
-            .contract-slot-v2:active { transform: scale(0.9); }
-            .contract-slot-v2.filled {
-                border: 2px solid rgba(139,115,85,0.6);
-                background: rgba(139,115,85,0.1);
-                animation: contractSlotGlow 2.2s ease-in-out infinite;
-                font-size: 32px;
-            }
-            .contract-slot-v2 .slot-index {
-                position: absolute;
-                top: 4px;
-                right: 7px;
-                font-size: 8px;
-                color: rgba(255,255,255,0.3);
-                font-weight: 700;
-            }
-            
-            .contract-chances-panel {
-                width: 100%;
-                max-width: 400px;
-                background: rgba(255,255,255,0.03);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 20px;
-                padding: 14px;
-                margin: 10px 0;
-            }
-            .contract-chances-title {
-                font-size: 11px;
-                color: rgba(255,255,255,0.4);
-                text-align: center;
-                margin-bottom: 10px;
-                letter-spacing: 2px;
-                text-transform: uppercase;
-            }
-            .contract-chance-row-v2 {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 6px 0;
-            }
-            .contract-chance-icon {
-                font-size: 24px;
-                min-width: 30px;
-                text-align: center;
-            }
-            .contract-chance-name {
-                flex: 1;
-                font-size: 12px;
-                color: rgba(255,255,255,0.8);
-                font-weight: 600;
-            }
-            .contract-chance-pct {
-                font-family: 'Unbounded', sans-serif;
-                font-size: 14px;
-                font-weight: 800;
-                min-width: 40px;
-                text-align: right;
-            }
-            .contract-chance-bar {
-                width: 100%;
-                height: 6px;
-                background: rgba(255,255,255,0.05);
-                border-radius: 3px;
-                overflow: hidden;
-                margin-top: 2px;
-            }
-            .contract-chance-fill {
-                height: 100%;
-                border-radius: 3px;
-                transition: width 0.4s ease;
-            }
-            
-            .contract-cost-display {
-                text-align: center;
-                font-size: 12px;
-                color: rgba(255,255,255,0.5);
-                margin: 8px 0;
-            }
-            .contract-cost-display span {
-                color: #FFD700;
-                font-weight: 700;
-            }
-            
-            .contract-btn-synthesize {
-                display: block;
-                width: 100%;
-                max-width: 400px;
-                padding: 20px;
-                border: none;
-                border-radius: 60px;
-                font-family: 'Unbounded', sans-serif;
-                font-weight: 800;
-                font-size: 18px;
-                letter-spacing: 3px;
-                cursor: pointer;
-                text-transform: uppercase;
-                color: #000;
-                background: rgba(255,255,255,0.06);
-                transition: all 0.3s ease;
-                margin-top: 12px;
-            }
-            .contract-btn-synthesize.ready {
-                background: linear-gradient(135deg, #FFD700, #FF8C00);
-                box-shadow: 0 0 30px rgba(255,215,0,0.4);
-                animation: contractBtnPulse 2s ease-in-out infinite;
-            }
-            .contract-btn-synthesize:disabled {
-                opacity: 0.3;
-                cursor: not-allowed;
-                animation: none;
-                box-shadow: none;
-                color: rgba(255,255,255,0.2);
-            }
-            .contract-btn-synthesize:active:not(:disabled) {
-                transform: scale(0.94);
-            }
-            
-            .contract-btn-cancel {
-                display: block;
-                width: 100%;
-                max-width: 400px;
-                padding: 14px;
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 50px;
-                background: transparent;
-                color: rgba(255,255,255,0.5);
-                font-weight: 600;
-                font-size: 14px;
-                cursor: pointer;
-                margin-top: 8px;
-                transition: all 0.2s;
-            }
-            .contract-btn-cancel:active {
-                background: rgba(255,255,255,0.05);
-            }
-            
-            /* ПИКЕР СЛИТКОВ */
-            .contract-picker-fullscreen {
-                position: fixed;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                background: rgba(0,0,0,0.9);
-                backdrop-filter: blur(10px);
-                z-index: 510;
-                display: flex;
-                flex-direction: column;
-                padding: 20px 16px;
-                box-sizing: border-box;
-                overflow-y: auto;
-            }
-            .contract-picker-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                margin-bottom: 16px;
-                max-width: 400px;
-                width: 100%;
-                margin-left: auto;
-                margin-right: auto;
-            }
-            .contract-picker-title-v2 {
-                font-family: 'Unbounded', sans-serif;
-                font-size: 16px;
-                font-weight: 700;
-                color: #FFD700;
-            }
-            .contract-picker-close-v2 {
-                width: 44px;
-                height: 44px;
-                border-radius: 50%;
-                border: 1px solid rgba(255,255,255,0.1);
-                background: rgba(255,255,255,0.04);
-                color: #fff;
-                font-size: 20px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .contract-picker-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
-                max-width: 400px;
-                width: 100%;
-                margin: 0 auto;
-            }
-            .contract-picker-card {
-                background: rgba(255,255,255,0.03);
-                border: 2px solid rgba(255,255,255,0.06);
-                border-radius: 20px;
-                padding: 14px 8px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                cursor: pointer;
-                transition: all 0.2s;
-                position: relative;
-                min-height: 100px;
-            }
-            .contract-picker-card:active { transform: scale(0.93); }
-            .contract-picker-card.locked {
-                opacity: 0.35;
-                cursor: not-allowed;
-                filter: grayscale(1);
-            }
-            .contract-picker-card.locked:active { transform: none; }
-            .contract-picker-card.compatible {
-                border-color: rgba(80,200,120,0.5);
-                background: rgba(80,200,120,0.06);
-                animation: contractIngotGlow 2s ease-in-out infinite;
-            }
-            .contract-picker-card .lock-icon {
-                position: absolute;
-                top: 6px;
-                right: 8px;
-                font-size: 14px;
-                opacity: 0.7;
-            }
-            .contract-picker-card .card-count-badge-v2 {
-                background: rgba(255,215,0,0.15);
-                color: #FFD700;
-                padding: 3px 10px;
-                border-radius: 20px;
-                font-size: 10px;
-                font-weight: 700;
-                margin-top: 6px;
-                border: 1px solid rgba(255,215,0,0.2);
-            }
-            .contract-picker-card .card-ingot-name {
-                font-size: 10px;
-                color: rgba(255,255,255,0.7);
-                text-align: center;
-                margin-top: 4px;
-                font-weight: 600;
-                line-height: 1.2;
-            }
-            
-            /* РЕЗУЛЬТАТ СИНТЕЗА */
-            .contract-result-overlay-v2 {
-                position: fixed;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                background: rgba(0,0,0,0.96);
-                z-index: 520;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-            }
-            .contract-result-icon-v2 {
-                font-size: 100px;
-                animation: contractResultBurst 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            }
-            .contract-result-text-v2 {
-                font-family: 'Unbounded', sans-serif;
-                font-size: 22px;
-                font-weight: 800;
-                color: #FFD700;
-                margin-top: 16px;
-                text-shadow: 0 0 20px rgba(255,215,0,0.5);
-            }
-            .contract-result-hint {
-                font-size: 12px;
-                color: rgba(255,255,255,0.4);
-                margin-top: 20px;
-                letter-spacing: 1px;
-            }
+            @keyframes contractSlotGlow { 0%,100%{box-shadow:0 0 12px rgba(255,215,0,0.3),inset 0 0 12px rgba(255,215,0,0.05);} 50%{box-shadow:0 0 28px rgba(255,215,0,0.7),inset 0 0 20px rgba(255,215,0,0.12);} }
+            @keyframes contractBtnPulse { 0%,100%{transform:scale(1);box-shadow:0 0 30px rgba(255,215,0,0.5),0 0 60px rgba(255,140,0,0.3);} 50%{transform:scale(1.04);box-shadow:0 0 50px rgba(255,215,0,0.9),0 0 90px rgba(255,140,0,0.6);} }
+            @keyframes contractBtnPulseRed { 0%,100%{transform:scale(1);box-shadow:0 0 20px rgba(255,68,68,0.4),0 0 40px rgba(255,0,0,0.2);} 50%{transform:scale(1.03);box-shadow:0 0 35px rgba(255,68,68,0.8),0 0 60px rgba(255,0,0,0.5);} }
+            @keyframes contractSlotPopIn { 0%{transform:scale(0.3);opacity:0;} 60%{transform:scale(1.15);opacity:1;} 100%{transform:scale(1);opacity:1;} }
+            @keyframes contractIngotGlow { 0%,100%{box-shadow:0 0 8px rgba(80,200,120,0.3);} 50%{box-shadow:0 0 22px rgba(80,200,120,0.7);} }
+            @keyframes contractResultBurst { 0%{transform:scale(0.1);opacity:0;} 50%{transform:scale(1.3);opacity:1;} 100%{transform:scale(1);opacity:1;} }
+            @keyframes contractParticleFly { 0%{transform:translate(0,0) scale(1);opacity:1;} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0;} }
+            @keyframes contractRarityPulse { 0%,100%{opacity:0.8;} 50%{opacity:1;} }
+            @keyframes contractFlashBurst { 0%{opacity:0;} 35%{opacity:1;} 100%{opacity:0;} }
+            @keyframes contractMergeSlots { 0%{transform:translate(0,0) scale(1);opacity:1;} 30%{transform:translate(0,0) scale(1.1);opacity:1;} 60%{transform:translate(var(--mx),var(--my)) scale(0.6);opacity:0.8;} 100%{transform:translate(0,0) scale(0);opacity:0;} }
+            @keyframes contractMergeCenter { 0%{transform:scale(0);opacity:0;} 50%{transform:scale(1.8);opacity:1;} 100%{transform:scale(1);opacity:1;} }
+            @keyframes contractShardFly { 0%{transform:translate(0,0) scale(1);opacity:1;} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0;} }
+            @keyframes contractNoShavingsText { 0%{opacity:0;transform:translateY(0);} 20%{opacity:1;transform:translateY(-8px);} 80%{opacity:1;transform:translateY(-8px);} 100%{opacity:0;transform:translateY(-16px);} }
+            .contract-fullscreen { position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 50% 30%,rgba(20,15,5,0.98) 0%,rgba(5,5,8,0.99) 100%);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px 16px 32px;box-sizing:border-box;overflow-y:auto;font-family:'Montserrat',sans-serif; }
+            .contract-header { text-align:center;margin-bottom:8px;width:100%;max-width:400px; }
+            .contract-title-main { font-family:'Unbounded',sans-serif;font-size:22px;font-weight:800;color:#FFD700;letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 30px rgba(255,215,0,0.4); }
+            .contract-subtitle-main { font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px;letter-spacing:1px; }
+            .contract-rarity-badge { display:inline-flex;align-items:center;gap:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:40px;padding:8px 20px;margin:12px auto;font-size:13px;font-weight:700;color:#FFD700;letter-spacing:1px;animation:contractRarityPulse 2s ease-in-out infinite; }
+            .contract-rarity-badge.locked { color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);animation:none; }
+            .contract-slots-row { display:flex;gap:10px;justify-content:center;margin:12px 0;width:100%;max-width:400px;flex-wrap:wrap; }
+            .contract-slot-v2 { width:60px;height:60px;border-radius:18px;background:rgba(255,255,255,0.03);border:2px dashed rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.25s cubic-bezier(0.25,0.8,0.25,1.2);font-size:28px;color:rgba(255,215,0,0.2);position:relative;-webkit-tap-highlight-color:transparent; }
+            .contract-slot-v2:active { transform:scale(0.9); }
+            .contract-slot-v2.filled { border:2px solid rgba(139,115,85,0.6);background:rgba(139,115,85,0.1);animation:contractSlotGlow 2.2s ease-in-out infinite;font-size:32px; }
+            .contract-slot-v2 .slot-index { position:absolute;top:4px;right:7px;font-size:8px;color:rgba(255,255,255,0.3);font-weight:700; }
+            .contract-chances-panel { width:100%;max-width:400px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:14px;margin:10px 0; }
+            .contract-chances-title { font-size:11px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:10px;letter-spacing:2px;text-transform:uppercase; }
+            .contract-chance-row-v2 { display:flex;align-items:center;gap:10px;padding:6px 0; }
+            .contract-chance-icon { font-size:24px;min-width:30px;text-align:center; }
+            .contract-chance-name { flex:1;font-size:12px;color:rgba(255,255,255,0.8);font-weight:600; }
+            .contract-chance-pct { font-family:'Unbounded',sans-serif;font-size:14px;font-weight:800;min-width:40px;text-align:right; }
+            .contract-chance-bar { width:100%;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;margin-top:2px; }
+            .contract-chance-fill { height:100%;border-radius:3px;transition:width 0.4s ease; }
+            .contract-cost-display { text-align:center;font-size:12px;color:rgba(255,255,255,0.5);margin:8px 0; }
+            .contract-cost-display span { color:#FFD700;font-weight:700; }
+            .contract-btn-synthesize { display:block;width:100%;max-width:400px;padding:20px;border:none;border-radius:60px;font-family:'Unbounded',sans-serif;font-weight:800;font-size:18px;letter-spacing:3px;cursor:pointer;text-transform:uppercase;color:#000;background:rgba(255,255,255,0.06);transition:all 0.3s ease;margin-top:12px;position:relative;overflow:visible; }
+            .contract-btn-synthesize.ready { background:linear-gradient(135deg,#FFD700,#FF8C00);box-shadow:0 0 30px rgba(255,215,0,0.4);animation:contractBtnPulse 2s ease-in-out infinite; }
+            .contract-btn-synthesize:disabled { opacity:0.3;cursor:not-allowed;animation:none;box-shadow:none;color:rgba(255,255,255,0.2); }
+            .contract-btn-synthesize:active:not(:disabled) { transform:scale(0.94); }
+            .contract-btn-synthesize.no-shavings { background:linear-gradient(135deg,#FF4444,#CC0000) !important;box-shadow:0 0 25px rgba(255,68,68,0.5) !important;animation:contractBtnPulseRed 1.2s ease-in-out infinite !important;color:#fff !important; }
+            .contract-btn-synthesize .no-shavings-text { position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:rgba(255,68,68,0.95);color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;pointer-events:none;animation:contractNoShavingsText 2s ease-in-out infinite;font-family:'Montserrat',sans-serif;letter-spacing:0.5px; }
+            .contract-btn-cancel { display:block;width:100%;max-width:400px;padding:14px;border:1px solid rgba(255,255,255,0.08);border-radius:50px;background:transparent;color:rgba(255,255,255,0.5);font-weight:600;font-size:14px;cursor:pointer;margin-top:8px;transition:all 0.2s; }
+            .contract-btn-cancel:active { background:rgba(255,255,255,0.05); }
+            .contract-picker-fullscreen { position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);z-index:510;display:flex;flex-direction:column;padding:20px 16px;box-sizing:border-box;overflow-y:auto; }
+            .contract-picker-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;max-width:400px;width:100%;margin-left:auto;margin-right:auto; }
+            .contract-picker-title-v2 { font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:#FFD700; }
+            .contract-picker-close-v2 { width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+            .contract-picker-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:400px;width:100%;margin:0 auto; }
+            .contract-picker-card { background:rgba(255,255,255,0.03);border:2px solid rgba(255,255,255,0.06);border-radius:20px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:all 0.2s;position:relative;min-height:100px; }
+            .contract-picker-card:active { transform:scale(0.93); }
+            .contract-picker-card.locked { opacity:0.35;cursor:not-allowed;filter:grayscale(1); }
+            .contract-picker-card.locked:active { transform:none; }
+            .contract-picker-card.compatible { border-color:rgba(80,200,120,0.5);background:rgba(80,200,120,0.06);animation:contractIngotGlow 2s ease-in-out infinite; }
+            .contract-picker-card .lock-icon { position:absolute;top:6px;right:8px;font-size:14px;opacity:0.7; }
+            .contract-picker-card .card-count-badge-v2 { background:rgba(255,215,0,0.15);color:#FFD700;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;margin-top:6px;border:1px solid rgba(255,215,0,0.2); }
+            .contract-picker-card .card-ingot-name { font-size:10px;color:rgba(255,255,255,0.7);text-align:center;margin-top:4px;font-weight:600;line-height:1.2; }
+            .contract-result-overlay-v2 { position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.96);z-index:520;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer; }
+            .contract-result-icon-v2 { font-size:100px;animation:contractResultBurst 0.6s cubic-bezier(0.175,0.885,0.32,1.275) forwards; }
+            .contract-result-text-v2 { font-family:'Unbounded',sans-serif;font-size:22px;font-weight:800;color:#FFD700;margin-top:16px;text-shadow:0 0 20px rgba(255,215,0,0.5); }
+            .contract-result-hint { font-size:12px;color:rgba(255,255,255,0.4);margin-top:20px;letter-spacing:1px; }
+            .contract-merge-overlay { position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 50% 50%,rgba(20,10,0,0.97) 0%,rgba(0,0,0,0.99) 100%);z-index:525;display:flex;align-items:center;justify-content:center;flex-direction:column; }
+            .contract-merge-slots-container { display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:20px; }
+            .contract-merge-slot { width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:14px;background:rgba(139,115,85,0.1);border:2px solid rgba(139,115,85,0.5);transition:all 0.1s; }
+            .contract-merge-slot.merging { animation:contractMergeSlots 0.8s cubic-bezier(0.6,0,0.9,0.5) forwards; }
+            .contract-merge-center { width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(255,200,0,0.3) 0%,rgba(255,100,0,0.1) 50%,transparent 70%);display:flex;align-items:center;justify-content:center;animation:contractMergeCenter 0.6s cubic-bezier(0.175,0.885,0.32,1.275) forwards;opacity:0; }
+            .contract-merge-shard { position:fixed;width:6px;height:6px;border-radius:50%;pointer-events:none;z-index:526;animation:contractShardFly 0.7s ease-out forwards; }
         `;
         document.head.appendChild(style);
     }
 
-    // ★ Активируем контракт
     contractState.isActive = true;
-
-    // Удаляем старый оверлей если есть
     const existing = document.getElementById('contractFullscreen');
     if (existing) existing.remove();
 
-    // ===== СТРОИМ ОСНОВНОЙ ЭКРАН =====
     const overlay = document.createElement('div');
     overlay.className = 'contract-fullscreen';
     overlay.id = 'contractFullscreen';
 
-    // Шапка
     const header = document.createElement('div');
     header.className = 'contract-header';
     header.innerHTML = `
@@ -1272,7 +672,6 @@ function showContractModal() {
     `;
     overlay.appendChild(header);
 
-    // Индикатор редкости
     const rarityBadge = document.createElement('div');
     rarityBadge.className = 'contract-rarity-badge' + (contractState.selectedRarity ? '' : ' locked');
     rarityBadge.id = 'contractRarityBadge';
@@ -1281,7 +680,6 @@ function showContractModal() {
         : '🔓 Редкость не выбрана';
     overlay.appendChild(rarityBadge);
 
-    // Слоты
     const slotsRow = document.createElement('div');
     slotsRow.className = 'contract-slots-row';
     slotsRow.id = 'contractSlotsRow';
@@ -1300,7 +698,6 @@ function showContractModal() {
     }
     overlay.appendChild(slotsRow);
 
-    // Панель шансов
     const chancesPanel = document.createElement('div');
     chancesPanel.className = 'contract-chances-panel';
     chancesPanel.id = 'contractChancesPanel';
@@ -1311,26 +708,33 @@ function showContractModal() {
     }
     overlay.appendChild(chancesPanel);
 
-    // Стоимость
     const costDisplay = document.createElement('div');
     costDisplay.className = 'contract-cost-display';
     costDisplay.id = 'contractCostDisplay';
     costDisplay.innerHTML = `Стоимость синтеза: <span>${cost}</span> стружки (доступно: <span>${currentShavings}</span>)`;
     overlay.appendChild(costDisplay);
 
-    // Кнопка СИНТЕЗ
     const synthesizeBtn = document.createElement('button');
     synthesizeBtn.className = 'contract-btn-synthesize';
     synthesizeBtn.id = 'contractSynthesizeBtn';
     synthesizeBtn.textContent = 'СИНТЕЗ';
-    synthesizeBtn.disabled = contractState.selectedIngots.length !== maxSlots;
-    if (contractState.selectedIngots.length === maxSlots) {
+    const allSlotsFilled = contractState.selectedIngots.length === maxSlots;
+    synthesizeBtn.disabled = !allSlotsFilled;
+
+    if (allSlotsFilled && currentShavings < cost) {
+        synthesizeBtn.classList.add('no-shavings');
+        synthesizeBtn.disabled = false;
+        const noShavingsText = document.createElement('span');
+        noShavingsText.className = 'no-shavings-text';
+        noShavingsText.textContent = `Не хватает ${cost - currentShavings} стружки`;
+        synthesizeBtn.appendChild(noShavingsText);
+    } else if (allSlotsFilled) {
         synthesizeBtn.classList.add('ready');
     }
+
     synthesizeBtn.addEventListener('click', executeContractSynthesis);
     overlay.appendChild(synthesizeBtn);
 
-    // Кнопка Отмена
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'contract-btn-cancel';
     cancelBtn.id = 'contractCancelBtn';
@@ -1340,7 +744,6 @@ function showContractModal() {
 
     document.body.appendChild(overlay);
 
-    // Закрытие по клику на фон (только если слоты пусты)
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay && contractState.selectedIngots.length === 0) {
             closeContractUI();
@@ -1348,34 +751,22 @@ function showContractModal() {
     });
 }
 
-// ===== ОБРАБОТЧИК КЛИКА ПО СЛОТУ =====
 function handleSlotClick(slotIndex) {
     const maxSlots = 5;
-
-    // Если слот уже заполнен — убираем этот и все последующие
     if (slotIndex < contractState.selectedIngots.length) {
-        // Возвращаем слитки обратно (просто очищаем, они не списывались)
         contractState.selectedIngots = contractState.selectedIngots.slice(0, slotIndex);
-        if (contractState.selectedIngots.length === 0) {
-            contractState.selectedRarity = null;
-        }
+        if (contractState.selectedIngots.length === 0) { contractState.selectedRarity = null; }
         refreshContractUI();
         return;
     }
-
-    // Открываем пикер
     showContractPicker();
 }
 
-// ===== ПИКЕР СЛИТКОВ =====
 function showContractPicker() {
     const state = getPlayerState();
-
-    // Удаляем старый
     const existing = document.getElementById('contractPickerFS');
     if (existing) existing.remove();
 
-    // Собираем все доступные слитки (не коллекционные)
     const allIngots = Object.entries(state.ingots)
         .filter(([id, count]) => count > 0 && !CONFIG_ITEMS[id].isCollectible)
         .map(([id, count]) => ({ id, count, ingot: CONFIG_ITEMS[id] }));
@@ -1384,7 +775,6 @@ function showContractPicker() {
     picker.className = 'contract-picker-fullscreen';
     picker.id = 'contractPickerFS';
 
-    // Шапка
     const header = document.createElement('div');
     header.className = 'contract-picker-header';
     header.innerHTML = `
@@ -1393,33 +783,20 @@ function showContractPicker() {
     `;
     picker.appendChild(header);
 
-    // Сетка
     const grid = document.createElement('div');
     grid.className = 'contract-picker-grid';
 
     allIngots.forEach(({ id, count, ingot }) => {
         const availableForContract = getAvailableIngotCount(id);
         if (availableForContract <= 0) return;
-
         let cardClass = 'contract-picker-card';
         let isLocked = false;
-
         if (contractState.selectedRarity) {
-            if (ingot.rarityLevel !== contractState.selectedRarity) {
-                cardClass += ' locked';
-                isLocked = true;
-            } else {
-                cardClass += ' compatible';
-            }
+            if (ingot.rarityLevel !== contractState.selectedRarity) { cardClass += ' locked'; isLocked = true; }
+            else { cardClass += ' compatible'; }
         }
-
-        // Проверяем, есть ли цель для синтеза
         const hasTarget = getSynthesisTargetsByLocation(id, { [ingot.location]: 5 }).length > 0;
-        if (!hasTarget && contractState.selectedRarity) {
-            cardClass += ' locked';
-            isLocked = true;
-        }
-
+        if (!hasTarget && contractState.selectedRarity) { cardClass += ' locked'; isLocked = true; }
         const card = document.createElement('div');
         card.className = cardClass;
         card.innerHTML = `
@@ -1428,96 +805,48 @@ function showContractPicker() {
             <div class="card-ingot-name">${ingot.name}</div>
             <div class="card-count-badge-v2">${availableForContract} шт.</div>
         `;
-
-        if (!isLocked) {
-            card.addEventListener('click', () => {
-                selectIngotForContract(id);
-            });
-        }
-
+        if (!isLocked) { card.addEventListener('click', () => { selectIngotForContract(id); }); }
         grid.appendChild(card);
     });
 
     picker.appendChild(grid);
-
-    // Закрытие пикера
-    picker.addEventListener('click', (e) => {
-        if (e.target === picker) {
-            picker.remove();
-        }
-    });
-
+    picker.addEventListener('click', (e) => { if (e.target === picker) { picker.remove(); } });
     document.body.appendChild(picker);
-
-    document.getElementById('pickerCloseBtn')?.addEventListener('click', () => {
-        picker.remove();
-    });
+    document.getElementById('pickerCloseBtn')?.addEventListener('click', () => { picker.remove(); });
 }
 
-// ===== ВЫБОР СЛИТКА ДЛЯ КОНТРАКТА =====
 function selectIngotForContract(ingotId) {
     const ingot = CONFIG_ITEMS[ingotId];
     if (!ingot) return;
-
     const available = getAvailableIngotCount(ingotId);
-    if (available <= 0) {
-        showToast(`Нет доступных ${ingot.name}!`, '⚠️');
-        return;
-    }
-
-    // Фиксируем редкость при первом выборе
-    if (!contractState.selectedRarity) {
-        contractState.selectedRarity = ingot.rarityLevel;
-    }
-
-    // Проверяем соответствие редкости
-    if (ingot.rarityLevel !== contractState.selectedRarity) {
-        showToast('Все слитки должны быть одной редкости!', '⚠️');
-        return;
-    }
-
-    // Добавляем в слоты
+    if (available <= 0) { showToast(`Нет доступных ${ingot.name}!`, '⚠️'); return; }
+    if (!contractState.selectedRarity) { contractState.selectedRarity = ingot.rarityLevel; }
+    if (ingot.rarityLevel !== contractState.selectedRarity) { showToast('Все слитки должны быть одной редкости!', '⚠️'); return; }
     contractState.selectedIngots.push(ingotId);
-
-    // Удаляем пикер
     const picker = document.getElementById('contractPickerFS');
     if (picker) picker.remove();
-
-    // Если заполнили все 5 слотов — пикер не открываем
-    if (contractState.selectedIngots.length >= 5) {
-        refreshContractUI();
-        return;
-    }
-
+    if (contractState.selectedIngots.length >= 5) { refreshContractUI(); return; }
     refreshContractUI();
 }
 
-// ===== ОБНОВЛЕНИЕ UI КОНТРАКТА =====
 function refreshContractUI() {
     const existing = document.getElementById('contractFullscreen');
     if (existing) existing.remove();
     showContractModal();
 }
 
-// ===== РАСЧЁТ И ОТОБРАЖЕНИЕ ШАНСОВ =====
 function renderChancesHTML() {
     if (contractState.selectedIngots.length !== 5 || !contractState.selectedRarity) {
         return '<div class="contract-chances-title">Заполните все 5 слотов для расчёта шансов</div>';
     }
-
     const locationCounts = {};
     contractState.selectedIngots.forEach(id => {
         const ingot = CONFIG_ITEMS[id];
         const loc = ingot.location;
         locationCounts[loc] = (locationCounts[loc] || 0) + 1;
     });
-
     const results = getSynthesisTargetsByLocation(contractState.selectedIngots[0], locationCounts);
-
-    if (results.length === 0) {
-        return '<div class="contract-chances-title" style="color:#FF4444;">Нет доступных целей для синтеза</div>';
-    }
-
+    if (results.length === 0) { return '<div class="contract-chances-title" style="color:#FF4444;">Нет доступных целей для синтеза</div>'; }
     let html = '<div class="contract-chances-title">Возможные результаты</div>';
     results.forEach(r => {
         const chanceColor = r.chance >= 50 ? '#50C878' : r.chance >= 25 ? '#FFA500' : '#FF4444';
@@ -1528,127 +857,187 @@ function renderChancesHTML() {
                 <span class="contract-chance-pct" style="color:${chanceColor};">${r.chance}%</span>
             </div>
             <div class="contract-chance-bar">
-                <div class="contract-chance-fill" style="width:${r.chance}%; background:${chanceColor};"></div>
+                <div class="contract-chance-fill" style="width:${r.chance}%;background:${chanceColor};"></div>
             </div>
         `;
     });
-
     return html;
 }
 
-// ===== ВЫПОЛНЕНИЕ СИНТЕЗА =====
 function executeContractSynthesis() {
     if (contractState.selectedIngots.length !== 5 || !contractState.selectedRarity) return;
-
     const state = getPlayerState();
     const cost = getSynthesisCost();
     const currentShavings = getShavings();
 
     if (currentShavings < cost) {
-        showToast('Недостаточно стружки!', '⚠️');
+        const btn = document.getElementById('contractSynthesizeBtn');
+        if (btn) {
+            btn.classList.add('no-shavings');
+            if (!btn.querySelector('.no-shavings-text')) {
+                const noShavingsText = document.createElement('span');
+                noShavingsText.className = 'no-shavings-text';
+                noShavingsText.textContent = `Не хватает ${cost - currentShavings} стружки`;
+                btn.appendChild(noShavingsText);
+            }
+            setTimeout(() => {
+                btn.classList.remove('no-shavings');
+                const txt = btn.querySelector('.no-shavings-text');
+                if (txt) txt.remove();
+                if (contractState.selectedIngots.length === 5) {
+                    btn.classList.add('ready');
+                }
+            }, 2000);
+        }
         return;
     }
 
-    // Проверяем наличие всех слитков (с учётом уже заблокированных)
     for (let ingotId of contractState.selectedIngots) {
         const available = getAvailableIngotCount(ingotId);
-        if (available <= 0) {
-            showToast('Некоторые слитки больше не доступны!', '⚠️');
-            return;
-        }
+        if (available <= 0) { showToast('Некоторые слитки больше не доступны!', '⚠️'); return; }
     }
 
-    // Расчёт результата
     const locationCounts = {};
     contractState.selectedIngots.forEach(id => {
         const ingot = CONFIG_ITEMS[id];
         const loc = ingot.location;
         locationCounts[loc] = (locationCounts[loc] || 0) + 1;
     });
-
     const results = getSynthesisTargetsByLocation(contractState.selectedIngots[0], locationCounts);
-    if (results.length === 0) {
-        showToast('Нет доступных целей!', '⚠️');
-        return;
-    }
-
-    // Выбираем случайную цель с учётом шансов
+    if (results.length === 0) { showToast('Нет доступных целей!', '⚠️'); return; }
     const totalChance = results.reduce((sum, r) => sum + r.chance, 0);
     let roll = Math.random() * totalChance;
     let selectedResult = results[0];
-    for (let r of results) {
-        roll -= r.chance;
-        if (roll <= 0) {
-            selectedResult = r;
-            break;
+    for (let r of results) { roll -= r.chance; if (roll <= 0) { selectedResult = r; break; } }
+
+    const contractUI = document.getElementById('contractFullscreen');
+    if (contractUI) contractUI.remove();
+    const pickerUI = document.getElementById('contractPickerFS');
+    if (pickerUI) pickerUI.remove();
+
+    playMergeAnimation(selectedResult.target, cost);
+}
+
+function playMergeAnimation(target, cost) {
+    const mergeOverlay = document.createElement('div');
+    mergeOverlay.className = 'contract-merge-overlay';
+    mergeOverlay.id = 'contractMergeOverlay';
+
+    const slotsContainer = document.createElement('div');
+    slotsContainer.className = 'contract-merge-slots-container';
+
+    const slotIcons = contractState.selectedIngots.map(id => CONFIG_ITEMS[id].icon);
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    slotIcons.forEach((icon, i) => {
+        const slot = document.createElement('div');
+        slot.className = 'contract-merge-slot';
+        slot.textContent = icon;
+        slotsContainer.appendChild(slot);
+    });
+
+    mergeOverlay.appendChild(slotsContainer);
+
+    const centerGlow = document.createElement('div');
+    centerGlow.className = 'contract-merge-center';
+    centerGlow.style.position = 'absolute';
+    centerGlow.style.left = (centerX - 40) + 'px';
+    centerGlow.style.top = (centerY - 40) + 'px';
+    mergeOverlay.appendChild(centerGlow);
+
+    document.body.appendChild(mergeOverlay);
+
+    const slots = slotsContainer.querySelectorAll('.contract-merge-slot');
+    const slotCount = slots.length;
+
+    slots.forEach((slot, i) => {
+        const slotRect = slot.getBoundingClientRect();
+        const sx = slotRect.left + slotRect.width / 2;
+        const sy = slotRect.top + slotRect.height / 2;
+        const mx = centerX - sx;
+        const my = centerY - sy;
+
+        setTimeout(() => {
+            slot.classList.add('merging');
+            slot.style.setProperty('--mx', mx + 'px');
+            slot.style.setProperty('--my', my + 'px');
+
+            for (let j = 0; j < 12; j++) {
+                const shard = document.createElement('div');
+                shard.className = 'contract-merge-shard';
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 30 + Math.random() * 60;
+                shard.style.cssText = `
+                    position:fixed;left:${sx}px;top:${sy}px;
+                    background:#FFD700;box-shadow:0 0 8px #FFD700;
+                    --sx:${Math.cos(angle) * distance}px;
+                    --sy:${Math.sin(angle) * distance}px;
+                `;
+                document.body.appendChild(shard);
+                setTimeout(() => shard.remove(), 800);
+            }
+        }, i * 120);
+    });
+
+    setTimeout(() => {
+        centerGlow.style.opacity = '1';
+        centerGlow.style.fontSize = '50px';
+        centerGlow.style.display = 'flex';
+        centerGlow.style.alignItems = 'center';
+        centerGlow.style.justifyContent = 'center';
+        centerGlow.textContent = '✨';
+
+        for (let i = 0; i < 50; i++) {
+            const shard = document.createElement('div');
+            shard.className = 'contract-merge-shard';
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 60 + Math.random() * 160;
+            shard.style.cssText = `
+                position:fixed;left:${centerX}px;top:${centerY}px;
+                background:${Math.random() > 0.5 ? '#FFD700' : '#FF8C00'};
+                box-shadow:0 0 12px currentColor;
+                width:${4 + Math.random() * 8}px;height:${4 + Math.random() * 8}px;
+                --sx:${Math.cos(angle) * distance}px;
+                --sy:${Math.sin(angle) * distance}px;
+            `;
+            document.body.appendChild(shard);
+            setTimeout(() => shard.remove(), 900);
         }
-    }
+    }, slotCount * 120 + 200);
 
-    // ★ СПИСАНИЕ: физически убираем слитки из инвентаря
-    consumeContractIngots();
+    setTimeout(() => {
+        consumeContractIngots();
+        import('./ingot.js').then(ingotModule => { ingotModule.deductShavings(cost); });
+        const state = getPlayerState();
+        state.ingots[target.id] = (state.ingots[target.id] || 0) + 1;
+        state.minedStats[target.id] = (state.minedStats[target.id] || 0) + 1;
+        state.player.totalIngots++;
+        saveGame();
 
-    // ★ Списываем стружку
-    import('./ingot.js').then(ingotModule => {
-        ingotModule.deductShavings(cost);
-    });
+        contractState.selectedIngots = [];
+        contractState.selectedRarity = null;
+        contractState.isActive = false;
 
-    // ★ Выдаём результат
-    state.ingots[selectedResult.target.id] = (state.ingots[selectedResult.target.id] || 0) + 1;
-    state.minedStats[selectedResult.target.id] = (state.minedStats[selectedResult.target.id] || 0) + 1;
-    state.player.totalIngots++;
-
-    // Раскрываем знание
-    import('./core.js').then(core => {
-        core.saveGame();
-    });
-
-    saveGame();
-
-    // Очищаем контракт
-    const resultTarget = selectedResult.target;
-    contractState.selectedIngots = [];
-    contractState.selectedRarity = null;
-    contractState.isActive = false;
-
-    // Закрываем UI и показываем анимацию
-    const contractUI = document.getElementById('contractFullscreen');
-    if (contractUI) contractUI.remove();
-
-    const pickerUI = document.getElementById('contractPickerFS');
-    if (pickerUI) pickerUI.remove();
-
-    playContractResultAnimation(resultTarget);
+        mergeOverlay.remove();
+        playContractResultAnimation(target);
+    }, slotCount * 120 + 800);
 }
 
-// ===== ОТМЕНА КОНТРАКТА (ВОЗВРАТ СЛИТКОВ) =====
 function cancelContract() {
-    // ★ ВАЖНО: слитки физически не списывались при перемещении в слоты.
-    // Поэтому при отмене просто очищаем contractState.
     returnContractIngots();
-
     const contractUI = document.getElementById('contractFullscreen');
     if (contractUI) contractUI.remove();
-
     const pickerUI = document.getElementById('contractPickerFS');
     if (pickerUI) pickerUI.remove();
-
     showToast('Слитки возвращены в инвентарь', '↩️');
-
-    // Обновляем вкладку игр
     if (_renderEventsTab) {
-        import('./ui.js').then(ui => {
-            if (ui.renderGamesTab) ui.renderGamesTab();
-        });
+        import('./ui.js').then(ui => { if (ui.renderGamesTab) ui.renderGamesTab(); });
     }
 }
 
-// ===== ЗАКРЫТИЕ UI (если слоты пусты) =====
 function closeContractUI() {
-    if (contractState.selectedIngots.length > 0) {
-        showToast('Сначала отмените контракт или завершите синтез', '⚠️');
-        return;
-    }
-
+    if (contractState.selectedIngots.length > 0) { showToast('Сначала отмените контракт или завершите синтез', '⚠️'); return; }
     contractState.isActive = false;
     const contractUI = document.getElementById('contractFullscreen');
     if (contractUI) contractUI.remove();
@@ -1656,28 +1045,21 @@ function closeContractUI() {
     if (pickerUI) pickerUI.remove();
 }
 
-// ===== АНИМАЦИЯ РЕЗУЛЬТАТА СИНТЕЗА =====
 function playContractResultAnimation(target) {
     const overlay = document.createElement('div');
     overlay.className = 'contract-result-overlay-v2';
-
     const icon = document.createElement('div');
     icon.className = 'contract-result-icon-v2';
     icon.textContent = target.icon;
-
     const text = document.createElement('div');
     text.className = 'contract-result-text-v2';
     text.textContent = target.name;
-
     const hint = document.createElement('div');
     hint.className = 'contract-result-hint';
     hint.textContent = 'Нажмите чтобы продолжить';
-
     overlay.appendChild(icon);
     overlay.appendChild(text);
     overlay.appendChild(hint);
-
-    // Частицы
     for (let i = 0; i < 35; i++) {
         const particle = document.createElement('div');
         const size = 4 + Math.random() * 7;
@@ -1685,62 +1067,37 @@ function playContractResultAnimation(target) {
         const distance = 70 + Math.random() * 160;
         const dx = Math.cos(angle) * distance;
         const dy = Math.sin(angle) * distance;
-
         particle.style.cssText = `
-            position: fixed;
-            width: ${size}px;
-            height: ${size}px;
-            border-radius: 50%;
-            background: ${Math.random() > 0.5 ? '#FFD700' : '#FF8C00'};
-            pointer-events: none;
-            z-index: 521;
-            left: ${window.innerWidth / 2}px;
-            top: ${window.innerHeight / 2}px;
-            box-shadow: 0 0 ${size * 3}px currentColor;
-            animation: contractParticleFly 0.9s cubic-bezier(0, 0.6, 0.4, 1) forwards;
-            animation-delay: ${i * 0.015}s;
-            --sx: ${dx}px;
-            --sy: ${dy}px;
+            position:fixed;width:${size}px;height:${size}px;border-radius:50%;
+            background:${Math.random() > 0.5 ? '#FFD700' : '#FF8C00'};
+            pointer-events:none;z-index:521;
+            left:${window.innerWidth / 2}px;top:${window.innerHeight / 2}px;
+            box-shadow:0 0 ${size * 3}px currentColor;
+            animation:contractParticleFly 0.9s cubic-bezier(0,0.6,0.4,1) forwards;
+            animation-delay:${i * 0.015}s;
+            --sx:${dx}px;--sy:${dy}px;
         `;
-
         document.body.appendChild(particle);
         setTimeout(() => particle.remove(), 1000);
     }
-
-    // Вспышка
     const flash = document.createElement('div');
     flash.style.cssText = `
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.7) 0%, rgba(255,200,0,0.2) 40%, transparent 70%);
-        pointer-events: none;
-        z-index: 519;
-        animation: contractFlashBurst 0.5s ease-out forwards;
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.7) 0%,rgba(255,200,0,0.2) 40%,transparent 70%);
+        pointer-events:none;z-index:519;
+        animation:contractFlashBurst 0.5s ease-out forwards;
     `;
     document.body.appendChild(flash);
     setTimeout(() => flash.remove(), 600);
-
     document.body.appendChild(overlay);
-
     overlay.addEventListener('click', () => {
         overlay.remove();
-        if (_renderEventsTab) {
-            import('./ui.js').then(ui => {
-                if (ui.renderGamesTab) ui.renderGamesTab();
-            });
-        }
+        if (_renderEventsTab) { import('./ui.js').then(ui => { if (ui.renderGamesTab) ui.renderGamesTab(); }); }
     });
-
-    // Автозакрытие через 5 секунд
     setTimeout(() => {
         if (overlay.parentNode) {
             overlay.remove();
-            if (_renderEventsTab) {
-                import('./ui.js').then(ui => {
-                    if (ui.renderGamesTab) ui.renderGamesTab();
-                });
-            }
+            if (_renderEventsTab) { import('./ui.js').then(ui => { if (ui.renderGamesTab) ui.renderGamesTab(); }); }
         }
     }, 5000);
 }
@@ -3065,9 +2422,9 @@ function showAlchemyConfirmModal(ingotId1, ingotId2) {
                     ${isFirstDiscovery ? '<div class="result-mystery">???</div>' : `<div class="result-icon-animated">${resultIngot.icon}</div>`}
                 </div>
                 <div style="text-align:center;">
-                    ${isFirstDiscovery
-                ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Неизвестный сплав</div>'
-                : `<div style="font-size:12px;color:var(--text-primary);font-weight:600;">${resultIngot.name}</div>`}
+                    ${isFirstDiscovery 
+                        ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Неизвестный сплав</div>' 
+                        : `<div style="font-size:12px;color:var(--text-primary);font-weight:600;">${resultIngot.name}</div>`}
                     <div class="alch-badge">⚡ +${totalXP} XP</div>
                     ${isFirstDiscovery ? '<div style="font-size:9px;color:#FFD700;margin-top:3px;">Первое открытие</div>' : ''}
                     <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">
@@ -3646,12 +3003,12 @@ export function renderGamesTab() {
                         Награда: +${quest.rewardXP} XP${quest.rewardGeode ? ' + ' + (CONFIG_GEODES[quest.rewardGeode]?.name || 'жеода') : ''}
                     </div>
                     ${isLocked
-                    ? `<div style="font-size:11px; color:#FF4444;">🔒 Доступно с ${quest.reqLevel} уровня</div>`
-                    : (isCompleted
-                        ? '<div style="font-size:11px; color:#50C878;">✅ Выполнено</div>'
-                        : `<button class="small-btn complete-quest-btn" data-quest-id="${questId}" style="font-size:11px; padding:6px 12px;">📜 Выполнить</button>`
-                    )
-                }
+                        ? `<div style="font-size:11px; color:#FF4444;">🔒 Доступно с ${quest.reqLevel} уровня</div>`
+                        : (isCompleted
+                            ? '<div style="font-size:11px; color:#50C878;">✅ Выполнено</div>'
+                            : `<button class="small-btn complete-quest-btn" data-quest-id="${questId}" style="font-size:11px; padding:6px 12px;">📜 Выполнить</button>`
+                        )
+                    }
                 </div>
             `;
         }
