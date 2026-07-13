@@ -442,6 +442,11 @@ export const eventsManager = {
             this.forceEndedThisSlot = false;
         }
 
+        // Если уже есть активный ивент с валидным временем окончания — не перезаписываем
+        if (this.activeEventId && this.eventEndTime && now < this.eventEndTime) {
+            return;
+        }
+
         if (now >= slotStart && now < slotEnd) {
             if (this.forceEndedThisSlot) {
                 return;
