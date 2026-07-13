@@ -386,6 +386,7 @@ function getEffectiveDuration() {
 
 export function toggleSpeedMode() {
     speedMode = !speedMode;
+    clearTimer('event');
     if (_showToast) _showToast(speedMode ? '⚡ Турбо-ротация включена (30 сек)' : '🐢 Обычная ротация (30 мин)', '⏱️');
     eventsManager.startEventCycle();
 }
@@ -523,7 +524,22 @@ export const eventsManager = {
 
     startEventById(eventId) {
         if (!EVENT_DEFINITIONS[eventId]) return;
-        if (this.activeEventId) this.forceEndEvent();
+
+        if (this.activeEventId) {
+            if (this.activeEventId === 'meteor_storm') {
+                if (meteorStormState.active) {
+                    meteorStormState.active = false;
+                    clearTimer('meteorSpawn');
+                    clearTimer('meteorRound');
+                    const container = document.getElementById('meteorStormArea');
+                    if (container) {
+                        container.querySelectorAll('.storm-meteor, .storm-float-text').forEach(el => el.remove());
+                    }
+                    document.getElementById('meteorStormOverlay')?.classList.remove('active');
+                }
+            }
+            this.endEventInternal();
+        }
 
         const def = EVENT_DEFINITIONS[eventId];
         const duration = getEffectiveDuration();
@@ -531,6 +547,9 @@ export const eventsManager = {
         this.eventEndTime = Date.now() + duration;
         this.lastEventId = eventId;
         this.forceEndedThisSlot = false;
+
+        const interval = getEffectiveInterval();
+        this.currentSlotNumber = Math.floor(Date.now() / interval);
 
         if (_showToast) _showToast(def.startMessage, def.startToast);
         sendBotNotification(`🚀 Ивент запущен вручную: ${def.name}`);
