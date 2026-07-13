@@ -893,8 +893,11 @@ function executeContractSynthesis() {
     }
 
     for (let ingotId of contractState.selectedIngots) {
-        const available = getAvailableIngotCount(ingotId);
-        if (available <= 0) { showToast('Некоторые слитки больше не доступны!', '⚠️'); return; }
+        const owned = state.ingots[ingotId] || 0;
+        if (owned < 1) {
+            showToast('Некоторые слитки больше не доступны!', '⚠️');
+            return;
+        }
     }
 
     const locationCounts = {};
@@ -1101,6 +1104,7 @@ function playContractResultAnimation(target) {
         }
     }, 5000);
 }
+
 // ---------- АДМИН-ПАНЕЛЬ ----------
 function showAdminPanel() {
     const state = getPlayerState();
@@ -2872,7 +2876,6 @@ export function renderGamesTab() {
 
     let html = '<div class="section-title">🎮 Игры <button class="help-btn" data-help="events">?</button></div>';
 
-    // ===== ЗОНА 1: ГЛОБАЛЬНОЕ СОБЫТИЕ =====
     html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:10px 0 8px; color:var(--accent-gold);">🌐 Глобальное событие</div>';
 
     if (!activeEvent || !activeEventId) {
@@ -2953,7 +2956,6 @@ export function renderGamesTab() {
         `;
     }
 
-    // ===== ЗОНА 2: ЗАКАЗЫ ГИЛЬДИИ =====
     html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:20px 0 8px; color:var(--accent-gold);">📜 Заказы Гильдии</div>';
 
     const activeQuests = state.activeQuests || [];
@@ -3014,7 +3016,6 @@ export function renderGamesTab() {
         }
     }
 
-    // ===== ЗОНА 3: МИНИ-ИГРЫ =====
     html += '<div style="font-family:\'Unbounded\',sans-serif; font-size:14px; font-weight:700; margin:20px 0 8px; color:var(--accent-gold);">🎰 Мини-игры</div>';
 
     const miniGames = [
