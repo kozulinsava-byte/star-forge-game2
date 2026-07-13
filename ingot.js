@@ -4,39 +4,18 @@ import { CONFIG_ITEMS, EQUIP_SLOTS_CONFIG, ERAS } from './config.js';
 import { getPlayerState, saveGame } from './core.js';
 
 // ========== ДАННЫЕ ПРОГРЕССИИ СЛИТКА (100 УРОВНЕЙ) ==========
-// Генерируем 100 уровней прогрессии слитка
 const INGOT_LEVELS = {};
 const INGOT_DISPLAY = {};
 
-// Шаблоны названий по эпохам
 const ERA_INGOT_NAMES = {
-  mire: [
-    'Грязевой сгусток', 'Болотный самородок', 'Иловый слиток', 'Трухлявый слиток',
-    'Окисленный слиток', 'Мусорный слиток', 'Погребённый слиток', 'Слиток Трясины'
-  ],
-  wildlands: [
-    'Пепельный слиток', 'Пустынный самородок', 'Соляной кристалл', 'Обсидиановый слиток',
-    'Смоляной ком', 'Кактусовый сплав', 'Вулканический слиток', 'Слиток Диких Земель'
-  ],
-  deepcaverns: [
-    'Хрустальный слиток', 'Жемчужный самородок', 'Базальтовый блок', 'Костяной сплав',
-    'Светящийся слиток', 'Грибной композит', 'Алмазный слиток', 'Слиток Глубин'
-  ],
-  industrial: [
-    'Шестерёночный слиток', 'Микросхемный сплав', 'Химический композит', 'Урановый стержень',
-    'Автомобильный сплав', 'Нефтяной полимер', 'Турбинный слиток', 'Слиток Индустрии'
-  ],
-  astral: [
-    'Звёздный слиток', 'Гравитонный сплав', 'Плазменный кристалл', 'Тёмный композит',
-    'Портальный камень', 'Сверхновый сплав', 'Квазарный слиток', 'Слиток Астрала'
-  ],
-  transcendence: [
-    'Слиток творения', 'Временной сплав', 'Мультивселенский композит', 'Энтропийный кристалл',
-    'Бесконечный слиток', 'Источниковый сплав', 'Слиток вечности', 'Абсолютный Слиток'
-  ]
+  mire: ['Грязевой сгусток', 'Болотный самородок', 'Иловый слиток', 'Трухлявый слиток', 'Окисленный слиток', 'Мусорный слиток', 'Погребённый слиток', 'Слиток Трясины'],
+  wildlands: ['Пепельный слиток', 'Пустынный самородок', 'Соляной кристалл', 'Обсидиановый слиток', 'Смоляной ком', 'Кактусовый сплав', 'Вулканический слиток', 'Слиток Диких Земель'],
+  deepcaverns: ['Хрустальный слиток', 'Жемчужный самородок', 'Базальтовый блок', 'Костяной сплав', 'Светящийся слиток', 'Грибной композит', 'Алмазный слиток', 'Слиток Глубин'],
+  industrial: ['Шестерёночный слиток', 'Микросхемный сплав', 'Химический композит', 'Урановый стержень', 'Автомобильный сплав', 'Нефтяной полимер', 'Турбинный слиток', 'Слиток Индустрии'],
+  astral: ['Звёздный слиток', 'Гравитонный сплав', 'Плазменный кристалл', 'Тёмный композит', 'Портальный камень', 'Сверхновый сплав', 'Квазарный слиток', 'Слиток Астрала'],
+  transcendence: ['Слиток творения', 'Временной сплав', 'Мультивселенский композит', 'Энтропийный кристалл', 'Бесконечный слиток', 'Источниковый сплав', 'Слиток вечности', 'Абсолютный Слиток']
 };
 
-// Иконки по эпохам
 const ERA_ICONS = {
   mire: ['🟤', '🟢', '🪵', '🦴', '🔩', '🧶', '🧩', '💚'],
   wildlands: ['🪶', '🪨', '💎', '🖤', '🖤', '🌵', '🌋', '🔥'],
@@ -46,170 +25,106 @@ const ERA_ICONS = {
   transcendence: ['💧', '⏳', '🪞', '🌫️', '✨', '💫', '♾️', '☀️']
 };
 
-// Генерируем 100 уровней
 function generateIngotLevels() {
   const eraList = ['mire', 'wildlands', 'deepcaverns', 'industrial', 'astral', 'transcendence'];
   let globalLevel = 1;
   let tapPower = 1;
-  
+
   eraList.forEach((eraId, eraIndex) => {
     const era = ERAS[eraId];
     const names = ERA_INGOT_NAMES[eraId];
     const icons = ERA_ICONS[eraId];
     const levelsInEra = eraId === 'mire' ? 8 : (eraId === 'transcendence' ? 12 : 10);
-    
+
     for (let i = 0; i < levelsInEra; i++) {
       const nameIndex = Math.min(i, names.length - 1);
       const iconIndex = Math.min(i, icons.length - 1);
       const shavingsCost = Math.floor(150 * Math.pow(2.5, eraIndex) * (1 + i * 0.3));
       const imageIndex = Math.min(globalLevel, 8);
-      
-      // Данные для перехода на следующий уровень
+
       if (globalLevel < 100) {
         INGOT_LEVELS[globalLevel] = {
-          level: globalLevel,
-          name: names[nameIndex],
-          icon: icons[iconIndex],
-          era: era.name,
-          shavingsCost: shavingsCost,
-          ingotCost: generateIngotCost(eraId, i),
-          tapPower: tapPower,
+          level: globalLevel, name: names[nameIndex], icon: icons[iconIndex],
+          era: era.name, shavingsCost: shavingsCost,
+          ingotCost: generateIngotCost(eraId, i), tapPower: tapPower,
           image: `assets/king_ingot/ingot_${imageIndex}.png`
         };
       }
-      
-      // Данные для отображения текущего уровня
+
       INGOT_DISPLAY[globalLevel] = {
-        name: names[nameIndex],
-        icon: icons[iconIndex],
-        era: era.name,
-        tapPower: tapPower,
-        image: `assets/king_ingot/ingot_${imageIndex}.png`
+        name: names[nameIndex], icon: icons[iconIndex], era: era.name,
+        tapPower: tapPower, image: `assets/king_ingot/ingot_${imageIndex}.png`
       };
-      
+
       tapPower = Math.floor(tapPower * (1.3 + i * 0.05));
       globalLevel++;
     }
   });
 }
 
-// Генератор требований по ингредиентам для каждой эпохи
 function generateIngotCost(eraId, levelIndex) {
   const costs = {};
-  
-  switch(eraId) {
-    case 'mire':
-      if (levelIndex === 0) costs.wet_sand = 2;
-      if (levelIndex === 0) costs.mud_ingot = 1;
-      if (levelIndex === 1) costs.mud_ingot = 2;
-      if (levelIndex === 1) costs.silt_clump = 1;
-      if (levelIndex === 2) costs.silt_clump = 1;
-      if (levelIndex === 2) costs.silt_mass = 1;
-      if (levelIndex === 3) costs.warped_bar = 2;
-      if (levelIndex === 3) costs.rot_mix = 1;
-      if (levelIndex === 4) costs.rotted_bough = 1;
-      if (levelIndex === 4) costs.rot_alloy = 1;
-      if (levelIndex === 5) costs.rusty_scrap = 2;
-      if (levelIndex === 5) costs.rust_alloy = 1;
-      if (levelIndex === 6) costs.broken_tile = 2;
-      if (levelIndex === 6) costs.scrap_ingot = 1;
-      if (levelIndex === 7) costs.bog_iron = 1;
-      if (levelIndex === 7) costs.root_fiber = 1;
-      break;
-      
-    case 'wildlands':
-      if (levelIndex === 0) costs.cinder_chunk = 3;
-      if (levelIndex === 0) costs.smolder_core = 1;
-      if (levelIndex === 1) costs.grit_chunk = 2;
-      if (levelIndex === 1) costs.sand_brick = 1;
-      if (levelIndex === 2) costs.salt_crystal = 2;
-      if (levelIndex === 2) costs.brine_pearl = 1;
-      if (levelIndex === 3) costs.obsidian_shard = 2;
-      if (levelIndex === 3) costs.magma_scale = 1;
-      if (levelIndex === 4) costs.tar_clump = 2;
-      if (levelIndex === 4) costs.bone_tar = 1;
-      if (levelIndex === 5) costs.cactus_spine = 2;
-      if (levelIndex === 5) costs.cactus_fiber = 1;
-      if (levelIndex === 6) costs.ember_dust = 1;
-      if (levelIndex === 6) costs.fire_opal = 1;
-      if (levelIndex >= 7) costs.desert_pearl = 1;
-      break;
-      
-    case 'deepcaverns':
-      if (levelIndex === 0) costs.quartz_shard = 3;
-      if (levelIndex === 0) costs.amethyst_cluster = 1;
-      if (levelIndex === 1) costs.lake_pearl = 2;
-      if (levelIndex === 1) costs.abyssal_scale = 1;
-      if (levelIndex === 2) costs.basalt_chunk = 2;
-      if (levelIndex === 2) costs.lava_gem = 1;
-      if (levelIndex === 3) costs.bone_shard = 2;
-      if (levelIndex === 3) costs.skull_fragment = 1;
-      if (levelIndex === 4) costs.silk_thread = 2;
-      if (levelIndex === 4) costs.glow_goo = 1;
-      if (levelIndex === 5) costs.spore_cap = 2;
-      if (levelIndex === 5) costs.mycelium_brick = 1;
-      if (levelIndex >= 6) costs.diamond_raw = 1;
-      if (levelIndex >= 7) costs.ruby_core = 1;
-      break;
-      
-    case 'industrial':
-      if (levelIndex === 0) costs.gear_scrap = 3;
-      if (levelIndex === 0) costs.piston_rod = 1;
-      if (levelIndex === 1) costs.circuit_board = 2;
-      if (levelIndex === 1) costs.copper_coil = 1;
-      if (levelIndex === 2) costs.chem_vial = 2;
-      if (levelIndex === 2) costs.nano_powder = 1;
-      if (levelIndex === 3) costs.uranium_ore = 2;
-      if (levelIndex === 3) costs.coolant_rod = 1;
-      if (levelIndex === 4) costs.car_chassis = 2;
-      if (levelIndex === 4) costs.muffler_pipe = 1;
-      if (levelIndex === 5) costs.crude_oil = 2;
-      if (levelIndex === 5) costs.polymer_chunk = 1;
-      if (levelIndex >= 6) costs.turbine_blade = 1;
-      if (levelIndex >= 7) costs.catalytic_core = 1;
-      break;
-      
-    case 'astral':
-      if (levelIndex === 0) costs.star_dust = 3;
-      if (levelIndex === 0) costs.void_essence = 1;
-      if (levelIndex === 1) costs.graviton_ore = 2;
-      if (levelIndex === 1) costs.mass_shard = 1;
-      if (levelIndex === 2) costs.plasma_orb = 2;
-      if (levelIndex === 2) costs.beam_crystal = 1;
-      if (levelIndex === 3) costs.dark_shard = 2;
-      if (levelIndex === 3) costs.antimatter_flake = 1;
-      if (levelIndex === 4) costs.portal_stone = 2;
-      if (levelIndex === 4) costs.bridge_crystal = 1;
-      if (levelIndex === 5) costs.nova_ash = 2;
-      if (levelIndex === 5) costs.pulsar_fragment = 1;
-      if (levelIndex >= 6) costs.quasar_core = 1;
-      if (levelIndex >= 7) costs.supernova_core = 1;
-      break;
-      
-    case 'transcendence':
-      if (levelIndex === 0) costs.primordial_essence = 3;
-      if (levelIndex === 0) costs.creator_spark = 1;
-      if (levelIndex === 1) costs.time_sand = 2;
-      if (levelIndex === 1) costs.chrono_crystal = 1;
-      if (levelIndex === 2) costs.reality_shard = 2;
-      if (levelIndex === 2) costs.dimension_fabric = 1;
-      if (levelIndex === 3) costs.entropy_dust = 2;
-      if (levelIndex === 3) costs.decay_crystal = 1;
-      if (levelIndex === 4) costs.infinite_dust = 2;
-      if (levelIndex === 4) costs.loop_stone = 1;
-      if (levelIndex === 5) costs.source_dust = 2;
-      if (levelIndex === 5) costs.source_crystal = 1;
-      if (levelIndex >= 6) costs.creation_core = 1;
-      if (levelIndex >= 7) costs.source_of_all = 1;
-      break;
+  if (eraId === 'mire') {
+    if (levelIndex === 0) { costs.wet_sand = 2; costs.mud_ingot = 1; }
+    if (levelIndex === 1) { costs.mud_ingot = 2; costs.silt_clump = 1; }
+    if (levelIndex === 2) { costs.silt_clump = 1; costs.silt_mass = 1; }
+    if (levelIndex === 3) { costs.warped_bar = 2; costs.rot_mix = 1; }
+    if (levelIndex === 4) { costs.rotted_bough = 1; costs.rot_alloy = 1; }
+    if (levelIndex === 5) { costs.rusty_scrap = 2; costs.rust_alloy = 1; }
+    if (levelIndex === 6) { costs.broken_tile = 2; costs.scrap_ingot = 1; }
+    if (levelIndex === 7) { costs.bog_iron = 1; costs.root_fiber = 1; }
+  } else if (eraId === 'wildlands') {
+    if (levelIndex === 0) { costs.cinder_chunk = 3; costs.smolder_core = 1; }
+    if (levelIndex === 1) { costs.grit_chunk = 2; costs.sand_brick = 1; }
+    if (levelIndex === 2) { costs.salt_crystal = 2; costs.brine_pearl = 1; }
+    if (levelIndex === 3) { costs.obsidian_shard = 2; costs.magma_scale = 1; }
+    if (levelIndex === 4) { costs.tar_clump = 2; costs.bone_tar = 1; }
+    if (levelIndex === 5) { costs.cactus_spine = 2; costs.cactus_fiber = 1; }
+    if (levelIndex === 6) { costs.ember_dust = 1; costs.fire_opal = 1; }
+    if (levelIndex >= 7) { costs.desert_pearl = 1; }
+  } else if (eraId === 'deepcaverns') {
+    if (levelIndex === 0) { costs.quartz_shard = 3; costs.amethyst_cluster = 1; }
+    if (levelIndex === 1) { costs.lake_pearl = 2; costs.abyssal_scale = 1; }
+    if (levelIndex === 2) { costs.basalt_chunk = 2; costs.lava_gem = 1; }
+    if (levelIndex === 3) { costs.bone_shard = 2; costs.skull_fragment = 1; }
+    if (levelIndex === 4) { costs.silk_thread = 2; costs.glow_goo = 1; }
+    if (levelIndex === 5) { costs.spore_cap = 2; costs.mycelium_brick = 1; }
+    if (levelIndex >= 6) { costs.diamond_raw = 1; }
+    if (levelIndex >= 7) { costs.ruby_core = 1; }
+  } else if (eraId === 'industrial') {
+    if (levelIndex === 0) { costs.gear_scrap = 3; costs.piston_rod = 1; }
+    if (levelIndex === 1) { costs.circuit_board = 2; costs.copper_coil = 1; }
+    if (levelIndex === 2) { costs.chem_vial = 2; costs.nano_powder = 1; }
+    if (levelIndex === 3) { costs.uranium_ore = 2; costs.coolant_rod = 1; }
+    if (levelIndex === 4) { costs.car_chassis = 2; costs.muffler_pipe = 1; }
+    if (levelIndex === 5) { costs.crude_oil = 2; costs.polymer_chunk = 1; }
+    if (levelIndex >= 6) { costs.turbine_blade = 1; }
+    if (levelIndex >= 7) { costs.catalytic_core = 1; }
+  } else if (eraId === 'astral') {
+    if (levelIndex === 0) { costs.star_dust = 3; costs.void_essence = 1; }
+    if (levelIndex === 1) { costs.graviton_ore = 2; costs.mass_shard = 1; }
+    if (levelIndex === 2) { costs.plasma_orb = 2; costs.beam_crystal = 1; }
+    if (levelIndex === 3) { costs.dark_shard = 2; costs.antimatter_flake = 1; }
+    if (levelIndex === 4) { costs.portal_stone = 2; costs.bridge_crystal = 1; }
+    if (levelIndex === 5) { costs.nova_ash = 2; costs.pulsar_fragment = 1; }
+    if (levelIndex >= 6) { costs.quasar_core = 1; }
+    if (levelIndex >= 7) { costs.supernova_core = 1; }
+  } else if (eraId === 'transcendence') {
+    if (levelIndex === 0) { costs.primordial_essence = 3; costs.creator_spark = 1; }
+    if (levelIndex === 1) { costs.time_sand = 2; costs.chrono_crystal = 1; }
+    if (levelIndex === 2) { costs.reality_shard = 2; costs.dimension_fabric = 1; }
+    if (levelIndex === 3) { costs.entropy_dust = 2; costs.decay_crystal = 1; }
+    if (levelIndex === 4) { costs.infinite_dust = 2; costs.loop_stone = 1; }
+    if (levelIndex === 5) { costs.source_dust = 2; costs.source_crystal = 1; }
+    if (levelIndex >= 6) { costs.creation_core = 1; }
+    if (levelIndex >= 7) { costs.source_of_all = 1; }
   }
-  
   return Object.keys(costs).length > 0 ? costs : null;
 }
 
 generateIngotLevels();
 
-// ========== РЕЕСТР БОНУСОВ (расширенный) ==========
+// ========== РЕЕСТР БОНУСОВ ==========
 const EFFECT_HANDLERS = {
   energy_regen: {
     name: 'Ускоренная регенерация энергии',
@@ -293,33 +208,15 @@ const EFFECT_HANDLERS = {
 
 // ========== СОСТОЯНИЕ СЛИТКА ==========
 let ingotState = {
-  shavings: 0,
-  tapEnergy: 500,
-  maxTapEnergy: 500,
-  lastEnergyRegen: Date.now(),
-  levelLocked: false,
-  uiUpdateInterval: null,
-  lastSaveShavings: 0,
-  saveDebounceTimer: null,
-  _bonusEnergyRegen: 0,
-  _bonusTapPower: 0,
-  _autoTapInterval: 0,
-  _autoTapTimer: null,
-  _bonusExpeditionSpeed: 0,
-  _bonusRushChance: 0,
-  _bonusRushDuration: 0,
-  _bonusXP: 0,
-  _bonusDoubleDrop: 0,
-  _bonusRecycledChance: 0
+  shavings: 0, tapEnergy: 500, maxTapEnergy: 500, lastEnergyRegen: Date.now(),
+  levelLocked: false, uiUpdateInterval: null, lastSaveShavings: 0, saveDebounceTimer: null,
+  _bonusEnergyRegen: 0, _bonusTapPower: 0, _autoTapInterval: 0, _autoTapTimer: null,
+  _bonusExpeditionSpeed: 0, _bonusRushChance: 0, _bonusRushDuration: 0,
+  _bonusXP: 0, _bonusDoubleDrop: 0, _bonusRecycledChance: 0
 };
 
 // ========== СОСТОЯНИЕ РЕЖИМА «КУЗНЕЧНЫЙ РАЖ» ==========
-let forgeRushState = {
-  active: false,
-  timeLeft: 0,
-  countdownInterval: null,
-  countdownDisplay: null
-};
+let forgeRushState = { active: false, timeLeft: 0, countdownInterval: null, countdownDisplay: null };
 
 // ========== СОСТОЯНИЕ ОРБИТЫ ==========
 let orbitAnimationId = null;
@@ -339,36 +236,18 @@ export function initIngotState(savedData) {
 }
 
 export function resetIngotState() {
-  stopUIUpdates();
-  stopForgeRush();
-  stopOrbitAnimation();
-  ingotState.shavings = 0;
-  ingotState.tapEnergy = 500;
-  ingotState.maxTapEnergy = 500;
-  ingotState.lastEnergyRegen = Date.now();
-  ingotState.levelLocked = false;
-  ingotState.lastSaveShavings = 0;
-  ingotState._bonusEnergyRegen = 0;
-  ingotState._bonusTapPower = 0;
-  ingotState._autoTapInterval = 0;
+  stopUIUpdates(); stopForgeRush(); stopOrbitAnimation();
+  ingotState.shavings = 0; ingotState.tapEnergy = 500; ingotState.maxTapEnergy = 500;
+  ingotState.lastEnergyRegen = Date.now(); ingotState.levelLocked = false; ingotState.lastSaveShavings = 0;
+  ingotState._bonusEnergyRegen = 0; ingotState._bonusTapPower = 0; ingotState._autoTapInterval = 0;
   if (ingotState._autoTapTimer) { clearInterval(ingotState._autoTapTimer); ingotState._autoTapTimer = null; }
-  ingotState._bonusExpeditionSpeed = 0;
-  ingotState._bonusRushChance = 0;
-  ingotState._bonusRushDuration = 0;
-  ingotState._bonusXP = 0;
-  ingotState._bonusDoubleDrop = 0;
-  ingotState._bonusRecycledChance = 0;
+  ingotState._bonusExpeditionSpeed = 0; ingotState._bonusRushChance = 0; ingotState._bonusRushDuration = 0;
+  ingotState._bonusXP = 0; ingotState._bonusDoubleDrop = 0; ingotState._bonusRecycledChance = 0;
   if (ingotState.saveDebounceTimer) { clearTimeout(ingotState.saveDebounceTimer); ingotState.saveDebounceTimer = null; }
 }
 
 export function getIngotSaveData() {
-  return {
-    ingotShavings: ingotState.shavings,
-    tapEnergy: ingotState.tapEnergy,
-    maxTapEnergy: ingotState.maxTapEnergy,
-    lastEnergyRegen: ingotState.lastEnergyRegen,
-    levelLocked: ingotState.levelLocked
-  };
+  return { ingotShavings: ingotState.shavings, tapEnergy: ingotState.tapEnergy, maxTapEnergy: ingotState.maxTapEnergy, lastEnergyRegen: ingotState.lastEnergyRegen, levelLocked: ingotState.levelLocked };
 }
 
 export function getShavings() { return ingotState.shavings; }
@@ -382,8 +261,7 @@ export function deductShavings(amount) {
     ingotState.shavings -= amount;
     const shavingsDisplay = document.getElementById('ingotShavingsDisplay');
     if (shavingsDisplay) shavingsDisplay.textContent = ingotState.shavings;
-    updateBottomProgressBars();
-    debouncedSave();
+    updateBottomProgressBars(); debouncedSave();
     return true;
   }
   return false;
@@ -391,8 +269,7 @@ export function deductShavings(amount) {
 
 export function getCurrentIngotData() {
   const state = getPlayerState();
-  const level = Math.min(state.player.level, 100);
-  return INGOT_DISPLAY[level] || INGOT_DISPLAY[1];
+  return INGOT_DISPLAY[state.player.level] || INGOT_DISPLAY[1];
 }
 
 export function getIngotDataForLevel(level) {
@@ -424,23 +301,16 @@ export function getActiveBonuses() {
 }
 
 function recalcAllBonuses() {
-  ingotState._bonusEnergyRegen = 0;
-  ingotState._bonusTapPower = 0;
-  ingotState._bonusExpeditionSpeed = 0;
-  ingotState._bonusRushChance = 0;
-  ingotState._bonusRushDuration = 0;
-  ingotState._bonusXP = 0;
-  ingotState._bonusDoubleDrop = 0;
-  ingotState._bonusRecycledChance = 0;
+  ingotState._bonusEnergyRegen = 0; ingotState._bonusTapPower = 0;
+  ingotState._bonusExpeditionSpeed = 0; ingotState._bonusRushChance = 0; ingotState._bonusRushDuration = 0;
+  ingotState._bonusXP = 0; ingotState._bonusDoubleDrop = 0; ingotState._bonusRecycledChance = 0;
   if (ingotState._autoTapTimer) { clearInterval(ingotState._autoTapTimer); ingotState._autoTapTimer = null; }
   ingotState._autoTapInterval = 0;
-
   const bonuses = getActiveBonuses();
   bonuses.forEach(b => {
     const handler = EFFECT_HANDLERS[b.effectId];
     if (handler) handler.apply(b.power);
   });
-
   updateOrbitDisplay();
 }
 
@@ -466,17 +336,12 @@ export function regenEnergy() {
 // ========== ДЕБАУНС СОХРАНЕНИЕ ==========
 function debouncedSave() {
   if (ingotState.saveDebounceTimer) clearTimeout(ingotState.saveDebounceTimer);
-  ingotState.saveDebounceTimer = setTimeout(() => {
-    ingotState.lastSaveShavings = ingotState.shavings;
-    saveGame();
-    ingotState.saveDebounceTimer = null;
-  }, 50);
+  ingotState.saveDebounceTimer = setTimeout(() => { ingotState.lastSaveShavings = ingotState.shavings; saveGame(); ingotState.saveDebounceTimer = null; }, 50);
 }
 
 export function forceSaveNow() {
   if (ingotState.saveDebounceTimer) { clearTimeout(ingotState.saveDebounceTimer); ingotState.saveDebounceTimer = null; }
-  ingotState.lastSaveShavings = ingotState.shavings;
-  saveGame();
+  ingotState.lastSaveShavings = ingotState.shavings; saveGame();
 }
 
 // ========== ГЕНЕРАТОР ИСКР ==========
@@ -484,8 +349,7 @@ function spawnSparks(container, x, y, count) {
   for (let i = 0; i < count; i++) {
     const spark = document.createElement('div');
     spark.className = 'forge-spark';
-    spark.style.left = x + 'px';
-    spark.style.top = y + 'px';
+    spark.style.left = x + 'px'; spark.style.top = y + 'px';
     const angle = Math.random() * Math.PI * 2;
     const distance = 20 + Math.random() * 40;
     spark.style.setProperty('--sx', Math.cos(angle) * distance + 'px');
@@ -525,8 +389,7 @@ function activateForgeRush() {
 }
 
 function deactivateForgeRush() {
-  forgeRushState.active = false;
-  forgeRushState.timeLeft = 0;
+  forgeRushState.active = false; forgeRushState.timeLeft = 0;
   if (forgeRushState.countdownInterval) { clearInterval(forgeRushState.countdownInterval); forgeRushState.countdownInterval = null; }
   if (forgeRushState.countdownDisplay) { forgeRushState.countdownDisplay.remove(); forgeRushState.countdownDisplay = null; }
   const ingotScreen = document.querySelector('.ingot-screen');
@@ -541,104 +404,67 @@ function startOrbitAnimation() {
   stopOrbitAnimation();
   const coreArea = document.getElementById('ingotCoreArea');
   if (!coreArea) return;
-
   const equipped = getEquippedArtifacts();
   const activeArtifacts = equipped.filter(id => id !== null);
-
   orbitElements.forEach(el => el.remove());
   orbitElements = [];
-
   if (activeArtifacts.length === 0) return;
-
   const orbitRadius = 105;
   const angles = activeArtifacts.map((_, i) => (i / activeArtifacts.length) * Math.PI * 2);
-
   activeArtifacts.forEach((artifactId, index) => {
     const artifact = CONFIG_ITEMS[artifactId];
     if (!artifact) return;
-
     const orbiter = document.createElement('div');
     orbiter.className = 'orbit-artifact';
     orbiter.textContent = artifact.icon;
     orbiter.style.fontSize = '22px';
-    orbiter.style.position = 'absolute';
-    orbiter.style.pointerEvents = 'none';
-    orbiter.style.zIndex = '3';
-    orbiter.style.filter = 'drop-shadow(0 0 8px rgba(255,215,0,0.6))';
-    orbiter.style.transition = 'none';
-    orbiter.dataset.angle = angles[index];
-    orbiter.dataset.orbitRadius = orbitRadius;
+    orbiter.style.position = 'absolute'; orbiter.style.pointerEvents = 'none'; orbiter.style.zIndex = '3';
+    orbiter.style.filter = 'drop-shadow(0 0 8px rgba(255,215,0,0.6))'; orbiter.style.transition = 'none';
+    orbiter.dataset.angle = angles[index]; orbiter.dataset.orbitRadius = orbitRadius;
     orbiter.dataset.speed = 0.6 + index * 0.15;
-    coreArea.appendChild(orbiter);
-    orbitElements.push(orbiter);
+    coreArea.appendChild(orbiter); orbitElements.push(orbiter);
   });
-
   let startTime = performance.now();
-
   function animateOrbit(now) {
-    if (!document.getElementById('ingotCoreArea')) {
-      stopOrbitAnimation();
-      return;
-    }
+    if (!document.getElementById('ingotCoreArea')) { stopOrbitAnimation(); return; }
     const elapsed = (now - startTime) / 1000;
     orbitElements.forEach(el => {
       const baseAngle = parseFloat(el.dataset.angle);
       const speed = parseFloat(el.dataset.speed);
       const radius = parseFloat(el.dataset.orbitRadius);
       const angle = baseAngle + elapsed * speed;
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
+      const x = Math.cos(angle) * radius; const y = Math.sin(angle) * radius;
       el.style.transform = `translate(${x}px, ${y}px)`;
     });
     orbitAnimationId = requestAnimationFrame(animateOrbit);
   }
-
   orbitAnimationId = requestAnimationFrame(animateOrbit);
 }
 
 function stopOrbitAnimation() {
-  if (orbitAnimationId) {
-    cancelAnimationFrame(orbitAnimationId);
-    orbitAnimationId = null;
-  }
-  orbitElements.forEach(el => el.remove());
-  orbitElements = [];
+  if (orbitAnimationId) { cancelAnimationFrame(orbitAnimationId); orbitAnimationId = null; }
+  orbitElements.forEach(el => el.remove()); orbitElements = [];
 }
 
-function updateOrbitDisplay() {
-  startOrbitAnimation();
-}
+function updateOrbitDisplay() { startOrbitAnimation(); }
 
 // ========== ЖИВОЕ ОБНОВЛЕНИЕ ПРОГРЕСС-БАРОВ ==========
 function updateBottomProgressBars() {
   const state = getPlayerState();
-  const LEVELS = [
-    0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700,
-    3300, 4000, 4800, 5700, 6700, 7800, 9000, 10300, 11700, 13200,
-    15000, 17000, 19200, 21600, 24200, 27000, 30000, 33200, 36600, 40200,
-    44000, 48000, 52200, 56600, 61200, 66000, 71000, 76200, 81600, 87200,
-    93000, 99000, 105200, 111600, 118200, 125000, 132000, 139200, 146600, 154200,
-    162000, 170000, 178200, 186600, 195200, 204000, 213000, 222200, 231600, 241200,
-    251000, 261000, 271200, 281600, 292200, 303000, 314000, 325200, 336600, 348200,
-    360000, 372000, 384200, 396600, 409200, 422000, 435000, 448200, 461600, 475200,
-    489000, 503000, 517200, 531600, 546200, 561000, 576000, 591200, 606600, 622200,
-    638000, 654000, 670200, 686600, 703200, 720000, 737000, 754200, 771600, 789200, 807000
-  ];
+  const LEVELS = [0,100,250,450,700,1000,1350,1750,2200,2700,3300,4000,4800,5700,6700,7800,9000,10300,11700,13200,15000,17000,19200,21600,24200,27000,30000,33200,36600,40200,44000,48000,52200,56600,61200,66000,71000,76200,81600,87200,93000,99000,105200,111600,118200,125000,132000,139200,146600,154200,162000,170000,178200,186600,195200,204000,213000,222200,231600,241200,251000,261000,271200,281600,292200,303000,314000,325200,336600,348200,360000,372000,384200,396600,409200,422000,435000,448200,461600,475200,489000,503000,517200,531600,546200,561000,576000,591200,606600,622200,638000,654000,670200,686600,703200,720000,737000,754200,771600,789200,807000];
   const nextXP = LEVELS[Math.min(state.player.level, 100)] || LEVELS[LEVELS.length - 1];
   const shavingsBar = document.getElementById('liveShavingsBar');
   const shavingsLabel = document.getElementById('liveShavingsLabel');
   if (shavingsBar && shavingsLabel) {
     const needed = parseInt(shavingsBar.dataset.needed) || 1;
     const pct = Math.min(100, (ingotState.shavings / needed) * 100);
-    shavingsBar.style.width = pct + '%';
-    shavingsLabel.textContent = `${ingotState.shavings} / ${needed}`;
+    shavingsBar.style.width = pct + '%'; shavingsLabel.textContent = `${ingotState.shavings} / ${needed}`;
   }
   const xpBar = document.getElementById('liveXPBar');
   const xpLabel = document.getElementById('liveXPLabel');
   if (xpBar && xpLabel) {
     const pct = Math.min(100, (state.player.xp / nextXP) * 100);
-    xpBar.style.width = pct + '%';
-    xpLabel.textContent = `${state.player.xp} / ${nextXP}`;
+    xpBar.style.width = pct + '%'; xpLabel.textContent = `${state.player.xp} / ${nextXP}`;
   }
   document.querySelectorAll('.ingot-progress-bar-inner.ingot[id^="liveIngotBar_"]').forEach(bar => {
     const ingotId = bar.dataset.ingotId;
@@ -657,40 +483,27 @@ function updateBottomProgressBars() {
 function checkUpgradeAvailability() {
   const state = getPlayerState();
   if (!ingotState.levelLocked) return;
-  
   const upgradeData = INGOT_LEVELS[state.player.level];
   if (!upgradeData) return;
-  
   const hasShavings = ingotState.shavings >= upgradeData.shavingsCost;
   let hasIngots = true;
   if (upgradeData.ingotCost) {
     for (let id in upgradeData.ingotCost) {
-      if ((state.ingots[id] || 0) < upgradeData.ingotCost[id]) {
-        hasIngots = false;
-        break;
-      }
+      if ((state.ingots[id] || 0) < upgradeData.ingotCost[id]) { hasIngots = false; break; }
     }
   }
-  
   const canUpgrade = hasShavings && hasIngots;
-  
   const upgradeBtn = document.getElementById('performUpgradeBtn');
   const ingotBottom = document.querySelector('.ingot-bottom');
-  
   if (canUpgrade && upgradeBtn) return;
-  
   if (canUpgrade && !upgradeBtn && ingotBottom) {
     let html = `<button class="ingot-upgrade-btn" id="performUpgradeBtn">⚡ ПЕРЕПЛАВИТЬ СЛИТОК</button>`;
     ingotBottom.innerHTML = html;
-    
     const newBtn = document.getElementById('performUpgradeBtn');
     if (newBtn) {
       newBtn.addEventListener('click', () => {
         const result = performUpgrade();
-        if (!result.success) {
-          import('./ui.js').then(ui => ui.showToast(result.message, '⚠️'));
-          return;
-        }
+        if (!result.success) { import('./ui.js').then(ui => ui.showToast(result.message, '⚠️')); return; }
         const flash = document.createElement('div');
         flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:9999;pointer-events:none;animation:screenFlash 0.6s ease-out forwards;';
         document.body.appendChild(flash);
@@ -709,20 +522,16 @@ export function tapIngot() {
   if (forgeRushState.active) tapPower = Math.floor(tapPower * 4);
   const bonusPct = ingotState._bonusTapPower || 0;
   tapPower = Math.floor(tapPower * (1 + bonusPct / 100));
-  ingotState.tapEnergy--;
-  ingotState.shavings += tapPower;
+  ingotState.tapEnergy--; ingotState.shavings += tapPower;
   const shavingsDisplay = document.getElementById('ingotShavingsDisplay');
   if (shavingsDisplay) shavingsDisplay.textContent = ingotState.shavings;
   const energyBar = document.getElementById('ingotEnergyBar');
   if (energyBar) energyBar.style.width = (ingotState.tapEnergy / ingotState.maxTapEnergy * 100) + '%';
-  updateBottomProgressBars();
-  checkUpgradeAvailability();
-  const baseRushChance = 1;
-  const bonusRushChance = ingotState._bonusRushChance || 0;
+  updateBottomProgressBars(); checkUpgradeAvailability();
+  const baseRushChance = 1; const bonusRushChance = ingotState._bonusRushChance || 0;
   const totalRushChance = baseRushChance + bonusRushChance;
   if (!forgeRushState.active && Math.random() * 100 < totalRushChance) {
-    activateForgeRush();
-    import('./ui.js').then(ui => ui.showToast('⚡ КУЗНЕЧНЫЙ РАЖ! ×4 стружки!', '🔥'));
+    activateForgeRush(); import('./ui.js').then(ui => ui.showToast('⚡ КУЗНЕЧНЫЙ РАЖ! ×4 стружки!', '🔥'));
   }
   debouncedSave();
   return { success: true, shavings: ingotState.shavings, energy: ingotState.tapEnergy, tapPower, forgeRush: forgeRushState.active };
@@ -737,59 +546,29 @@ export function checkLevelLock() {
 }
 
 function getNextLevelXP(level) {
-  const LEVELS = [
-    0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700,
-    3300, 4000, 4800, 5700, 6700, 7800, 9000, 10300, 11700, 13200,
-    15000, 17000, 19200, 21600, 24200, 27000, 30000, 33200, 36600, 40200,
-    44000, 48000, 52200, 56600, 61200, 66000, 71000, 76200, 81600, 87200,
-    93000, 99000, 105200, 111600, 118200, 125000, 132000, 139200, 146600, 154200,
-    162000, 170000, 178200, 186600, 195200, 204000, 213000, 222200, 231600, 241200,
-    251000, 261000, 271200, 281600, 292200, 303000, 314000, 325200, 336600, 348200,
-    360000, 372000, 384200, 396600, 409200, 422000, 435000, 448200, 461600, 475200,
-    489000, 503000, 517200, 531600, 546200, 561000, 576000, 591200, 606600, 622200,
-    638000, 654000, 670200, 686600, 703200, 720000, 737000, 754200, 771600, 789200, 807000
-  ];
-  const idx = Math.min(level, LEVELS.length - 1);
-  return LEVELS[idx] || LEVELS[LEVELS.length - 1];
+  const LEVELS = [0,100,250,450,700,1000,1350,1750,2200,2700,3300,4000,4800,5700,6700,7800,9000,10300,11700,13200,15000,17000,19200,21600,24200,27000,30000,33200,36600,40200,44000,48000,52200,56600,61200,66000,71000,76200,81600,87200,93000,99000,105200,111600,118200,125000,132000,139200,146600,154200,162000,170000,178200,186600,195200,204000,213000,222200,231600,241200,251000,261000,271200,281600,292200,303000,314000,325200,336600,348200,360000,372000,384200,396600,409200,422000,435000,448200,461600,475200,489000,503000,517200,531600,546200,561000,576000,591200,606600,622200,638000,654000,670200,686600,703200,720000,737000,754200,771600,789200,807000];
+  return LEVELS[Math.min(level, LEVELS.length - 1)] || LEVELS[LEVELS.length - 1];
 }
 
 // ========== ПЕРЕПЛАВКА ==========
 export function performUpgrade() {
   const state = getPlayerState();
   if (!ingotState.levelLocked) return { success: false, message: 'Опыт ещё не заполнен!' };
-  
   const currentLevel = state.player.level;
   const upgradeData = INGOT_LEVELS[currentLevel];
   if (!upgradeData) return { success: false, message: 'Максимальный уровень!' };
-  
-  if (ingotState.shavings < upgradeData.shavingsCost) {
-    return { success: false, message: `Нужно ${upgradeData.shavingsCost} стружки!` };
-  }
-  
+  if (ingotState.shavings < upgradeData.shavingsCost) return { success: false, message: `Нужно ${upgradeData.shavingsCost} стружки!` };
   if (upgradeData.ingotCost) {
     for (let id in upgradeData.ingotCost) {
-      if ((state.ingots[id] || 0) < upgradeData.ingotCost[id]) {
-        return { success: false, message: `Недостаточно ${CONFIG_ITEMS[id]?.name || id}!` };
-      }
+      if ((state.ingots[id] || 0) < upgradeData.ingotCost[id]) return { success: false, message: `Недостаточно ${CONFIG_ITEMS[id]?.name || id}!` };
     }
   }
-  
   const currentIngotData = getCurrentIngotData();
   const oldIngot = { name: currentIngotData.name, icon: currentIngotData.icon, era: currentIngotData.era, level: state.player.level, image: currentIngotData.image };
-  
   ingotState.shavings -= upgradeData.shavingsCost;
-  if (upgradeData.ingotCost) {
-    for (let id in upgradeData.ingotCost) {
-      state.ingots[id] -= upgradeData.ingotCost[id];
-    }
-  }
-  
-  state.player.level++;
-  state.player.xp = 0;
-  ingotState.levelLocked = false;
-  forceSaveNow();
-  recalcAllBonuses();
-  
+  if (upgradeData.ingotCost) { for (let id in upgradeData.ingotCost) { state.ingots[id] -= upgradeData.ingotCost[id]; } }
+  state.player.level++; state.player.xp = 0; ingotState.levelLocked = false;
+  forceSaveNow(); recalcAllBonuses();
   const newData = getCurrentIngotData();
   return { success: true, oldIngot, newIngot: { name: newData.name, icon: newData.icon, era: newData.era, level: state.player.level, image: newData.image } };
 }
@@ -797,91 +576,36 @@ export function performUpgrade() {
 // ========== ЖИВОЕ ОБНОВЛЕНИЕ UI ==========
 function startUIUpdates() {
   if (ingotState.uiUpdateInterval) return;
-  ingotState.uiUpdateInterval = setInterval(() => {
-    regenEnergy();
-    const bar = document.getElementById('ingotEnergyBar');
-    if (bar) bar.style.width = (ingotState.tapEnergy / ingotState.maxTapEnergy * 100) + '%';
-  }, 300);
+  ingotState.uiUpdateInterval = setInterval(() => { regenEnergy(); const bar = document.getElementById('ingotEnergyBar'); if (bar) bar.style.width = (ingotState.tapEnergy / ingotState.maxTapEnergy * 100) + '%'; }, 300);
 }
 
-function stopUIUpdates() {
-  if (ingotState.uiUpdateInterval) { clearInterval(ingotState.uiUpdateInterval); ingotState.uiUpdateInterval = null; }
-  forceSaveNow();
-}
+function stopUIUpdates() { if (ingotState.uiUpdateInterval) { clearInterval(ingotState.uiUpdateInterval); ingotState.uiUpdateInterval = null; } forceSaveNow(); }
 
-// ========== ПОЛУЧЕНИЕ ДОСТУПНЫХ СЛОТОВ (расширено до 5) ==========
+// ========== ПОЛУЧЕНИЕ ДОСТУПНЫХ СЛОТОВ ==========
 function getAvailableSlots() {
-  const state = getPlayerState();
-  const level = state.player.level;
-  if (level >= 80) return 5;
-  if (level >= 50) return 4;
-  if (level >= 25) return 3;
-  if (level >= 10) return 2;
-  return 1;
+  const state = getPlayerState(); const level = state.player.level;
+  if (level >= 80) return 5; if (level >= 50) return 4; if (level >= 25) return 3; if (level >= 10) return 2; return 1;
 }
 
 // ========== МОДАЛКА ВЫБОРА АРТЕФАКТА ==========
 function showArtifactPicker(slotIndex) {
-  const state = getPlayerState();
-  const equipped = getEquippedArtifacts();
-  const availableSlots = getAvailableSlots();
+  const state = getPlayerState(); const equipped = getEquippedArtifacts(); const availableSlots = getAvailableSlots();
   if (slotIndex >= availableSlots) return;
-
-  const ownedArtifacts = Object.entries(state.ingots)
-    .filter(([id, count]) => count > 0 && CONFIG_ITEMS[id] && CONFIG_ITEMS[id].isCollectible)
-    .map(([id, count]) => ({ id, count, ingot: CONFIG_ITEMS[id] }));
-
-  if (ownedArtifacts.length === 0) {
-    import('./ui.js').then(ui => ui.showToast('У вас нет коллекционных артефактов! Добудьте их в особых жеодах.', '🔒'));
-    return;
-  }
-
+  const ownedArtifacts = Object.entries(state.ingots).filter(([id, count]) => count > 0 && CONFIG_ITEMS[id] && CONFIG_ITEMS[id].isCollectible).map(([id, count]) => ({ id, count, ingot: CONFIG_ITEMS[id] }));
+  if (ownedArtifacts.length === 0) { import('./ui.js').then(ui => ui.showToast('У вас нет коллекционных артефактов! Добудьте их в особых жеодах.', '🔒')); return; }
   let itemsHtml = '';
   ownedArtifacts.forEach(({ id, count, ingot }) => {
-    const isEquipped = equipped.includes(id);
-    const isEquippedInOtherSlot = isEquipped && equipped[slotIndex] !== id;
+    const isEquipped = equipped.includes(id); const isEquippedInOtherSlot = isEquipped && equipped[slotIndex] !== id;
     const effectDesc = ingot.effect_id ? getEffectDescription(ingot.effect_id, ingot.effect_power) : 'Нет эффекта';
-    itemsHtml += `
-      <div class="artifact-pick-item ${isEquipped && !isEquippedInOtherSlot ? 'equipped' : ''} ${isEquippedInOtherSlot ? 'disabled' : ''}" data-artifact="${id}">
-        <div class="artifact-pick-icon">${ingot.icon}</div>
-        <div class="artifact-pick-info">
-          <div class="artifact-pick-name">${ingot.name} ${isEquipped && !isEquippedInOtherSlot ? '✅' : ''} ${isEquippedInOtherSlot ? '🔒' : ''}</div>
-          <div class="artifact-pick-effect">${effectDesc}</div>
-          <div class="artifact-pick-count">В наличии: ${count} шт.</div>
-        </div>
-      </div>
-    `;
+    itemsHtml += `<div class="artifact-pick-item ${isEquipped && !isEquippedInOtherSlot ? 'equipped' : ''} ${isEquippedInOtherSlot ? 'disabled' : ''}" data-artifact="${id}"><div class="artifact-pick-icon">${ingot.icon}</div><div class="artifact-pick-info"><div class="artifact-pick-name">${ingot.name} ${isEquipped && !isEquippedInOtherSlot ? '✅' : ''} ${isEquippedInOtherSlot ? '🔒' : ''}</div><div class="artifact-pick-effect">${effectDesc}</div><div class="artifact-pick-count">В наличии: ${count} шт.</div></div></div>`;
   });
-
-  const html = `
-    <div class="modal-header">
-      <div class="modal-title">🔧 Выбор артефакта для слота ${slotIndex + 1}</div>
-      <button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button>
-    </div>
-    <div class="modal-content" style="text-align:left;">
-      <div class="modal-description">Выберите артефакт для экипировки. Один артефакт может быть надет только в один слот.</div>
-      <div class="artifact-pick-list">${itemsHtml}</div>
-      <button class="btn" id="unequipSlotBtn" style="margin-top:12px; background: rgba(255,68,68,0.2); border: 1px solid rgba(255,68,68,0.4); color: #FF4444;">🗑️ Снять артефакт</button>
-    </div>
-  `;
-
+  const html = `<div class="modal-header"><div class="modal-title">🔧 Выбор артефакта для слота ${slotIndex + 1}</div><button class="modal-close" onclick="document.dispatchEvent(new Event('closeModal'))">✕</button></div><div class="modal-content" style="text-align:left;"><div class="modal-description">Выберите артефакт для экипировки. Один артефакт может быть надет только в один слот.</div><div class="artifact-pick-list">${itemsHtml}</div><button class="btn" id="unequipSlotBtn" style="margin-top:12px; background: rgba(255,68,68,0.2); border: 1px solid rgba(255,68,68,0.4); color: #FF4444;">🗑️ Снять артефакт</button></div>`;
   import('./ui.js').then(ui => {
     ui.openModal(html);
     setTimeout(() => {
-      document.querySelectorAll('.artifact-pick-item:not(.disabled)').forEach(el => {
-        el.addEventListener('click', () => {
-          const artifactId = el.dataset.artifact;
-          equipArtifact(slotIndex, artifactId);
-          ui.closeModal();
-        });
-      });
+      document.querySelectorAll('.artifact-pick-item:not(.disabled)').forEach(el => { el.addEventListener('click', () => { const artifactId = el.dataset.artifact; equipArtifact(slotIndex, artifactId); ui.closeModal(); }); });
       const unequipBtn = document.getElementById('unequipSlotBtn');
-      if (unequipBtn) {
-        unequipBtn.addEventListener('click', () => {
-          equipArtifact(slotIndex, null);
-          ui.closeModal();
-        });
-      }
+      if (unequipBtn) { unequipBtn.addEventListener('click', () => { equipArtifact(slotIndex, null); ui.closeModal(); }); }
     }, 30);
   });
 }
@@ -890,48 +614,27 @@ function showArtifactPicker(slotIndex) {
 function equipArtifact(slotIndex, artifactId) {
   const state = getPlayerState();
   if (!state.equippedArtifacts) state.equippedArtifacts = [null, null, null, null, null];
-  
   if (artifactId && state.equippedArtifacts.includes(artifactId)) {
-    if (state.equippedArtifacts[slotIndex] !== artifactId) {
-      import('./ui.js').then(ui => ui.showToast('Этот артефакт уже надет в другой слот! Сначала снимите его оттуда.', '⚠️'));
-      return;
-    }
+    if (state.equippedArtifacts[slotIndex] !== artifactId) { import('./ui.js').then(ui => ui.showToast('Этот артефакт уже надет в другой слот! Сначала снимите его оттуда.', '⚠️')); return; }
   }
-  
-  state.equippedArtifacts[slotIndex] = artifactId;
-  saveGame();
-  recalcAllBonuses();
-  updateOrbitDisplay();
+  state.equippedArtifacts[slotIndex] = artifactId; saveGame(); recalcAllBonuses(); updateOrbitDisplay();
   const ingot = artifactId ? CONFIG_ITEMS[artifactId] : null;
-  import('./ui.js').then(ui => {
-    ui.showToast(artifactId ? `${ingot.icon} ${ingot.name} экипирован в слот ${slotIndex + 1}!` : `Слот ${slotIndex + 1} освобождён.`, '🔧');
-    ui.renderCurrentTab();
-  });
+  import('./ui.js').then(ui => { ui.showToast(artifactId ? `${ingot.icon} ${ingot.name} экипирован в слот ${slotIndex + 1}!` : `Слот ${slotIndex + 1} освобождён.`, '🔧'); ui.renderCurrentTab(); });
 }
 
-// ========== ОТРИСОВКА СЛОТОВ (расширено до 5) ==========
+// ========== ОТРИСОВКА СЛОТОВ ==========
 function renderEquipSlots() {
-  const state = getPlayerState();
-  const equipped = getEquippedArtifacts();
-  const availableSlots = getAvailableSlots();
+  const state = getPlayerState(); const equipped = getEquippedArtifacts(); const availableSlots = getAvailableSlots();
   let html = '<div class="equip-slots-section"><div class="equip-slots-title">🔧 Экипировка</div><div class="equip-slots-grid">';
   for (let i = 0; i < 5; i++) {
-    const isLocked = i >= availableSlots;
-    const unlockLevel = i === 1 ? 10 : (i === 2 ? 25 : (i === 3 ? 50 : (i === 4 ? 80 : 0)));
-    const artifactId = equipped[i];
-    const artifact = artifactId ? CONFIG_ITEMS[artifactId] : null;
-    html += `
-      <div class="equip-slot ${isLocked ? 'locked' : ''}" data-slot="${i}">
-        ${isLocked ? `<div class="equip-slot-lock">🔒 Ур.${unlockLevel}</div>` : ''}
-        ${!isLocked && artifact ? `<div class="equip-slot-icon">${artifact.icon}</div><div class="equip-slot-name">${artifact.name}</div><div class="equip-slot-effect">${getEffectDescription(artifact.effect_id, artifact.effect_power)}</div>` : (!isLocked ? `<div class="equip-slot-empty">+</div><div class="equip-slot-hint">Пусто</div>` : '')}
-      </div>
-    `;
+    const isLocked = i >= availableSlots; const unlockLevel = i === 1 ? 10 : (i === 2 ? 25 : (i === 3 ? 50 : (i === 4 ? 80 : 0)));
+    const artifactId = equipped[i]; const artifact = artifactId ? CONFIG_ITEMS[artifactId] : null;
+    html += `<div class="equip-slot ${isLocked ? 'locked' : ''}" data-slot="${i}">${isLocked ? `<div class="equip-slot-lock">🔒 Ур.${unlockLevel}</div>` : ''}${!isLocked && artifact ? `<div class="equip-slot-icon">${artifact.icon}</div><div class="equip-slot-name">${artifact.name}</div><div class="equip-slot-effect">${getEffectDescription(artifact.effect_id, artifact.effect_power)}</div>` : (!isLocked ? `<div class="equip-slot-empty">+</div><div class="equip-slot-hint">Пусто</div>` : '')}</div>`;
   }
-  html += '</div></div>';
-  return html;
+  html += '</div></div>'; return html;
 }
 
-// ========== ГЛАВНАЯ ОТРИСОВКА (С ИНТЕРАКТИВНЫМИ ИКОНКАМИ) ==========
+// ========== ГЛАВНАЯ ОТРИСОВКА (С ИНТЕРАКТИВНЫМИ ИКОНКАМИ ИНГРЕДИЕНТОВ) ==========
 export function renderIngotScreen(container) {
   stopUIUpdates();
   const state = getPlayerState();
@@ -976,6 +679,10 @@ export function renderIngotScreen(container) {
         0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
         50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
       }
+      @keyframes ingotIconGlow {
+        0%, 100% { box-shadow: 0 0 4px rgba(255,215,0,0.2); }
+        50% { box-shadow: 0 0 10px rgba(255,215,0,0.6); }
+      }
       
       .ingot-screen {
         min-height: 100%;
@@ -988,69 +695,428 @@ export function renderIngotScreen(container) {
         overflow-x: hidden;
         transition: box-shadow 0.5s ease;
       }
+      
       .ingot-screen.forge-rush-active {
         animation: rushGlowPulse 0.8s ease-in-out infinite;
         background: radial-gradient(circle at 50% 40%, rgba(255, 60, 0, 0.15) 0%, rgba(20, 5, 0, 1) 75%);
       }
-      .ingot-header { text-align: center; padding: 24px 20px 8px; flex-shrink: 0; }
-      .ingot-shavings-label { font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 2px; text-transform: uppercase; }
-      .ingot-shavings-value {
-        font-family: 'Unbounded', sans-serif; font-size: 44px; font-weight: 800;
-        background: linear-gradient(180deg, #FFE55C 0%, #FFD700 40%, #8B7355 100%);
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent; line-height: 1; margin-bottom: 6px;
+      
+      .ingot-header {
+        text-align: center;
+        padding: 24px 20px 8px;
+        flex-shrink: 0;
       }
-      .ingot-info-line { font-size: 12px; color: rgba(255,255,255,0.6); }
+      .ingot-shavings-label {
+        font-size: 11px;
+        color: rgba(255,255,255,0.3);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+      .ingot-shavings-value {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 44px;
+        font-weight: 800;
+        background: linear-gradient(180deg, #FFE55C 0%, #FFD700 40%, #8B7355 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1;
+        margin-bottom: 6px;
+        transition: transform 0.1s ease;
+      }
+      .forge-rush-active .ingot-shavings-value {
+        background: linear-gradient(180deg, #FF4500 0%, #FFD700 30%, #FFA500 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+      }
+      .ingot-info-line {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+      }
       .ingot-info-line strong { color: #fff; font-weight: 700; }
-      .ingot-core { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 220px; flex-shrink: 0; }
-      .ingot-float-wrapper { animation: ingotFloat 5s ease-in-out infinite; position: relative; z-index: 2; }
-      .ingot-image-container { width: 160px; height: 160px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; position: relative; }
-      .ingot-image { width: 100%; height: 100%; object-fit: contain; transform: translate3d(0, 0, 0); }
-      .ingot-image.squish-active { transform: translate3d(0, 0, 0) scale(0.92, 1.08); }
+      
+      .ingot-core {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        min-height: 220px;
+        flex-shrink: 0;
+      }
+      
+      .ingot-float-wrapper {
+        animation: ingotFloat 5s ease-in-out infinite;
+        position: relative;
+        z-index: 2;
+      }
+      .forge-rush-active .ingot-float-wrapper {
+        animation: ingotFloat 2s ease-in-out infinite;
+      }
+      
+      .ingot-image-container {
+        width: 160px;
+        height: 160px;
+        cursor: pointer;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        position: relative;
+        filter: drop-shadow(0 0 25px rgba(139, 115, 85, 0.4));
+        transition: filter 0.3s ease;
+      }
+      .forge-rush-active .ingot-image-container {
+        filter: drop-shadow(0 0 40px rgba(255, 60, 0, 0.9));
+      }
+      
+      .ingot-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform: translate3d(0, 0, 0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        transition: transform 0.08s ease-out;
+      }
+      .ingot-image.squish-active {
+        transform: translate3d(0, 0, 0) scale(0.92, 1.08);
+      }
+      
+      .ingot-fallback {
+        width: 140px;
+        height: 140px;
+        border-radius: 32px;
+        background: linear-gradient(135deg, #8B7355 0%, #A08060 40%, #6B5A45 70%, #5C4A3A 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 65px;
+        transform: translate3d(0, 0, 0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        transition: transform 0.08s ease-out;
+      }
+      .ingot-fallback.squish-active {
+        transform: translate3d(0, 0, 0) scale(0.92, 1.08);
+      }
+      
       .tap-particle {
-        position: absolute; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 18px;
-        color: #8B7355; pointer-events: none; z-index: 10; text-shadow: 0 0 10px rgba(139, 115, 85, 0.9);
+        position: absolute;
+        font-family: 'Unbounded', sans-serif;
+        font-weight: 800;
+        font-size: 18px;
+        color: #8B7355;
+        pointer-events: none;
+        z-index: 10;
+        text-shadow: 0 0 10px rgba(139, 115, 85, 0.9);
         animation: textFloatUp 0.7s ease-out forwards;
       }
-      .ingot-energy-divider { width: 100%; padding: 0 20px; flex-shrink: 0; }
-      .ingot-energy-bar-outer { width: 100%; height: 5px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; }
-      .ingot-energy-bar-inner { height: 100%; border-radius: 10px; background: linear-gradient(90deg, #5C4A3A, #8B7355); transition: width 0.4s ease; }
-      .ingot-bottom { padding: 12px 16px 24px; flex-shrink: 0; }
-      .ingot-goal-title { font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); text-align: center; margin-bottom: 14px; }
+      .forge-rush-active .tap-particle {
+        color: #FF4500;
+        font-size: 22px;
+        text-shadow: 0 0 15px rgba(255, 60, 0, 1);
+      }
+      
+      .forge-spark {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #8B7355;
+        pointer-events: none;
+        z-index: 9;
+        animation: sparkFly 0.3s ease-out forwards;
+        box-shadow: 0 0 6px #8B7355;
+      }
+      .forge-rush-active .forge-spark {
+        background: #FF4500;
+        box-shadow: 0 0 10px #FF4500, 0 0 20px #FF8C00;
+        width: 7px;
+        height: 7px;
+      }
+      
+      .forge-rush-timer {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Unbounded', sans-serif;
+        font-size: 64px;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.75);
+        pointer-events: none;
+        z-index: 20;
+        text-shadow: 0 0 30px rgba(255, 100, 0, 0.9), 0 0 60px rgba(255, 50, 0, 0.5);
+        animation: rushTimerPulse 1s ease-in-out infinite;
+      }
+      .forge-rush-timer.timer-pulse {
+        animation: rushTimerPulse 0.3s ease-out;
+      }
+      
+      .orbit-artifact {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        pointer-events: none;
+        z-index: 3;
+        will-change: transform;
+      }
+      
+      .ingot-energy-divider {
+        width: 100%;
+        padding: 0 20px;
+        flex-shrink: 0;
+      }
+      .ingot-energy-bar-outer {
+        width: 100%;
+        height: 5px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .ingot-energy-bar-inner {
+        height: 100%;
+        border-radius: 10px;
+        background: linear-gradient(90deg, #5C4A3A, #8B7355);
+        transition: width 0.4s ease;
+        transform: translate3d(0, 0, 0);
+      }
+      
+      .ingot-bottom {
+        padding: 12px 16px 24px;
+        flex-shrink: 0;
+      }
+      .ingot-goal-title {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        color: rgba(255,255,255,0.7);
+        text-align: center;
+        margin-bottom: 14px;
+        letter-spacing: 1px;
+      }
+      .ingot-goal-title strong { color: #8B7355; }
+      
       .ingot-progress-list { display: flex; flex-direction: column; gap: 10px; }
       .ingot-progress-row { display: flex; align-items: center; gap: 10px; }
-      .ingot-progress-icon { font-size: 17px; width: 22px; text-align: center; flex-shrink: 0; cursor: pointer; }
+      .ingot-progress-icon { 
+        font-size: 17px; width: 22px; text-align: center; flex-shrink: 0; 
+        cursor: pointer; transition: all 0.2s ease;
+      }
+      .ingot-progress-icon[data-ingot-id] { cursor: pointer; }
+      .ingot-progress-icon[data-ingot-id]:active { transform: scale(1.3); }
       .ingot-progress-info { flex: 1; min-width: 0; }
-      .ingot-progress-header { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 4px; }
-      .ingot-progress-bar-outer { width: 100%; height: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; }
-      .ingot-progress-bar-inner { height: 100%; border-radius: 10px; transition: width 0.5s ease; }
+      .ingot-progress-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: rgba(255,255,255,0.6);
+        margin-bottom: 4px;
+        font-weight: 500;
+      }
+      .ingot-progress-header span:last-child { color: rgba(255,255,255,0.8); font-weight: 600; }
+      .ingot-progress-bar-outer {
+        width: 100%;
+        height: 12px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .ingot-progress-bar-inner {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s ease;
+        transform: translate3d(0, 0, 0);
+      }
       .ingot-progress-bar-inner.shavings { background: linear-gradient(90deg, #8B7355, #A08060); }
       .ingot-progress-bar-inner.ingot { background: linear-gradient(90deg, #6B5A45, #8B7355); }
       .ingot-progress-bar-inner.xp { background: linear-gradient(90deg, #5C4A3A, #8B7355); }
-      .ingot-upgrade-btn {
-        display: block; width: 100%; padding: 20px; border: none; border-radius: 60px;
-        font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 17px;
-        cursor: pointer; text-transform: uppercase;
-        background: linear-gradient(135deg, #5C4A3A 0%, #8B7355 40%, #A08060 100%);
-        color: #fff; animation: pulseUpgrade 2s ease-in-out infinite; margin-top: 4px;
+      
+      .ingot-ingredient-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: rgba(139,115,85,0.1);
+        border: 1px solid rgba(139,115,85,0.3);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-left: 6px;
+        animation: ingotIconGlow 2.5s ease-in-out infinite;
       }
-      .ingot-upgrade-btn:active { transform: scale(0.95); }
-      .ingot-max-msg { font-family: 'Unbounded', sans-serif; font-size: 16px; font-weight: 800; color: #8B7355; text-align: center; padding: 24px; }
+      .ingot-ingredient-icon:active {
+        transform: scale(1.2);
+        background: rgba(139,115,85,0.2);
+        border-color: rgba(255,215,0,0.6);
+      }
+      
+      .ingot-upgrade-btn {
+        display: block;
+        width: 100%;
+        padding: 20px;
+        border: none;
+        border-radius: 60px;
+        font-family: 'Unbounded', sans-serif;
+        font-weight: 800;
+        font-size: 17px;
+        letter-spacing: 2px;
+        cursor: pointer;
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #5C4A3A 0%, #8B7355 40%, #A08060 100%);
+        color: #fff;
+        animation: pulseUpgrade 2s ease-in-out infinite;
+        margin-top: 4px;
+        transform: translate3d(0, 0, 0);
+      }
+      .ingot-upgrade-btn:active { transform: translate3d(0, 0, 0) scale(0.95) !important; }
+      .ingot-upgrade-btn:disabled { opacity: 0.3; cursor: not-allowed; animation: none; }
+      
+      .ingot-max-msg {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 16px;
+        font-weight: 800;
+        color: #8B7355;
+        text-align: center;
+        padding: 24px;
+      }
+      
+      .evolution-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(10px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .evolution-card {
+        background: radial-gradient(circle at 50% 0%, rgba(139, 115, 85, 0.2) 0%, rgba(20,20,20,0.95) 70%);
+        border: 1px solid rgba(139, 115, 85, 0.3);
+        border-radius: 32px;
+        padding: 30px 20px;
+        text-align: center;
+        width: 90%;
+        max-width: 340px;
+        position: relative;
+        overflow: hidden;
+      }
+      .evolution-rays {
+        position: absolute;
+        top: 50%; left: 50%;
+        width: 300px; height: 300px;
+        background: conic-gradient(from 0deg, transparent, rgba(139, 115, 85, 0.1), transparent, rgba(100, 80, 50, 0.1), transparent);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        animation: spinGlow 8s linear infinite;
+        pointer-events: none;
+      }
+      .evolution-icon-container {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        z-index: 1;
+        animation: ingotFloat 2s ease-in-out infinite;
+      }
+      .evolution-icon-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform: translate3d(0, 0, 0);
+      }
+      .evolution-icon-fallback {
+        width: 100px;
+        height: 100px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #8B7355, #A08060, #6B5A45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 50px;
+      }
+      .evolution-title {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 20px;
+        font-weight: 800;
+        color: #8B7355;
+        margin: 12px 0 8px;
+        position: relative;
+        z-index: 1;
+      }
+      .evolution-subtitle {
+        font-size: 13px;
+        color: rgba(255,255,255,0.7);
+        margin-bottom: 20px;
+        position: relative;
+        z-index: 1;
+        line-height: 1.5;
+      }
+      .evolution-close-btn {
+        background: linear-gradient(135deg, #8B7355, #6B5A45);
+        color: #fff;
+        border: none;
+        padding: 14px 32px;
+        border-radius: 50px;
+        font-weight: 800;
+        font-size: 15px;
+        cursor: pointer;
+        position: relative;
+        z-index: 1;
+      }
       
       .equip-slots-section { margin-bottom: 12px; }
-      .equip-slots-title { font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.6); text-align: center; margin-bottom: 10px; }
-      .equip-slots-grid { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-      .equip-slot {
-        width: 56px; height: 56px; background: rgba(255,255,255,0.04);
-        border: 2px dashed rgba(139, 115, 85, 0.2); border-radius: 14px;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        cursor: pointer; transition: all 0.25s; text-align: center; padding: 2px;
+      .equip-slots-title {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(255,255,255,0.6);
+        text-align: center;
+        margin-bottom: 10px;
+        letter-spacing: 1px;
       }
-      .equip-slot.locked { opacity: 0.35; cursor: not-allowed; }
-      .equip-slot-lock { font-size: 7px; color: rgba(255,255,255,0.3); }
-      .equip-slot-icon { font-size: 22px; }
-      .equip-slot-name { font-size: 7px; color: rgba(255,255,255,0.7); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 48px; }
-      .equip-slot-effect { font-size: 6px; color: rgba(139, 115, 85, 0.6); margin-top: 1px; }
+      .equip-slots-grid { display: flex; gap: 8px; justify-content: center; }
+      .equip-slot {
+        width: 90px;
+        height: 90px;
+        background: rgba(255,255,255,0.04);
+        border: 2px dashed rgba(139, 115, 85, 0.2);
+        border-radius: 18px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.25s;
+        text-align: center;
+        padding: 4px;
+      }
+      .equip-slot:active { transform: scale(0.93); border-color: rgba(139, 115, 85, 0.6); background: rgba(139, 115, 85, 0.08); }
+      .equip-slot.locked { opacity: 0.35; cursor: not-allowed; border-color: rgba(255,255,255,0.06); }
+      .equip-slot.locked:active { transform: none; }
+      .equip-slot-lock { font-size: 8px; color: rgba(255,255,255,0.3); }
+      .equip-slot-empty { font-size: 26px; color: rgba(139, 115, 85, 0.35); font-weight: 300; }
+      .equip-slot-hint { font-size: 8px; color: rgba(255,255,255,0.2); margin-top: 2px; }
+      .equip-slot-icon { font-size: 28px; }
+      .equip-slot-name { font-size: 8px; color: rgba(255,255,255,0.7); margin-top: 2px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
+      .equip-slot-effect { font-size: 7px; color: rgba(139, 115, 85, 0.6); margin-top: 2px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px; }
+      
+      .artifact-pick-list { max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; border: 1px solid rgba(255,255,255,0.06); }
+      .artifact-pick-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 14px; cursor: pointer; margin-bottom: 4px; transition: all 0.2s; border: 1px solid transparent; }
+      .artifact-pick-item:active { background: rgba(139, 115, 85, 0.08); border-color: rgba(139, 115, 85, 0.3); }
+      .artifact-pick-item.equipped { border-color: rgba(139, 115, 85, 0.4); background: rgba(139, 115, 85, 0.05); }
+      .artifact-pick-item.disabled { opacity: 0.35; cursor: not-allowed; }
+      .artifact-pick-item.disabled:active { background: rgba(255,255,255,0.03); border-color: transparent; }
+      .artifact-pick-icon { font-size: 24px; min-width: 30px; text-align: center; }
+      .artifact-pick-info { flex: 1; text-align: left; }
+      .artifact-pick-name { font-weight: 600; font-size: 13px; color: #fff; }
+      .artifact-pick-effect { font-size: 10px; color: rgba(139, 115, 85, 0.7); margin-top: 2px; }
+      .artifact-pick-count { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
     </style>
   `;
   html += `<div class="ingot-screen${forgeRushState.active ? ' forge-rush-active' : ''}">`;
@@ -1070,7 +1136,7 @@ export function renderIngotScreen(container) {
       <div class="ingot-float-wrapper" id="ingotFloatWrapper">
         <div class="ingot-image-container" id="ingotImageContainer">
           <img class="ingot-image" id="ingotImage" src="${ingotData.image}" alt="${ingotData.name}" onerror="this.style.display='none';document.getElementById('ingotFallback').style.display='flex';" />
-          <div class="ingot-fallback" id="ingotFallback" style="display:none;width:140px;height:140px;border-radius:32px;background:linear-gradient(135deg,#8B7355 0%,#A08060 40%,#6B5A45 70%,#5C4A3A 100%);align-items:center;justify-content:center;font-size:65px;">${ingotData.icon}</div>
+          <div class="ingot-fallback" id="ingotFallback" style="display:none;">${ingotData.icon}</div>
         </div>
       </div>
     </div>
@@ -1084,7 +1150,7 @@ export function renderIngotScreen(container) {
   `;
   html += `<div class="ingot-bottom">`;
   if (!nextIngot) {
-    html += `<div class="ingot-max-msg">🏆 Максимальный уровень</div>`;
+    html += `<div class="ingot-max-msg">🏆 Максимальный уровень Трансценденции</div>`;
   } else if (locked) {
     const canUpgrade = shavings >= nextIngot.shavingsCost && (!nextIngot.ingotCost || Object.entries(nextIngot.ingotCost).every(([id, r]) => (state.ingots[id] || 0) >= r));
     if (canUpgrade) {
@@ -1124,7 +1190,6 @@ export function renderIngotScreen(container) {
       forgeRushState.countdownDisplay = document.createElement('div');
       forgeRushState.countdownDisplay.className = 'forge-rush-timer';
       forgeRushState.countdownDisplay.textContent = forgeRushState.timeLeft;
-      forgeRushState.countdownDisplay.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:Unbounded,sans-serif;font-size:64px;font-weight:800;color:rgba(255,255,255,0.75);pointer-events:none;z-index:20;text-shadow:0 0 30px rgba(255,100,0,0.9);';
       coreArea.appendChild(forgeRushState.countdownDisplay);
     }
   }
@@ -1132,10 +1197,10 @@ export function renderIngotScreen(container) {
   startUIUpdates();
   startOrbitAnimation();
   
+  const coreArea2 = document.getElementById('ingotCoreArea');
   const imageContainer = document.getElementById('ingotImageContainer');
   const ingotImage = document.getElementById('ingotImage');
   const ingotFallback = document.getElementById('ingotFallback');
-  const coreArea2 = document.getElementById('ingotCoreArea');
   
   if (imageContainer && coreArea2) {
     const executeTap = (clientX, clientY) => {
@@ -1234,20 +1299,19 @@ function buildProgressRowLive(icon, label, current, needed, cssClass, barId, lab
 function showEvolutionModal(oldData, newData) {
   const overlay = document.createElement('div');
   overlay.className = 'evolution-overlay';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:10000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:radial-gradient(circle at 50% 0%,rgba(139,115,85,0.2) 0%,rgba(20,20,20,0.95) 70%);border:1px solid rgba(139,115,85,0.3);border-radius:32px;padding:30px 20px;text-align:center;width:90%;max-width:340px;position:relative;overflow:hidden;">
-      <div style="position:absolute;top:50%;left:50%;width:300px;height:300px;background:conic-gradient(from 0deg,transparent,rgba(139,115,85,0.1),transparent,rgba(100,80,50,0.1),transparent);border-radius:50%;transform:translate(-50%,-50%);animation:spinGlow 8s linear infinite;pointer-events:none;"></div>
-      <div style="width:120px;height:120px;margin:0 auto;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;">
-        <img src="${newData.image}" alt="${newData.name}" style="width:100%;height:100%;object-fit:contain;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
-        <div style="display:none;width:100px;height:100px;border-radius:24px;background:linear-gradient(135deg,#8B7355,#A08060,#6B5A45);align-items:center;justify-content:center;font-size:50px;">${newData.icon}</div>
+    <div class="evolution-card">
+      <div class="evolution-rays"></div>
+      <div class="evolution-icon-container">
+        <img class="evolution-icon-img" src="${newData.image}" alt="${newData.name}" onerror="this.style.display='none';document.getElementById('evoFallback').style.display='flex';" />
+        <div class="evolution-icon-fallback" id="evoFallback" style="display:none;">${newData.icon}</div>
       </div>
-      <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:800;color:#8B7355;margin:12px 0 8px;position:relative;z-index:1;">ЭВОЛЮЦИЯ СЛИТКА!</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:20px;position:relative;z-index:1;line-height:1.5;">
+      <div class="evolution-title">ЭВОЛЮЦИЯ СЛИТКА!</div>
+      <div class="evolution-subtitle">
         <strong>${oldData.name}</strong> → <strong>${newData.name}</strong><br>
         Уровень ${newData.level} · ${newData.era}
       </div>
-      <button id="evolutionCloseBtn" style="background:linear-gradient(135deg,#8B7355,#6B5A45);color:#fff;border:none;padding:14px 32px;border-radius:50px;font-weight:800;font-size:15px;cursor:pointer;position:relative;z-index:1;">ПРОДОЛЖИТЬ</button>
+      <button class="evolution-close-btn" id="evolutionCloseBtn">ПРОДОЛЖИТЬ</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -1261,4 +1325,4 @@ function showEvolutionModal(oldData, newData) {
   });
 }
 
-export { INGOT_LEVELS, INGOT_DISPLAY };
+export { INGOT_LEVELS };
