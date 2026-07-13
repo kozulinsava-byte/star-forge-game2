@@ -333,7 +333,6 @@ function setTimerTimeout(timerName, callback, delay) {
 }
 
 // ---------- УНИВЕРСАЛЬНЫЙ ИВЕНТ-МЕНЕДЖЕР (3 ИВЕНТА) ----------
-// ★ ФИКС: единый список ивентов — источник истины
 const EVENT_LIST = ['great_smelt', 'meteor_storm', 'contracts'];
 const EVENT_DURATION = 15 * 60 * 1000;
 const ROTATION_INTERVAL = 30 * 60 * 1000;
@@ -396,10 +395,7 @@ export const eventsManager = {
     eventEndTime: null,
     eventInterval: null,
     lastEventId: null,
-
-    // ★ ФИКС: флаг предотвращает мгновенный перезапуск после принудительного завершения
     forceEndedThisSlot: false,
-    // ★ ФИКС: храним номер текущего слота для обнаружения смены окна
     currentSlotNumber: -1,
 
     getActiveEvent() {
@@ -432,7 +428,6 @@ export const eventsManager = {
         }, 1000);
     },
 
-    // ★ ФИКС: полностью переписанный метод синхронизации с учётом forceEndedThisSlot
     syncWithSystemTime() {
         const now = Date.now();
         const interval = getEffectiveInterval();
@@ -441,64 +436,51 @@ export const eventsManager = {
         const slotStart = currentSlot * interval;
         const slotEnd = slotStart + duration;
 
-        // ★ ФИКС: обнаруживаем смену слота
         if (currentSlot !== this.currentSlotNumber) {
             this.currentSlotNumber = currentSlot;
-            // Сброс флага принудительного завершения при смене слота
             this.forceEndedThisSlot = false;
         }
 
-        // Активный слот (первые 15 минут из 30)
         if (now >= slotStart && now < slotEnd) {
-            // ★ ФИКС: если ивент был принудительно завершён в этом слоте — не запускаем новый
             if (this.forceEndedThisSlot) {
                 return;
             }
 
             if (!this.activeEventId || this.eventEndTime !== slotEnd) {
                 const eventId = this.getEventForSlot(currentSlot);
-                // ★ ФИКС: дополнительная проверка, что eventId определён
                 if (eventId && EVENT_DEFINITIONS[eventId]) {
-                    // ★ ФИКС: не перезапускаем тот же ивент с тем же временем окончания
                     if (this.activeEventId !== eventId || this.eventEndTime !== slotEnd) {
                         this.startEventByIdInternal(eventId, slotEnd);
                     }
                 }
             }
         }
-        // Окно покоя (вторые 15 минут из 30)
         else if (now >= slotEnd && this.activeEventId) {
             this.endEventInternal();
         }
-        // Окно покоя, ивент не активен — всё корректно
         else if (!this.activeEventId && now >= slotEnd) {
             this.activeEventId = null;
             this.eventEndTime = null;
         }
     },
 
-    // ★ ФИКС: защита от пустого available и валидация индекса
     getEventForSlot(slot) {
         if (this.lastEventId) {
-            // ★ ФИКС: фильтруем только по валидным ивентам из EVENT_LIST
             const available = EVENT_LIST.filter(id => id !== this.lastEventId && EVENT_DEFINITIONS[id]);
             if (available.length > 0) {
                 return available[slot % available.length];
             }
-            // Крайний случай: если по какой-то причине available пуст — возвращаем первый из полного списка
             if (EVENT_LIST.length > 0) {
                 return EVENT_LIST[0];
             }
             return null;
         }
-        // Первый запуск — случайный выбор
         return EVENT_LIST[slot % EVENT_LIST.length];
     },
 
     startEventByIdInternal(eventId, endTime) {
         if (!EVENT_DEFINITIONS[eventId]) return;
 
-        // ★ ФИКС: предотвращаем повторный запуск того же ивента
         if (this.activeEventId === eventId && this.eventEndTime === endTime) {
             return;
         }
@@ -529,7 +511,6 @@ export const eventsManager = {
 
         this.activeEventId = null;
         this.eventEndTime = null;
-        // ★ ФИКС: lastEventId сохраняется для ротации, НЕ сбрасываем
 
         saveGame();
 
@@ -549,7 +530,6 @@ export const eventsManager = {
         this.activeEventId = eventId;
         this.eventEndTime = Date.now() + duration;
         this.lastEventId = eventId;
-        // ★ ФИКС: ручной запуск сбрасывает флаг принудительного завершения
         this.forceEndedThisSlot = false;
 
         if (_showToast) _showToast(def.startMessage, def.startToast);
@@ -572,7 +552,6 @@ export const eventsManager = {
         const def = EVENT_DEFINITIONS[this.activeEventId];
         if (!def) return;
 
-        // ★ ФИКС: устанавливаем флаг ПЕРЕД сбросом activeEventId
         this.forceEndedThisSlot = true;
 
         if (this.activeEventId === 'meteor_storm') {
@@ -593,7 +572,6 @@ export const eventsManager = {
 
         this.activeEventId = null;
         this.eventEndTime = null;
-        // ★ ФИКС: lastEventId сохраняется для корректной ротации
 
         saveGame();
 
@@ -1686,32 +1664,9 @@ function applySaveData(data) {
         }
     }
     if (data.nextSerial) nextSerial = data.nextSerial;
-
-    // ★ ФИКС: валидация восстановленных данных ивентов
-    if (data.activeEventId && EVENT_DEFINITIONS[data.activeEventId]) {
-        eventsManager.activeEventId = data.activeEventId;
-    } else {
-        eventsManager.activeEventId = null;
-    }
-
-    if (data.eventEndTime && typeof data.eventEndTime === 'number' && data.eventEndTime > Date.now()) {
-        eventsManager.eventEndTime = data.eventEndTime;
-    } else {
-        eventsManager.eventEndTime = null;
-        eventsManager.activeEventId = null;
-    }
-
-    // ★ ФИКС: валидация lastEventId — должен быть в EVENT_LIST
-    if (data.lastEventId && EVENT_DEFINITIONS[data.lastEventId]) {
-        eventsManager.lastEventId = data.lastEventId;
-    } else {
-        eventsManager.lastEventId = null;
-    }
-
-    // ★ ФИКС: вычисляем текущий слот при восстановлении
-    const now = Date.now();
-    const interval = getEffectiveInterval();
-    eventsManager.currentSlotNumber = Math.floor(now / interval);
+    if (data.activeEventId) eventsManager.activeEventId = data.activeEventId;
+    if (data.eventEndTime) eventsManager.eventEndTime = data.eventEndTime;
+    if (data.lastEventId) eventsManager.lastEventId = data.lastEventId;
 }
 
 export const saveToLocalStorage = saveGame;
