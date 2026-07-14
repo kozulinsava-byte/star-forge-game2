@@ -99,12 +99,24 @@ class AssetManager {
   }
 }
 
-// ========== BOOT SEQUENCE (ФИКС: БЕЗ ЗАДЕРЖЕК, ПРЕЛОАДЕР СРАЗУ) ==========
+// ========== BOOT SEQUENCE (ФИКС: ТАЙМАУТ ДЛЯ ПРЕЛОАДЕРА) ==========
 async function boot() {
   console.log('[Boot] ========== ЗАГРУЗКА ИГРЫ ==========');
   
   updatePreloader(0, 'Инициализация...');
   showSkeleton();
+
+  // ★ ФИКС: Таймаут — если за 10 секунд не загрузились, показываем игру принудительно
+  let booted = false;
+  const forceBootTimeout = setTimeout(() => {
+    if (!booted) {
+      console.warn('[Boot] Таймаут загрузки — принудительный запуск');
+      updatePreloader(100, 'Запуск...');
+      hidePreloader();
+      setActiveTab('expeditions');
+      booted = true;
+    }
+  }, 10000);
   
   // 🩹 Ассеты — тихий фон, без await, без задержек
   const assetManager = new AssetManager();
@@ -113,12 +125,16 @@ async function boot() {
   // 🩹 Инициализация состояния НЕМЕДЛЕННО
   console.log('[Boot] Инициализация состояния...');
   updatePreloader(50, 'Загрузка данных...');
-  const success = await initializeState();
+  
+  let success = false;
+  try {
+    success = await initializeState();
+  } catch(e) {
+    console.error('[Boot] Ошибка инициализации:', e);
+  }
   
   if (!success) {
-    updatePreloader(100, 'Ошибка загрузки данных!');
-    console.error('[Boot] ОШИБКА: не удалось инициализировать состояние');
-    return;
+    console.warn('[Boot] Инициализация состояния завершилась с ошибкой, продолжаем...');
   }
   
   // 🩹 Запуск систем
@@ -172,6 +188,12 @@ async function boot() {
   });
   
   updatePreloader(100, 'Готово!');
+  
+  // ★ ФИКС: сбрасываем таймаут, если загрузка прошла нормально
+  if (!booted) {
+    clearTimeout(forceBootTimeout);
+    booted = true;
+  }
   
   setTimeout(() => {
     hidePreloader();
